@@ -7,6 +7,7 @@ use clap::App;
 use clap::AppSettings;
 use clap::Arg;
 use cloud_client::Client;
+use cloud_client::Display as _;
 use futures::future::join_all;
 use interactive::Interactive;
 use rand::{thread_rng, Rng};
@@ -245,17 +246,16 @@ async fn main() {
                 let for_pending = m.is_present("for_pending");
 
                 let block_number = client.get_block_number(for_pending).await;
-                println!("block_number: {:#x}", block_number);
+                println!("block_number: {}", block_number);
             }
             ("block_at", m) => {
                 let block_number = {
                     let s: String = m.value_of_t_or_exit("block_number");
-                    u64::from_str_radix(remove_0x(&s), 16).unwrap()
+                    s.parse::<u64>().unwrap()
                 };
 
                 let block = client.get_block_by_number(block_number).await;
-
-                println!("block: {:?}", block);
+                println!("{}", block.display());
             }
             ("get_tx", m) => {
                 let tx_hash = {
@@ -264,7 +264,7 @@ async fn main() {
                 };
 
                 let tx = client.get_tx(tx_hash).await;
-                println!("tx: {:?}", tx);
+                println!("tx: {:#?}", tx);
             }
             ("peer_count", _m) => {
                 let cnt = client.get_peer_count().await;
@@ -276,7 +276,7 @@ async fn main() {
                     s.parse::<u64>().unwrap()
                 };
 
-                let start_at = client.get_block_number(true).await;
+                let mut start_at = client.get_block_number(false).await;
 
                 let mut rng = thread_rng();
                 let handles = (0..tx_count)
@@ -290,57 +290,56 @@ async fn main() {
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
-                let wait_time = (tx_count / 500 + 2) * 6;
-                println!("wait {} secs...", wait_time);
-                tokio::time::sleep(Duration::from_secs(wait_time)).await;
+                let mut finalized_tx = 0;
+                while finalized_tx < tx_count {
+                    let end_at = client.get_block_number(false).await;
 
-                let end_at = client.get_block_number(true).await;
-
-                let blocks = {
-                    let handles = (start_at..=end_at)
-                        .map(|n| {
-                            let client = Arc::clone(&client);
-                            tokio::spawn(async move { client.get_block_by_number(n).await })
-                        })
-                        .collect::<Vec<_>>();
-                    join_all(handles).await
-                };
-
-                let mut total = 0;
-                let mut begin_time = None;
-                for b in blocks {
-                    let b = b.unwrap();
-                    let (header, body) = (b.header.unwrap(), b.body.unwrap());
-
-                    let height = header.height;
-                    let secs = {
-                        let t = std::time::UNIX_EPOCH + Duration::from_millis(header.timestamp);
-                        if begin_time.is_none() {
-                            begin_time.replace(t);
-                        }
-                        t.duration_since(begin_time.unwrap()).unwrap().as_secs()
+                    let blocks = {
+                        let handles = (start_at..=end_at)
+                            .map(|n| {
+                                let client = Arc::clone(&client);
+                                tokio::spawn(async move { client.get_block_by_number(n).await })
+                            })
+                            .collect::<Vec<_>>();
+                        join_all(handles).await
                     };
-                    let tx_count = body.tx_hashes.len();
-                    total += tx_count;
-                    println!(
-                        "{:0>2}:{:0>2} block `{}` contains `{}` txs, total: `{}`",
-                        secs / 60,
-                        secs % 60,
-                        height,
-                        tx_count,
-                        total
-                    );
+
+                    let mut begin_time = None;
+                    for b in blocks {
+                        let b = b.unwrap();
+                        let (header, body) = (b.header.unwrap(), b.body.unwrap());
+
+                        let height = header.height;
+                        let secs = {
+                            let t = std::time::UNIX_EPOCH + Duration::from_millis(header.timestamp);
+                            if begin_time.is_none() {
+                                begin_time.replace(t);
+                            }
+                            t.duration_since(begin_time.unwrap()).unwrap().as_secs()
+                        };
+                        let cnt = body.tx_hashes.len() as u64;
+                        finalized_tx += cnt;
+                        println!(
+                            "{:0>2}:{:0>2} block `{}` contains `{}` txs, finalized: `{}`",
+                            secs / 60,
+                            secs % 60,
+                            height,
+                            cnt,
+                            finalized_tx
+                        );
+                    }
+                    start_at = end_at;
                 }
             }
             #[cfg(feature = "evm")]
             ("receipt", m) => {
-                let hash = {
-                    let s: String = m.value_of_t_or_exit("hash");
+                let tx_hash = {
+                    let s: String = m.value_of_t_or_exit("tx_hash");
                     hex::decode(remove_0x(&s)).unwrap()
                 };
 
-                let receipt = client.get_receipt(hash).await;
-                println!("receipt: {:?}", receipt);
+                let receipt = client.get_receipt(tx_hash).await;
+                println!("receipt: {}", receipt.display());
             }
             #[cfg(feature = "evm")]
             ("get_code", m) => {
@@ -350,7 +349,7 @@ async fn main() {
                 };
 
                 let code = client.get_code(addr).await;
-                println!("code: {:?}", code);
+                println!("code: 0x{}", hex::encode(&code.byte_code));
             }
             #[cfg(feature = "evm")]
             ("get_balance", m) => {
@@ -360,7 +359,7 @@ async fn main() {
                 };
 
                 let balance = client.get_balance(addr).await;
-                println!("balance: {:?}", balance);
+                println!("balance: 0x{}", hex::encode(&balance.value));
             }
             _ => {
                 unreachable!()

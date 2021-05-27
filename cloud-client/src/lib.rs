@@ -16,7 +16,7 @@
 #![allow(clippy::let_and_return)]
 
 mod crypto;
-// mod evm_client;
+mod display;
 
 use prost::Message;
 use tonic::transport::channel::Channel;
@@ -48,6 +48,8 @@ use crypto::pk2address;
 use crypto::sign_message;
 
 use tokio::sync::OnceCell;
+
+pub use display::Display;
 
 // TODO: use better name
 struct Wallet {

@@ -32,6 +32,7 @@ rand = "0.8.3"
 tokio = { version = "1.3", features = ["full"] }
 libsm = "0.4.0"
 efficient-sm2 = { git = "https://github.com/Pencil-Yao/efficient-sm2" }
+chrono = "0.4.19"
 
 [build-dependencies]
 tonic-build = { version = "0.3" }
