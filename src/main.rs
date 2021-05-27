@@ -290,9 +290,18 @@ async fn main() {
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
+                let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut finalized_tx = 0;
                 while finalized_tx < tx_count {
-                    let end_at = client.get_block_number(false).await;
+                    check_interval.tick().await;
+                    let end_at = {
+                        let n = client.get_block_number(false).await;
+                        if n > start_at {
+                            n
+                        } else {
+                            continue;
+                        }
+                    };
 
                     let blocks = {
                         let handles = (start_at..=end_at)
