@@ -12,7 +12,6 @@ use interactive::Interactive;
 use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::SystemTime;
 
 #[tokio::main]
 async fn main() {
@@ -277,9 +276,7 @@ async fn main() {
                     s.parse::<u64>().unwrap()
                 };
 
-                let begin_time = SystemTime::now();
-
-                let start_at = client.get_block_number(false).await;
+                let start_at = client.get_block_number(true).await;
 
                 let mut rng = thread_rng();
                 let handles = (0..tx_count)
@@ -293,9 +290,11 @@ async fn main() {
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
-                tokio::time::sleep(Duration::from_secs(12)).await;
+                let wait_time = (tx_count / 500 + 2) * 6;
+                println!("wait {} secs...", wait_time);
+                tokio::time::sleep(Duration::from_secs(wait_time)).await;
 
-                let end_at = client.get_block_number(false).await;
+                let end_at = client.get_block_number(true).await;
 
                 let blocks = {
                     let handles = (start_at..=end_at)
@@ -308,6 +307,7 @@ async fn main() {
                 };
 
                 let mut total = 0;
+                let mut begin_time = None;
                 for b in blocks {
                     let b = b.unwrap();
                     let (header, body) = (b.header.unwrap(), b.body.unwrap());
@@ -315,7 +315,10 @@ async fn main() {
                     let height = header.height;
                     let secs = {
                         let t = std::time::UNIX_EPOCH + Duration::from_millis(header.timestamp);
-                        t.duration_since(begin_time).unwrap().as_secs()
+                        if begin_time.is_none() {
+                            begin_time.replace(t);
+                        }
+                        t.duration_since(begin_time.unwrap()).unwrap().as_secs()
                     };
                     let tx_count = body.tx_hashes.len();
                     total += tx_count;
