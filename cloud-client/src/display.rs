@@ -57,12 +57,13 @@ impl Display for CompactBlock {
 impl Display for Receipt {
     fn display(&self) -> String {
         format!(
-            "tx_hash: 0x{}\nblock_hash: {}\nblock_number: {}\ntx_index: {}\nstate_root: {}\nerror_msg: `{}`",
+            "tx_hash: 0x{}\nblock_hash: {}\nblock_number: {}\ntx_index: {}\nstate_root: {}\ncontract_addr: 0x{}\nerror_msg: `{}`",
             hex::encode(&self.transaction_hash),
             hex::encode(&self.block_hash),
             self.block_number,
             self.transaction_index,
             hex::encode(&self.state_root),
+            hex::encode(&self.contract_address),
             self.error_message,
         )
     }

@@ -236,7 +236,7 @@ async fn main() {
                 println!("tx_hash: 0x{}", hex::encode(&tx_hash));
             }
             ("create", m) => {
-                let to = vec![0u8; 32];
+                let to = vec![0u8; 20];
                 let data = {
                     let s: String = m.value_of_t_or_exit("data");
                     hex::decode(remove_0x(&s)).unwrap()
