@@ -97,16 +97,19 @@ async fn main() {
 
     let peer_count = App::new("peer_count").setting(AppSettings::ColoredHelp);
 
-    let bench = App::new("bench").setting(AppSettings::ColoredHelp).arg(
-        Arg::new("count")
-            .about("how many txs to send in decimal")
-            .short('c')
-            .long("count")
-            .required(false)
-            .takes_value(true)
-            .default_value("1024")
-            .validator(str::parse::<u64>),
-    );
+    let bench = App::new("bench")
+        .setting(AppSettings::ColoredHelp)
+        .about("send multiple txs with random content")
+        .arg(
+            Arg::new("count")
+                .about("how many txs to send in decimal")
+                .short('c')
+                .long("count")
+                .required(false)
+                .takes_value(true)
+                .default_value("1024")
+                .validator(str::parse::<u64>),
+        );
 
     #[cfg(feature = "evm")]
     let receipt = App::new("receipt").setting(AppSettings::ColoredHelp).arg(
@@ -283,9 +286,9 @@ async fn main() {
                     .map(|_| {
                         let client = Arc::clone(&client);
 
-                        let to = vec![0u8; 20];
+                        let to: [u8; 20] = rng.gen();
                         let data: [u8; 32] = rng.gen();
-                        tokio::spawn(async move { client.send(to, data.into()).await })
+                        tokio::spawn(async move { client.send(to.into(), data.into()).await })
                     })
                     .collect::<Vec<_>>();
                 join_all(handles).await;
@@ -296,7 +299,7 @@ async fn main() {
                     check_interval.tick().await;
                     let end_at = {
                         let n = client.get_block_number(false).await;
-                        if n > start_at {
+                        if n >= start_at {
                             n
                         } else {
                             continue;
@@ -337,7 +340,7 @@ async fn main() {
                             finalized_tx
                         );
                     }
-                    start_at = end_at;
+                    start_at = end_at + 1;
                 }
             }
             #[cfg(feature = "evm")]
