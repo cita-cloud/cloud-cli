@@ -295,6 +295,8 @@ async fn main() {
 
                 let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut finalized_tx = 0;
+                let mut begin_time = None;
+
                 while finalized_tx < tx_count {
                     check_interval.tick().await;
                     let end_at = {
@@ -316,7 +318,6 @@ async fn main() {
                         join_all(handles).await
                     };
 
-                    let mut begin_time = None;
                     for b in blocks {
                         let b = b.unwrap();
                         let (header, body) = (b.header.unwrap(), b.body.unwrap());
