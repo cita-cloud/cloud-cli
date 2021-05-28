@@ -79,19 +79,16 @@ async fn main() {
     let block_at = App::new("block_at")
         .about("Get block by number")
         .setting(AppSettings::ColoredHelp)
-        .arg(Arg::new("block_number").validator(hex_validator));
+        .arg(
+            Arg::new("block_number")
+                .required(true)
+                .validator(hex_validator),
+        );
 
     let get_tx = App::new("get_tx")
         .about("Get transaction by hash")
         .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("tx_hash")
-                .short('t')
-                .long("tx_hash")
-                .required(true)
-                .takes_value(true)
-                .validator(hex_validator),
-        );
+        .arg(Arg::new("tx_hash").required(true).validator(hex_validator));
 
     let peer_count = App::new("peer_count").about("Get peer count");
 
@@ -105,10 +102,7 @@ async fn main() {
         .arg(
             Arg::new("count")
                 .about("How many txs to send in decimal")
-                .short('c')
-                .long("count")
                 .required(false)
-                .takes_value(true)
                 .default_value("1024")
                 .validator(str::parse::<u64>),
         );
@@ -117,53 +111,25 @@ async fn main() {
     let create = App::new("create")
         .about("Create contract")
         .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("data")
-                .short('d')
-                .long("data")
-                .required(true)
-                .takes_value(true)
-                .validator(hex_validator),
-        );
+        .arg(Arg::new("data").required(true).validator(hex_validator));
 
     #[cfg(feature = "evm")]
     let receipt = App::new("receipt")
         .about("Get receipt by tx_hash")
         .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("tx_hash")
-                .short('t')
-                .long("tx_hash")
-                .required(true)
-                .takes_value(true)
-                .validator(hex_validator),
-        );
+        .arg(Arg::new("tx_hash").required(true).validator(hex_validator));
 
     #[cfg(feature = "evm")]
     let get_code = App::new("get_code")
         .about("Get code by contract address")
         .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("addr")
-                .short('a')
-                .long("addr")
-                .required(true)
-                .takes_value(true)
-                .validator(hex_validator),
-        );
+        .arg(Arg::new("addr").required(true).validator(hex_validator));
 
     #[cfg(feature = "evm")]
     let get_balance = App::new("get_balance")
         .about("Get balance by account address")
         .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("addr")
-                .short('a')
-                .long("addr")
-                .required(true)
-                .takes_value(true)
-                .validator(hex_validator),
-        );
+        .arg(Arg::new("addr").required(true).validator(hex_validator));
 
     // addrs args
     let rpc_addr_arg = Arg::new("rpc_addr")
