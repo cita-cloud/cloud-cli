@@ -2,7 +2,7 @@ use prost::Message;
 
 use cita_cloud_proto::blockchain::Transaction;
 use cita_cloud_proto::blockchain::{CompactBlock, UnverifiedTransaction, Witness};
-use cita_cloud_proto::controller::RawTransaction;
+use cita_cloud_proto::controller::{RawTransaction, SystemConfig};
 use cita_cloud_proto::evm::Log;
 use cita_cloud_proto::evm::Receipt;
 
@@ -75,6 +75,19 @@ impl Display for UnverifiedTransaction {
     }
 }
 
+impl Display for SystemConfig {
+    fn to_json(&self) -> Json {
+        let validators = self.validators.iter().map(|v| hex(&v)).collect::<Vec<_>>();
+        json!({
+            "version": self.version,
+            "chain_id": hex(&self.chain_id),
+            "admin": hex(&self.admin),
+            "block_interval": self.block_interval,
+            "validators": validators,
+        })
+    }
+}
+
 // impl Display for UtxoTransaction {
 //     fn to_json(&self) -> Json {
 //         json!({
@@ -141,14 +154,14 @@ impl Display for Log {
 #[cfg(feature = "evm")]
 impl Display for Receipt {
     fn to_json(&self) -> Json {
-        let logs_json = json!(self.logs.iter().map(Log::to_json).collect::<Vec<_>>());
+        let logs = self.logs.iter().map(Log::to_json).collect::<Vec<_>>();
         json!({
             "tx_hash": hex(&self.transaction_hash),
             "block_hash": hex(&self.block_hash),
             "block_number": self.block_number,
             "tx_index": hex(&self.state_root),
             "contract_addr": hex(&self.contract_address),
-            "logs": logs_json,
+            "logs": logs,
             "cumulative_quota_used": hex(&self.cumulative_quota_used),
             "quota_used": hex(&self.quota_used),
             "state_root": hex(&self.state_root),

@@ -24,6 +24,7 @@ async fn main() {
 
     // subcommands
     let call = App::new("call")
+        .about("Executor call")
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("from")
@@ -51,6 +52,7 @@ async fn main() {
         );
 
     let send = App::new("send")
+        .about("Send transaction")
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("to")
@@ -69,40 +71,40 @@ async fn main() {
                 .validator(hex_validator),
         );
 
-    let create = App::new("create").setting(AppSettings::ColoredHelp).arg(
-        Arg::new("data")
-            .short('d')
-            .long("data")
-            .required(true)
-            .takes_value(true)
-            .validator(hex_validator),
-    );
-
     let block_number = App::new("block_number")
+        .about("Get block number")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("for_pending").short('p').long("for_pending"));
 
     let block_at = App::new("block_at")
+        .about("Get block by number")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("block_number").validator(hex_validator));
 
-    let get_tx = App::new("get_tx").setting(AppSettings::ColoredHelp).arg(
-        Arg::new("tx_hash")
-            .short('t')
-            .long("tx_hash")
-            .required(true)
-            .takes_value(true)
-            .validator(hex_validator),
-    );
+    let get_tx = App::new("get_tx")
+        .about("Get transaction by hash")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("tx_hash")
+                .short('t')
+                .long("tx_hash")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        );
 
-    let peer_count = App::new("peer_count").setting(AppSettings::ColoredHelp);
+    let peer_count = App::new("peer_count").about("Get peer count");
+
+    let system_config = App::new("system_config")
+        .about("Get system config")
+        .setting(AppSettings::ColoredHelp);
 
     let bench = App::new("bench")
+        .about("Send multiple txs with random content")
         .setting(AppSettings::ColoredHelp)
-        .about("send multiple txs with random content")
         .arg(
             Arg::new("count")
-                .about("how many txs to send in decimal")
+                .about("How many txs to send in decimal")
                 .short('c')
                 .long("count")
                 .required(false)
@@ -112,27 +114,47 @@ async fn main() {
         );
 
     #[cfg(feature = "evm")]
-    let receipt = App::new("receipt").setting(AppSettings::ColoredHelp).arg(
-        Arg::new("tx_hash")
-            .short('t')
-            .long("tx_hash")
-            .required(true)
-            .takes_value(true)
-            .validator(hex_validator),
-    );
+    let create = App::new("create")
+        .about("Create contract")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("data")
+                .short('d')
+                .long("data")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        );
 
     #[cfg(feature = "evm")]
-    let get_code = App::new("get_code").setting(AppSettings::ColoredHelp).arg(
-        Arg::new("addr")
-            .short('a')
-            .long("addr")
-            .required(true)
-            .takes_value(true)
-            .validator(hex_validator),
-    );
+    let receipt = App::new("receipt")
+        .about("Get receipt by tx_hash")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("tx_hash")
+                .short('t')
+                .long("tx_hash")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        );
+
+    #[cfg(feature = "evm")]
+    let get_code = App::new("get_code")
+        .about("Get code by contract address")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("addr")
+                .short('a')
+                .long("addr")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        );
 
     #[cfg(feature = "evm")]
     let get_balance = App::new("get_balance")
+        .about("Get balance by account address")
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("addr")
@@ -166,6 +188,7 @@ async fn main() {
             block_at,
             get_tx,
             peer_count,
+            system_config,
             bench,
         ]);
 
@@ -235,16 +258,6 @@ async fn main() {
                 let tx_hash = client.send(to, data).await;
                 println!("tx_hash: 0x{}", hex::encode(&tx_hash));
             }
-            ("create", m) => {
-                let to = vec![];
-                let data = {
-                    let s: String = m.value_of_t_or_exit("data");
-                    hex::decode(remove_0x(&s)).unwrap()
-                };
-
-                let tx_hash = client.send(to, data).await;
-                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
-            }
             ("block_number", m) => {
                 let for_pending = m.is_present("for_pending");
 
@@ -272,6 +285,10 @@ async fn main() {
             ("peer_count", _m) => {
                 let cnt = client.get_peer_count().await;
                 println!("peer_count: {}", cnt);
+            }
+            ("system_config", _m) => {
+                let system_config = client.get_system_config().await;
+                println!("{}", system_config.display());
             }
             ("bench", m) => {
                 let tx_count = {
@@ -347,6 +364,17 @@ async fn main() {
                 }
             }
             #[cfg(feature = "evm")]
+            ("create", m) => {
+                let to = vec![];
+                let data = {
+                    let s: String = m.value_of_t_or_exit("data");
+                    hex::decode(remove_0x(&s)).unwrap()
+                };
+
+                let tx_hash = client.send(to, data).await;
+                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
+            }
+            #[cfg(feature = "evm")]
             ("receipt", m) => {
                 let tx_hash = {
                     let s: String = m.value_of_t_or_exit("tx_hash");
@@ -354,7 +382,7 @@ async fn main() {
                 };
 
                 let receipt = client.get_receipt(tx_hash).await;
-                println!("receipt: {}", receipt.display());
+                println!("{}", receipt.display());
             }
             #[cfg(feature = "evm")]
             ("get_code", m) => {

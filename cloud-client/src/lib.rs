@@ -35,7 +35,7 @@ use cita_cloud_proto::common::Empty;
 use cita_cloud_proto::common::Hash;
 use cita_cloud_proto::controller::{
     raw_transaction::Tx, rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber,
-    Flag, RawTransaction,
+    Flag, RawTransaction, SystemConfig,
 };
 
 use cita_cloud_proto::evm::{
@@ -101,45 +101,6 @@ impl Client {
         }
     }
 
-    pub async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
-        let req = {
-            #[cfg(feature = "chaincode")]
-            let call_req = CallRequest {
-                from,
-                to,
-                args: vec![payload],
-                ..Default::default()
-            };
-            #[cfg(feature = "evm")]
-            let call_req = CallRequest {
-                from,
-                to,
-                method: payload,
-                args: vec![],
-            };
-            Request::new(call_req)
-        };
-
-        self.executor
-            .clone()
-            .call(req)
-            .await
-            .unwrap()
-            .into_inner()
-            .value
-    }
-
-    pub async fn send(&self, to: Vec<u8>, data: Vec<u8>) -> Vec<u8> {
-        let raw_tx = self.prepare_raw_tx(to, data).await;
-        self.controller
-            .clone()
-            .send_raw_transaction(raw_tx)
-            .await
-            .unwrap()
-            .into_inner()
-            .hash
-    }
-
     async fn wallet(&self) -> &Wallet {
         let mut controller = self.controller.clone();
         let init_wallet = || async move {
@@ -170,7 +131,46 @@ impl Client {
         self.wallet.get_or_init(init_wallet).await
     }
 
-    async fn prepare_raw_tx(&self, to: Vec<u8>, data: Vec<u8>) -> RawTransaction {
+    pub async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
+        let req = {
+            #[cfg(feature = "chaincode")]
+            let call_req = CallRequest {
+                from,
+                to,
+                args: vec![payload],
+                ..Default::default()
+            };
+            #[cfg(feature = "evm")]
+            let call_req = CallRequest {
+                from,
+                to,
+                method: payload,
+                args: vec![],
+            };
+            Request::new(call_req)
+        };
+
+        self.executor
+            .clone()
+            .call(req)
+            .await
+            .unwrap()
+            .into_inner()
+            .value
+    }
+
+    pub async fn send(&self, to: Vec<u8>, data: Vec<u8>) -> Vec<u8> {
+        let normal_tx = self.prepare_normal_tx(to, data).await;
+        self.controller
+            .clone()
+            .send_raw_transaction(normal_tx)
+            .await
+            .unwrap()
+            .into_inner()
+            .hash
+    }
+
+    async fn prepare_normal_tx(&self, to: Vec<u8>, data: Vec<u8>) -> RawTransaction {
         // build tx
         // get start block number
         let start_block_number = {
@@ -225,6 +225,15 @@ impl Client {
         };
 
         raw_tx
+    }
+
+    pub async fn get_system_config(&self) -> SystemConfig {
+        self.controller
+            .clone()
+            .get_system_config(Empty {})
+            .await
+            .unwrap()
+            .into_inner()
     }
 
     pub async fn get_block_number(&self, for_pending: bool) -> u64 {
