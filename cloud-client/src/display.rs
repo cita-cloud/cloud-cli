@@ -1,22 +1,31 @@
 use prost::Message;
 
-use cita_cloud_proto::blockchain::CompactBlock;
+use cita_cloud_proto::blockchain::Transaction;
+use cita_cloud_proto::blockchain::{CompactBlock, UnverifiedTransaction, Witness};
+use cita_cloud_proto::controller::RawTransaction;
+use cita_cloud_proto::evm::Log;
 use cita_cloud_proto::evm::Receipt;
+
+use serde_json::json;
+use serde_json::Value as Json;
 
 use crate::crypto::hash_data;
 
 pub trait Display {
-    fn display(&self) -> String;
+    fn to_json(&self) -> Json;
+    fn display(&self) -> String {
+        serde_json::to_string_pretty(&self.to_json()).unwrap()
+    }
 }
 
 impl<T: Display> Display for &T {
-    fn display(&self) -> String {
-        (**self).display()
+    fn to_json(&self) -> Json {
+        (**self).to_json()
     }
 }
 
 impl Display for CompactBlock {
-    fn display(&self) -> String {
+    fn to_json(&self) -> Json {
         let tx_count = self.body.as_ref().map(|b| b.tx_hashes.len()).unwrap_or(0);
         match &self.header {
             Some(header) => {
@@ -25,47 +34,127 @@ impl Display for CompactBlock {
                     header.encode(&mut buf).unwrap();
                     hash_data(&buf)
                 };
-                format!(
-                    "hash: 0x{}\nprev_hash: 0x{}\nheight: {}\ntx_count: {}\ntimestamp: {}\ntransaction_root: 0x{}\nproposer: 0x{}\n",
-                    hex::encode(header_hash),
-                    hex::encode(&header.prevhash),
-                    header.height,
-                    tx_count,
-                    display_time(header.timestamp),
-                    hex::encode(&header.transactions_root),
-                    hex::encode(&header.proposer),
-                )
+                json!({
+                    "version": self.version,
+                    "hash": hex(&header_hash),
+                    "prev_hash": hex(&header.prevhash),
+                    "height": header.height,
+                    "tx_count": tx_count,
+                    "timestamp": display_time(header.timestamp),
+                    "transaction_root": hex(&header.transactions_root),
+                    "proposer": hex(&header.proposer),
+                })
             }
-            None => panic!("no block header"),
+            None => json!("no block header"),
         }
     }
 }
 
-// impl Display for RawTransaction {
-//     fn display(&self) -> String {
-//         match self {
-//             RawTransaction::NormalTx(tx) => {
+impl Display for Transaction {
+    fn to_json(&self) -> Json {
+        json!({
+            "version": self.version,
+            "to": hex(&self.to),
+            "nonce": self.nonce,
+            "quota": self.quota,
+            "valid_until_block": self.valid_until_block,
+            "data": hex(&self.data),
+            "value": hex(&self.value),
+            "chain_id": hex(&self.chain_id),
+        })
+    }
+}
 
-//             }
-//             RawTransaction::Utxo
-//         }
+impl Display for UnverifiedTransaction {
+    fn to_json(&self) -> Json {
+        json!({
+            "transaction": self.transaction.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!("None")),
+            "transaction_hash": hex(&self.transaction_hash),
+            "witness": self.witness.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!("None")),
+        })
+    }
+}
 
+// impl Display for UtxoTransaction {
+//     fn to_json(&self) -> Json {
+//         json!({
+//             "transaction": self.transaction.map(|tx| tx.to_json()).unwrap_or(json!("None")),
+//             "transaction_hash": hex(&self.transaction_hash),
+//             "witness": self.witness.map(|tx| tx.to_json()).unwrap_or(json!("None")),
+//         })
 //     }
 // }
 
+impl Display for Witness {
+    fn to_json(&self) -> Json {
+        json!({
+            "signature": hex(&self.signature),
+            "sender": hex(&self.sender),
+        })
+    }
+}
+
+impl Display for RawTransaction {
+    fn to_json(&self) -> Json {
+        use cita_cloud_proto::controller::raw_transaction::Tx;
+
+        let inner = match &self.tx {
+            Some(inner) => inner,
+            None => return json!({}),
+        };
+
+        match inner {
+            Tx::NormalTx(tx) => {
+                json!({
+                    "type": "Normal",
+                    "transaction": tx.to_json()
+                })
+            }
+            Tx::UtxoTx(_utxo) => {
+                json!({
+                    "type": "Utxo",
+                    // "transaction": utxo.to_json()
+                    "transaction": "unimplemented" // TODO
+                })
+            }
+        }
+    }
+}
+
+#[cfg(feature = "evm")]
+impl Display for Log {
+    fn to_json(&self) -> Json {
+        json!({
+            "address": hex(&self.address),
+            "topics": json!(self.topics.iter().map(|t| hex(t)).collect::<Vec<_>>()),
+            "data": hex(&self.data),
+            "block_hash": hex(&self.block_hash),
+            "block_number": self.block_number,
+            "tx_hash": hex(&self.transaction_hash),
+            "tx_index": self.transaction_index,
+            "log_index": self.log_index,
+            "tx_log_index": self.transaction_log_index,
+        })
+    }
+}
+
 #[cfg(feature = "evm")]
 impl Display for Receipt {
-    fn display(&self) -> String {
-        format!(
-            "tx_hash: 0x{}\nblock_hash: {}\nblock_number: {}\ntx_index: {}\nstate_root: {}\ncontract_addr: 0x{}\nerror_msg: `{}`",
-            hex::encode(&self.transaction_hash),
-            hex::encode(&self.block_hash),
-            self.block_number,
-            self.transaction_index,
-            hex::encode(&self.state_root),
-            hex::encode(&self.contract_address),
-            self.error_message,
-        )
+    fn to_json(&self) -> Json {
+        let logs_json = json!(self.logs.iter().map(Log::to_json).collect::<Vec<_>>());
+        json!({
+            "tx_hash": hex(&self.transaction_hash),
+            "block_hash": hex(&self.block_hash),
+            "block_number": self.block_number,
+            "tx_index": hex(&self.state_root),
+            "contract_addr": hex(&self.contract_address),
+            "logs": logs_json,
+            "cumulative_quota_used": hex(&self.cumulative_quota_used),
+            "quota_used": hex(&self.quota_used),
+            "state_root": hex(&self.state_root),
+            "logs_bloom": hex(&self.logs_bloom),
+            "error_msg": self.error_message,
+        })
     }
 }
 
@@ -78,4 +167,8 @@ fn display_time(timestamp: u64) -> String {
         "{}",
         Utc.timestamp_millis(timestamp as i64).with_timezone(&Local)
     )
+}
+
+fn hex(data: &[u8]) -> String {
+    format!("0x{}", hex::encode(data))
 }

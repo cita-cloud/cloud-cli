@@ -293,6 +293,8 @@ async fn main() {
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
+                println!("sending txs done.");
+
                 let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut finalized_tx = 0;
                 let mut begin_time = None;
