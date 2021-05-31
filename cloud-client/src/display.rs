@@ -164,7 +164,7 @@ impl Display for Receipt {
             "tx_hash": hex(&self.transaction_hash),
             "block_hash": hex(&self.block_hash),
             "block_number": self.block_number,
-            "tx_index": hex(&self.state_root),
+            "tx_index": self.transaction_index,
             "contract_addr": hex(&self.contract_address),
             "logs": logs,
             "cumulative_quota_used": hex(&self.cumulative_quota_used),
