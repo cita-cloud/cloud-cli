@@ -26,7 +26,11 @@ impl<T: Display> Display for &T {
 
 impl Display for CompactBlock {
     fn to_json(&self) -> Json {
-        let tx_count = self.body.as_ref().map(|b| b.tx_hashes.len()).unwrap_or(0);
+        let tx_hashes = match self.body.as_ref() {
+            Some(body) => body.tx_hashes.iter().map(|h| hex(h)).collect(),
+            None => vec![],
+        };
+
         match &self.header {
             Some(header) => {
                 let header_hash = {
@@ -39,7 +43,8 @@ impl Display for CompactBlock {
                     "hash": hex(&header_hash),
                     "prev_hash": hex(&header.prevhash),
                     "height": header.height,
-                    "tx_count": tx_count,
+                    "tx_count": tx_hashes.len(),
+                    "tx_hashes": tx_hashes,
                     "timestamp": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
