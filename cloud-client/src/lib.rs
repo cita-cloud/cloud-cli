@@ -159,8 +159,8 @@ impl Client {
             .value
     }
 
-    pub async fn send(&self, to: Vec<u8>, data: Vec<u8>) -> Vec<u8> {
-        let normal_tx = self.prepare_normal_tx(to, data).await;
+    pub async fn send(&self, to: Vec<u8>, data: Vec<u8>, value: Vec<u8>) -> Vec<u8> {
+        let normal_tx = self.prepare_normal_tx(to, data, value).await;
         self.controller
             .clone()
             .send_raw_transaction(normal_tx)
@@ -170,7 +170,12 @@ impl Client {
             .hash
     }
 
-    async fn prepare_normal_tx(&self, to: Vec<u8>, data: Vec<u8>) -> RawTransaction {
+    async fn prepare_normal_tx(
+        &self,
+        to: Vec<u8>,
+        data: Vec<u8>,
+        value: Vec<u8>,
+    ) -> RawTransaction {
         // build tx
         // get start block number
         let start_block_number = {
@@ -190,7 +195,19 @@ impl Client {
             chain_id,
         } = self.wallet().await;
 
-        let tx = build_tx(to, data, chain_id.clone(), start_block_number);
+        let tx = {
+            let nonce = rand::random::<u64>().to_string();
+            CloudTransaction {
+                version: 0,
+                to,
+                nonce,
+                quota: 3_000_000,
+                valid_until_block: start_block_number + 99,
+                data,
+                value,
+                chain_id: chain_id.clone(),
+            }
+        };
 
         // calc tx hash
         let tx_hash = {
@@ -303,24 +320,5 @@ impl Client {
             .await
             .unwrap()
             .into_inner()
-    }
-}
-
-fn build_tx(
-    to: Vec<u8>,
-    data: Vec<u8>,
-    chain_id: Vec<u8>,
-    start_block_number: u64,
-) -> CloudTransaction {
-    let nonce = rand::random::<u64>().to_string();
-    CloudTransaction {
-        version: 0,
-        to,
-        nonce,
-        quota: 3_000_000,
-        valid_until_block: start_block_number + 99,
-        data,
-        value: vec![0u8; 32],
-        chain_id,
     }
 }

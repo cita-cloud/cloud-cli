@@ -69,6 +69,14 @@ async fn main() {
                 .required(true)
                 .takes_value(true)
                 .validator(hex_validator),
+        )
+        .arg(
+            Arg::new("value")
+                .short('v')
+                .long("value")
+                .required(false)
+                .takes_value(true)
+                .validator(hex_validator),
         );
 
     let block_number = App::new("block_number")
@@ -111,6 +119,14 @@ async fn main() {
     let create = App::new("create")
         .about("Create contract")
         .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("value")
+                .short('v')
+                .long("value")
+                .required(false)
+                .takes_value(true)
+                .validator(hex_validator),
+        )
         .arg(Arg::new("data").required(true).validator(hex_validator));
 
     #[cfg(feature = "evm")]
@@ -222,8 +238,12 @@ async fn main() {
                     let s: String = m.value_of_t_or_exit("data");
                     hex::decode(remove_0x(&s)).unwrap()
                 };
+                let value = match m.value_of("value") {
+                    Some(s) => hex::decode(parse_h256(&s)).unwrap(),
+                    None => vec![],
+                };
 
-                let tx_hash = client.send(to, data).await;
+                let tx_hash = client.send(to, data, value).await;
                 println!("tx_hash: 0x{}", hex::encode(&tx_hash));
             }
             ("block_number", m) => {
@@ -273,7 +293,10 @@ async fn main() {
 
                         let to: [u8; 20] = rng.gen();
                         let data: [u8; 32] = rng.gen();
-                        tokio::spawn(async move { client.send(to.into(), data.into()).await })
+                        let value: [u8; 32] = rng.gen();
+                        tokio::spawn(async move {
+                            client.send(to.into(), data.into(), value.into()).await
+                        })
                     })
                     .collect::<Vec<_>>();
                 join_all(handles).await;
@@ -338,8 +361,12 @@ async fn main() {
                     let s: String = m.value_of_t_or_exit("data");
                     hex::decode(remove_0x(&s)).unwrap()
                 };
+                let value = match m.value_of("value") {
+                    Some(s) => hex::decode(parse_h256(&s)).unwrap(),
+                    None => vec![],
+                };
 
-                let tx_hash = client.send(to, data).await;
+                let tx_hash = client.send(to, data, value).await;
                 println!("tx_hash: 0x{}", hex::encode(&tx_hash));
             }
             #[cfg(feature = "evm")]
@@ -384,6 +411,11 @@ async fn main() {
 fn parse_addr(s: &str) -> String {
     // padding 0 to 20 bytes
     format!("{:0>40}", remove_0x(s))
+}
+
+fn parse_h256(s: &str) -> String {
+    // padding 0 to 32 bytes
+    format!("{:0>64}", remove_0x(s))
 }
 
 fn remove_0x(s: &str) -> &str {
