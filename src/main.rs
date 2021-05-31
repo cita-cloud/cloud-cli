@@ -143,6 +143,8 @@ async fn main() {
 
     // main command
     let cli_app = App::new("cloud-cli")
+        .about("The command line interface to interact with `CITA-CLOUD`.")
+        .version("0.1.0")
         .setting(AppSettings::ColoredHelp)
         .arg(rpc_addr_arg)
         .arg(executor_addr_arg)
