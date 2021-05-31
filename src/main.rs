@@ -14,6 +14,22 @@ use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use std::time::Duration;
 
+/// Store action target address
+pub const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
+/// StoreAbi action target address
+pub const ABI_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010001";
+/// Amend action target address
+pub const AMEND_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010002";
+
+/// amend the abi data
+pub const AMEND_ABI: &str = "0x01";
+/// amend the account code
+pub const AMEND_CODE: &str = "0x02";
+/// amend the kv of db
+pub const AMEND_KV_H256: &str = "0x03";
+/// amend account balance
+pub const AMEND_BALANCE: &str = "0x05";
+
 #[tokio::main]
 async fn main() {
     let hex_validator = |s: &str| {
@@ -147,6 +163,39 @@ async fn main() {
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(hex_validator));
 
+    #[cfg(feature = "evm")]
+    let storage_abi = App::new("storage_abi")
+        .about("storage_abi transaction")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("to")
+                .short('t')
+                .long("to")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        )
+        .arg(
+            Arg::new("abi")
+                .short('a')
+                .long("abi")
+                .required(true)
+                .takes_value(true),
+        );
+
+    #[cfg(feature = "evm")]
+    let get_abi = App::new("get_abi")
+        .about("get specific contract abi")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("to")
+                .short('t')
+                .long("to")
+                .required(true)
+                .takes_value(true)
+                .validator(hex_validator),
+        );
+
     // addrs args
     let rpc_addr_arg = Arg::new("rpc_addr")
         .short('r')
@@ -180,7 +229,9 @@ async fn main() {
     let cli_app = cli_app
         .subcommand(receipt)
         .subcommand(get_code)
-        .subcommand(get_balance);
+        .subcommand(get_balance)
+        .subcommand(storage_abi)
+        .subcommand(get_abi);
 
     let matches = cli_app.get_matches();
 
@@ -240,7 +291,7 @@ async fn main() {
                 };
                 let value = match m.value_of("value") {
                     Some(s) => hex::decode(parse_h256(&s)).unwrap(),
-                    None => vec![],
+                    None => vec![0; 32],
                 };
 
                 let tx_hash = client.send(to, data, value).await;
@@ -363,7 +414,7 @@ async fn main() {
                 };
                 let value = match m.value_of("value") {
                     Some(s) => hex::decode(parse_h256(&s)).unwrap(),
-                    None => vec![],
+                    None => vec![0; 32],
                 };
 
                 let tx_hash = client.send(to, data, value).await;
@@ -398,6 +449,33 @@ async fn main() {
 
                 let balance = client.get_balance(addr).await;
                 println!("balance: 0x{}", hex::encode(&balance.value));
+            }
+            #[cfg(feature = "evm")]
+            ("storage_abi", m) => {
+                let address = {
+                    let s: String = m.value_of_t_or_exit("to");
+                    parse_addr(&s)
+                };
+                let abi_str: String = m.value_of_t_or_exit("abi");
+                let content_abi = hex::encode(abi_str);
+                let data = hex::decode(format!("{}{}", address, content_abi)).unwrap();
+
+                let to = hex::decode(remove_0x(ABI_ADDRESS)).unwrap();
+
+                let tx_hash = client.send(to, data, vec![0; 32]).await;
+                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
+            }
+            #[cfg(feature = "evm")]
+            ("get_abi", m) => {
+                let address = {
+                    let s: String = m.value_of_t_or_exit("to");
+                    hex::decode(remove_0x(&s)).unwrap()
+                };
+
+                let byte_abi = client.get_abi(address).await;
+                unsafe {
+                    println!("ABI: {}", String::from_utf8_unchecked(byte_abi.bytes_abi));
+                }
             }
             _ => {
                 unreachable!()

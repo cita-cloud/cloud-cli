@@ -39,7 +39,7 @@ use cita_cloud_proto::controller::{
 };
 
 use cita_cloud_proto::evm::{
-    rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteCode, Receipt,
+    rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Receipt,
 };
 
 use crypto::generate_keypair;
@@ -320,5 +320,10 @@ impl Client {
             .await
             .unwrap()
             .into_inner()
+    }
+
+    pub async fn get_abi(&self, address: Vec<u8>) -> ByteAbi {
+        let addr = Address { address };
+        self.evm.clone().get_abi(addr).await.unwrap().into_inner()
     }
 }
