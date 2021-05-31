@@ -248,7 +248,7 @@ async fn main() {
                 };
 
                 let tx = client.get_tx(tx_hash).await;
-                println!("tx: {:#?}", tx);
+                println!("tx: {}", tx.display());
             }
             ("peer_count", _m) => {
                 let cnt = client.get_peer_count().await;
