@@ -14,7 +14,7 @@
 
 use rand::RngCore;
 
-pub const HASH_BYTES_LEN: usize = 32;
+const HASH_BYTES_LEN: usize = 32;
 
 fn sm3_hash(input: &[u8]) -> [u8; HASH_BYTES_LEN] {
     let mut result = [0u8; HASH_BYTES_LEN];
@@ -24,7 +24,7 @@ fn sm3_hash(input: &[u8]) -> [u8; HASH_BYTES_LEN] {
 
 const SM2_PUBKEY_BYTES_LEN: usize = 64;
 const SM2_PRIVKEY_BYTES_LEN: usize = 32;
-pub const SM2_SIGNATURE_BYTES_LEN: usize = 128;
+const SM2_SIGNATURE_BYTES_LEN: usize = 128;
 
 fn sm2_gen_keypair() -> ([u8; SM2_PUBKEY_BYTES_LEN], [u8; SM2_PRIVKEY_BYTES_LEN]) {
     let mut private_key = [0; SM2_PRIVKEY_BYTES_LEN];
@@ -49,25 +49,39 @@ fn sm2_sign(pubkey: &[u8], privkey: &[u8], msg: &[u8]) -> [u8; SM2_SIGNATURE_BYT
     sig_bytes
 }
 
+const ADDR_BYTES_LEN: usize = 20;
+
+pub fn pk2address(pk: &[u8]) -> Vec<u8> {
+    hash_data(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].into()
+}
+
 pub fn generate_keypair() -> (Vec<u8>, Vec<u8>) {
     let (pk, sk) = sm2_gen_keypair();
-    (pk.to_vec(), sk.to_vec())
+    (pk.into(), sk.into())
+}
+
+pub fn sign_message(pk: &[u8], sk: &[u8], msg: &[u8]) -> Vec<u8> {
+    sm2_sign(pk, sk, msg).into()
 }
 
 pub fn hash_data(data: &[u8]) -> Vec<u8> {
-    sm3_hash(data).to_vec()
+    sm3_hash(data).into()
 }
 
-pub const ADDR_BYTES_LEN: usize = 20;
+// pub fn encrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
+//     let key = password_hash[0..16].to_owned();
+//     let iv = password_hash[16..32].to_owned();
 
-pub fn pk2address(pk: &[u8]) -> Vec<u8> {
-    hash_data(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec()
-}
+//     let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
 
-pub fn sign_message(pubkey: &[u8], privkey: &[u8], msg: &[u8]) -> Option<Vec<u8>> {
-    if msg.len() != HASH_BYTES_LEN {
-        None
-    } else {
-        Some(sm2_sign(pubkey, privkey, msg).to_vec())
-    }
-}
+//     cipher.encrypt(&data, &iv)
+// }
+
+// pub fn decrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
+//     let key = password_hash[0..16].to_owned();
+//     let iv = password_hash[16..32].to_owned();
+
+//     let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
+
+//     cipher.decrypt(&data, &iv)
+// }

@@ -15,9 +15,6 @@
 // Those addtional lets make the code more readable.
 #![allow(clippy::let_and_return)]
 
-mod crypto;
-mod display;
-
 use prost::Message;
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
@@ -42,21 +39,14 @@ use cita_cloud_proto::evm::{
     rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Receipt,
 };
 
-use crypto::generate_keypair;
-use crypto::hash_data;
-use crypto::pk2address;
-use crypto::sign_message;
+use crate::crypto::hash_data;
+use crate::crypto::sign_message;
+
+use crate::wallet::Account;
 
 use tokio::sync::OnceCell;
 
-pub use display::Display;
-
-// TODO: use better name
-struct Wallet {
-    account_addr: Vec<u8>,
-    keypair: (Vec<u8>, Vec<u8>),
-    chain_id: Vec<u8>,
-}
+pub use crate::display::Display;
 
 pub struct Client {
     controller: ControllerClient<Channel>,
@@ -65,14 +55,13 @@ pub struct Client {
     #[cfg(feature = "evm")]
     evm: EvmClient<Channel>,
 
-    // This wallet's init requires controller available,
-    // but sometimes we may just want to test executor.
-    // So initializing this only when required.
-    wallet: OnceCell<Wallet>,
+    account: Account,
+
+    chain_id: OnceCell<Vec<u8>>,
 }
 
 impl Client {
-    pub fn new(controller_addr: &str, executor_addr: &str) -> Self {
+    pub fn new(account: Account, controller_addr: &str, executor_addr: &str) -> Self {
         let controller = {
             let addr = format!("http://{}", controller_addr);
             let channel = Endpoint::from_shared(addr).unwrap().connect_lazy().unwrap();
@@ -97,38 +86,27 @@ impl Client {
             executor,
             #[cfg(feature = "evm")]
             evm,
-            wallet: OnceCell::new(),
+            account,
+            chain_id: OnceCell::new(),
         }
     }
 
-    async fn wallet(&self) -> &Wallet {
+    async fn chain_id(&self) -> &[u8] {
         let mut controller = self.controller.clone();
-        let init_wallet = || async move {
-            // generate key pair for signing tx
-            let keypair = generate_keypair();
-            let account_addr = pk2address(&keypair.0);
-
-            let chain_id = {
-                // get system config
-                let sys_config = {
-                    let request = Request::new(Empty {});
-                    controller
-                        .get_system_config(request)
-                        .await
-                        .unwrap()
-                        .into_inner()
-                };
-                sys_config.chain_id
+        let get_chain_id = || async move {
+            // get system config
+            let sys_config = {
+                let request = Request::new(Empty {});
+                controller
+                    .get_system_config(request)
+                    .await
+                    .unwrap()
+                    .into_inner()
             };
-
-            Wallet {
-                keypair,
-                account_addr,
-                chain_id,
-            }
+            sys_config.chain_id
         };
 
-        self.wallet.get_or_init(init_wallet).await
+        self.chain_id.get_or_init(get_chain_id).await
     }
 
     pub async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
@@ -177,25 +155,18 @@ impl Client {
         value: Vec<u8>,
     ) -> RawTransaction {
         // build tx
-        // get start block number
-        let start_block_number = {
-            let request = Request::new(Flag { flag: false });
-            self.controller
-                .clone()
-                .get_block_number(request)
-                .await
-                .unwrap()
-                .into_inner()
-                .block_number
-        };
-
-        let Wallet {
-            account_addr,
-            keypair,
-            chain_id,
-        } = self.wallet().await;
-
         let tx = {
+            // get start block number
+            let start_block_number = {
+                let request = Request::new(Flag { flag: false });
+                self.controller
+                    .clone()
+                    .get_block_number(request)
+                    .await
+                    .unwrap()
+                    .into_inner()
+                    .block_number
+            };
             let nonce = rand::random::<u64>().to_string();
             CloudTransaction {
                 version: 0,
@@ -205,7 +176,7 @@ impl Client {
                 valid_until_block: start_block_number + 99,
                 data,
                 value,
-                chain_id: chain_id.clone(),
+                chain_id: self.chain_id().await.to_vec(),
             }
         };
 
@@ -221,13 +192,14 @@ impl Client {
         };
 
         // sign tx hash
-        let signature = sign_message(&keypair.0, &keypair.1, &tx_hash).unwrap();
+        let Account { addr, keypair } = &self.account;
+        let signature = sign_message(&keypair.0, &keypair.1, &tx_hash);
 
         // build raw tx
         let raw_tx = {
             let witness = Witness {
                 signature,
-                sender: account_addr.clone(),
+                sender: addr.to_vec(),
             };
 
             let unverified_tx = UnverifiedTransaction {
