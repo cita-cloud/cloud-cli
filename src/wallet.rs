@@ -90,10 +90,13 @@ impl Wallet {
 
     pub fn delete_account(&self, account_id: &str) {
         self.db
-            .borrow_data_mut()
-            .unwrap()
-            .accounts
-            .remove(account_id);
+            .write(|w| {
+                if w.default_user == account_id {
+                    w.default_user = "default".to_string();
+                }
+                w.accounts.remove(account_id);
+            })
+            .unwrap();
         self.db.save().unwrap();
     }
 
