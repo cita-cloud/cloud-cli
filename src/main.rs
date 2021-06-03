@@ -61,11 +61,11 @@ async fn main() -> Result<()> {
             }
         });
 
-    let controller_addr = matches
-        .value_of("controller_addr")
+    let rpc_addr = matches
+        .value_of("rpc_addr")
         .map(str::to_string)
         .unwrap_or_else(|| {
-            if let Ok(controller_addr) = std::env::var("CITA_CLOUD_CONTROLLER_ADDR") {
+            if let Ok(controller_addr) = std::env::var("CITA_CLOUD_RPC_ADDR") {
                 controller_addr
             } else {
                 "localhost:50004".to_string()
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
         None => return Err(anyhow!("account no found")),
     };
 
-    let mut client = Client::new(account, &controller_addr, &executor_addr);
+    let mut client = Client::new(account, &rpc_addr, &executor_addr);
 
     if let Some(subcmd) = matches.subcommand() {
         match subcmd {
@@ -115,29 +115,29 @@ async fn main() -> Result<()> {
                 let tx_hash = client.send(to, data, value).await;
                 println!("tx_hash: {}", hex(&tx_hash));
             }
-            ("block_number", m) => {
+            ("block-number", m) => {
                 let for_pending = m.is_present("for_pending");
 
                 let block_number = client.get_block_number(for_pending).await;
                 println!("block_number: {}", block_number);
             }
-            ("block_at", m) => {
+            ("block-at", m) => {
                 let block_number = m.value_of("block_number").unwrap().parse::<u64>()?;
 
                 let block = client.get_block_by_number(block_number).await;
                 println!("{}", block.display());
             }
-            ("get_tx", m) => {
+            ("get-tx", m) => {
                 let tx_hash = parse_value(m.value_of("tx_hash").unwrap())?;
 
                 let tx = client.get_tx(tx_hash).await;
                 println!("tx: {}", tx.display());
             }
-            ("peer_count", _m) => {
+            ("peer-count", _m) => {
                 let cnt = client.get_peer_count().await;
                 println!("peer_count: {}", cnt);
             }
-            ("system_config", _m) => {
+            ("system-config", _m) => {
                 let system_config = client.get_system_config().await;
                 println!("{}", system_config.display());
             }
@@ -273,12 +273,12 @@ async fn main() -> Result<()> {
                     _ => unreachable!(),
                 }
             }
-            ("update_admin", m) => {
+            ("update-admin", m) => {
                 let admin_addr = parse_addr(m.value_of("admin_addr").unwrap())?;
                 let tx_hash = client.update_admin(admin_addr).await;
                 println!("tx_hash: {}", hex(&tx_hash));
             }
-            ("update_validators", m) => {
+            ("update-validators", m) => {
                 let validators = m
                     .values_of("validators")
                     .unwrap()
@@ -287,12 +287,12 @@ async fn main() -> Result<()> {
                 let tx_hash = client.update_validators(&validators).await;
                 println!("tx_hash: {}", hex(&tx_hash));
             }
-            ("emergency_brake", m) => {
+            ("emergency-brake", m) => {
                 let switch = m.value_of("switch").unwrap() == "on";
                 let tx_hash = client.emergency_brake(switch).await;
                 println!("tx_hash: {}", hex(&tx_hash));
             }
-            ("set_block_interval", m) => {
+            ("set-block-interval", m) => {
                 let block_interval = m.value_of("block_interval").unwrap().parse::<u64>()?;
                 let tx_hash = client.set_block_interval(block_interval).await;
                 println!("tx_hash: {}", hex(&tx_hash));
@@ -314,21 +314,21 @@ async fn main() -> Result<()> {
                 println!("{}", receipt.display());
             }
             #[cfg(feature = "evm")]
-            ("get_code", m) => {
+            ("get-code", m) => {
                 let addr = parse_addr(m.value_of("addr").unwrap())?;
 
                 let code = client.get_code(addr).await;
                 println!("code: {}", hex(&code.byte_code));
             }
             #[cfg(feature = "evm")]
-            ("get_balance", m) => {
+            ("get-balance", m) => {
                 let addr = parse_addr(m.value_of("addr").unwrap())?;
 
                 let balance = client.get_balance(addr).await;
                 println!("balance: {}", hex(&balance.value));
             }
             #[cfg(feature = "evm")]
-            ("store_abi", m) => {
+            ("store-abi", m) => {
                 let to = parse_addr(ABI_ADDRESS)?;
                 let data = {
                     let addr = parse_addr(m.value_of("addr").unwrap())?;
@@ -342,7 +342,7 @@ async fn main() -> Result<()> {
                 println!("tx_hash: {}", hex(&tx_hash));
             }
             #[cfg(feature = "evm")]
-            ("get_abi", m) => {
+            ("get-abi", m) => {
                 let addr = parse_addr(m.value_of("addr").unwrap())?;
                 let abi = client.get_abi(addr).await;
 

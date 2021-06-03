@@ -215,7 +215,7 @@ pub fn build_cli() -> App<'static> {
 
     // addrs args
     let rpc_addr_arg = Arg::new("rpc_addr")
-        .about("controller(rpc) address")
+        .about("rpc(controller) address")
         .short('r')
         .long("rpc_addr")
         .takes_value(true);
