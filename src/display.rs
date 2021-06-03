@@ -119,26 +119,22 @@ impl Display for Witness {
 
 impl Display for RawTransaction {
     fn to_json(&self) -> Json {
-        let inner = match &self.tx {
-            Some(inner) => inner,
-            None => return json!({}),
-        };
-
         use cita_cloud_proto::controller::raw_transaction::Tx;
-        match inner {
-            Tx::NormalTx(tx) => {
+        match &self.tx {
+            Some(Tx::NormalTx(tx)) => {
                 json!({
                     "type": "Normal",
                     "transaction": tx.to_json()
                 })
             }
-            Tx::UtxoTx(_utxo) => {
+            Some(Tx::UtxoTx(_utxo)) => {
                 json!({
                     "type": "Utxo",
                     // "transaction": utxo.to_json()
                     "transaction": "unimplemented" // TODO
                 })
             }
+            None => json!({}),
         }
     }
 }
