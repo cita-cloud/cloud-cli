@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file is from kms_sm, and I made some modifications.
+#![allow(unused)]
+
 use rand::RngCore;
 
 const HASH_BYTES_LEN: usize = 32;
@@ -68,20 +71,20 @@ pub fn hash_data(data: &[u8]) -> Vec<u8> {
     sm3_hash(data).into()
 }
 
-// pub fn encrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
-//     let key = password_hash[0..16].to_owned();
-//     let iv = password_hash[16..32].to_owned();
+pub fn encrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
+    let key = password_hash[0..16].to_owned();
+    let iv = password_hash[16..32].to_owned();
 
-//     let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
+    let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
 
-//     cipher.encrypt(&data, &iv)
-// }
+    cipher.encrypt(&data, &iv)
+}
 
-// pub fn decrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
-//     let key = password_hash[0..16].to_owned();
-//     let iv = password_hash[16..32].to_owned();
+pub fn decrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
+    let key = password_hash[0..16].to_owned();
+    let iv = password_hash[16..32].to_owned();
 
-//     let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
+    let cipher = libsm::sm4::Cipher::new(&key, libsm::sm4::Mode::Cfb);
 
-//     cipher.decrypt(&data, &iv)
-// }
+    cipher.decrypt(&data, &iv)
+}

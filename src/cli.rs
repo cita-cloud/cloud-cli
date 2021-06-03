@@ -36,6 +36,7 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("to")
+                .about("the address to send")
                 .short('t')
                 .long("to")
                 .required(true)
@@ -44,6 +45,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("value")
+                .about("the value to send")
                 .short('v')
                 .long("value")
                 .required(false)
@@ -52,6 +54,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("data")
+                .about("the data of the tx")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_data),
@@ -97,6 +100,7 @@ pub fn build_cli() -> App<'static> {
 
     let completions = App::new("completions")
         .about("Generate completions for current shell")
+        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("shell").required(true).possible_values(&[
             "bash",
             "powershell",
@@ -104,6 +108,47 @@ pub fn build_cli() -> App<'static> {
             "fish",
             "elvish",
         ]));
+
+    let update_admin = App::new("update_admin")
+        .about("Update admin of the chain")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("admin_addr")
+                .about("the address of the new admin")
+                .required(true)
+                .validator(parse_addr),
+        );
+
+    let update_validators = App::new("update_validators")
+        .about("Update validators of the chain")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("validators")
+                .about("the new validator list")
+                .required(true)
+                .multiple(true)
+                .validator(parse_addr),
+        );
+
+    let set_block_interval = App::new("set_block_interval")
+        .about("Set block inteval")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("block_interval")
+                .about("new block interval")
+                .required(true)
+                .validator(str::parse::<u64>),
+        );
+
+    let emergency_brake = App::new("emergency_brake")
+        .about("Send emergency brake cmd to chain")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("switch")
+                .about("turn on/off")
+                .required(true)
+                .possible_values(&["on", "off"]),
+        );
 
     #[cfg(feature = "evm")]
     let create = App::new("create")
@@ -170,11 +215,13 @@ pub fn build_cli() -> App<'static> {
 
     // addrs args
     let rpc_addr_arg = Arg::new("rpc_addr")
+        .about("controller(rpc) address")
         .short('r')
         .long("rpc_addr")
         .takes_value(true);
 
     let executor_addr_arg = Arg::new("executor_addr")
+        .about("executor address")
         .short('e')
         .long("executor_addr")
         .takes_value(true);
@@ -199,6 +246,10 @@ pub fn build_cli() -> App<'static> {
             bench,
             account,
             completions,
+            update_admin,
+            update_validators,
+            set_block_interval,
+            emergency_brake,
         ]);
 
     #[cfg(feature = "evm")]

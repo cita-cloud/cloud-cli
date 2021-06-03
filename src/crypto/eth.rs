@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file is from kms_eth, and I made some modifications.
+#![allow(unused)]
+
 use ctr::cipher::{generic_array::GenericArray, NewCipher, StreamCipher};
 
 type Aes128Ctr = ctr::Ctr128BE<aes::Aes128>;
@@ -65,8 +68,11 @@ fn secp256k1_gen_keypair() -> (
     [u8; SECP256K1_PUBKEY_BYTES_LEN],
     [u8; SECP256K1_PRIVKEY_BYTES_LEN],
 ) {
+    use secp256k1::rand::rngs::OsRng;
+
     let context = &SECP256K1;
-    let (seckey, pubkey) = context.generate_keypair(&mut rand::thread_rng());
+    let mut rng = OsRng::new().expect("can't get rng");
+    let (seckey, pubkey) = context.generate_keypair(&mut rng);
 
     let serialized = pubkey.serialize_uncompressed();
     let mut pubkey = [0u8; SECP256K1_PUBKEY_BYTES_LEN];
@@ -122,7 +128,7 @@ pub fn hash_data(data: &[u8]) -> Vec<u8> {
     keccak_hash(data).to_vec()
 }
 
-pub fn verify_data_hash(data: Vec<u8>, hash: Vec<u8>) -> bool {
+pub fn verify_data_hash(data: &[u8], hash: &[u8]) -> bool {
     if hash.len() != HASH_BYTES_LEN {
         false
     } else {
@@ -136,12 +142,8 @@ pub fn pk2address(pk: &[u8]) -> Vec<u8> {
     hash_data(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec()
 }
 
-pub fn sign_message(_pubkey: Vec<u8>, privkey: Vec<u8>, msg: Vec<u8>) -> Option<Vec<u8>> {
-    if msg.len() != HASH_BYTES_LEN {
-        None
-    } else {
-        Some(secp256k1_sign(&privkey, &msg).to_vec())
-    }
+pub fn sign_message(_pubkey: &[u8], privkey: &[u8], msg: &[u8]) -> Vec<u8> {
+    secp256k1_sign(&privkey, &msg).to_vec()
 }
 
 pub fn recover_signature(msg: Vec<u8>, signature: Vec<u8>) -> Option<Vec<u8>> {
@@ -158,11 +160,11 @@ mod tests {
 
     #[test]
     fn aes_test() {
-        let password = "password";
+        let pwd_hash = &keccak_hash(b"password");
         let data = vec![1u8, 2, 3, 4, 5, 6, 7];
 
-        let cipher_message = aes(password, data.clone());
-        let decrypted_message = aes(password, cipher_message);
+        let cipher_message = aes(pwd_hash, data.clone());
+        let decrypted_message = aes(pwd_hash, cipher_message);
         assert_eq!(data, decrypted_message);
     }
 
@@ -180,7 +182,7 @@ mod tests {
     fn test_data_hash() {
         let data = vec![1u8, 2, 3, 4, 5, 6, 7];
         let hash = hash_data(&data);
-        assert!(verify_data_hash(data.clone(), hash));
+        assert!(verify_data_hash(&data, &hash));
     }
 
     #[test]
@@ -193,7 +195,7 @@ mod tests {
         ];
 
         let (pubkey, privkey) = generate_keypair();
-        let signature = sign_message(pubkey.clone(), privkey, data.to_vec()).unwrap();
+        let signature = sign_message(&pubkey, &privkey, &data);
         assert_eq!(recover_signature(data.to_vec(), signature), Some(pubkey));
     }
 }

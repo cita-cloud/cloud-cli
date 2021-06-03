@@ -15,7 +15,10 @@
 // Those addtional lets make the code more readable.
 #![allow(clippy::let_and_return)]
 
+use tokio::sync::OnceCell;
+
 use prost::Message;
+
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 use tonic::Request;
@@ -25,7 +28,8 @@ use cita_cloud_proto::executor::executor_service_client::ExecutorServiceClient a
 use cita_cloud_proto::executor::CallRequest;
 
 use cita_cloud_proto::blockchain::{
-    CompactBlock, Transaction as CloudTransaction, UnverifiedTransaction, Witness,
+    CompactBlock, Transaction as CloudTransaction, UnverifiedTransaction,
+    UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction, Witness,
 };
 use cita_cloud_proto::common::Address;
 use cita_cloud_proto::common::Empty;
@@ -44,10 +48,6 @@ use crate::crypto::sign_message;
 
 use crate::wallet::Account;
 
-use tokio::sync::OnceCell;
-
-pub use crate::display::Display;
-
 pub struct Client {
     controller: ControllerClient<Channel>,
     executor: ExecutorClient<Channel>,
@@ -57,7 +57,7 @@ pub struct Client {
 
     account: Account,
 
-    chain_id: OnceCell<Vec<u8>>,
+    sys_config: OnceCell<SystemConfig>,
 }
 
 impl Client {
@@ -87,26 +87,21 @@ impl Client {
             #[cfg(feature = "evm")]
             evm,
             account,
-            chain_id: OnceCell::new(),
+            sys_config: OnceCell::new(),
         }
     }
 
-    async fn chain_id(&self) -> &[u8] {
+    async fn sys_config(&self) -> &SystemConfig {
         let mut controller = self.controller.clone();
-        let get_chain_id = || async move {
-            // get system config
-            let sys_config = {
-                let request = Request::new(Empty {});
-                controller
-                    .get_system_config(request)
-                    .await
-                    .unwrap()
-                    .into_inner()
-            };
-            sys_config.chain_id
+        let get_sys_config = || async move {
+            controller
+                .get_system_config(Empty {})
+                .await
+                .unwrap()
+                .into_inner()
         };
 
-        self.chain_id.get_or_init(get_chain_id).await
+        self.sys_config.get_or_init(get_sys_config).await
     }
 
     pub async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
@@ -138,48 +133,56 @@ impl Client {
     }
 
     pub async fn send(&self, to: Vec<u8>, data: Vec<u8>, value: Vec<u8>) -> Vec<u8> {
-        let normal_tx = self.prepare_normal_tx(to, data, value).await;
+        let normal_tx = self.build_normal_tx(to, data, value).await;
+        let raw_tx = self.prepare_raw_tx(normal_tx);
+        self.send_raw(raw_tx).await
+    }
+
+    async fn send_raw(&self, raw: RawTransaction) -> Vec<u8> {
         self.controller
             .clone()
-            .send_raw_transaction(normal_tx)
+            .send_raw_transaction(raw)
             .await
             .unwrap()
             .into_inner()
             .hash
     }
 
-    async fn prepare_normal_tx(
+    async fn send_raw_utxo(&mut self, raw: RawTransaction) -> Vec<u8> {
+        // invalidate current sys_config
+        self.sys_config.take();
+        self.controller
+            .clone()
+            .send_raw_transaction(raw)
+            .await
+            .unwrap()
+            .into_inner()
+            .hash
+    }
+
+    async fn build_normal_tx(
         &self,
         to: Vec<u8>,
         data: Vec<u8>,
         value: Vec<u8>,
-    ) -> RawTransaction {
-        // build tx
-        let tx = {
-            // get start block number
-            let start_block_number = {
-                let request = Request::new(Flag { flag: false });
-                self.controller
-                    .clone()
-                    .get_block_number(request)
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .block_number
-            };
-            let nonce = rand::random::<u64>().to_string();
-            CloudTransaction {
-                version: 0,
-                to,
-                nonce,
-                quota: 3_000_000,
-                valid_until_block: start_block_number + 99,
-                data,
-                value,
-                chain_id: self.chain_id().await.to_vec(),
-            }
-        };
+    ) -> CloudTransaction {
+        // get start block number
+        let start_block_number = self.get_block_number(false).await;
+        let sys_config = self.sys_config().await;
+        let nonce = rand::random::<u64>().to_string();
+        CloudTransaction {
+            version: sys_config.version,
+            to,
+            nonce,
+            quota: 3_000_000,
+            valid_until_block: start_block_number + 99,
+            data,
+            value,
+            chain_id: sys_config.chain_id.to_vec(),
+        }
+    }
 
+    fn prepare_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
         // calc tx hash
         let tx_hash = {
             // build tx bytes
@@ -216,6 +219,115 @@ impl Client {
         raw_tx
     }
 
+    pub async fn set_block_interval(&mut self, block_interval: u64) -> Vec<u8> {
+        let utxo = self.build_set_block_interval_utxo(block_interval).await;
+        let raw = self.prepare_raw_utxo(utxo);
+        self.send_raw_utxo(raw).await
+    }
+
+    pub async fn emergency_brake(&mut self, switch: bool) -> Vec<u8> {
+        let utxo = self.build_emergency_brake_utxo(switch).await;
+        let raw = self.prepare_raw_utxo(utxo);
+        self.send_raw_utxo(raw).await
+    }
+
+    pub async fn update_admin(&mut self, admin_addr: Vec<u8>) -> Vec<u8> {
+        let utxo = self.build_update_admin_utxo(admin_addr).await;
+        let raw = self.prepare_raw_utxo(utxo);
+        self.send_raw_utxo(raw).await
+    }
+
+    pub async fn update_validators(&mut self, validators: &[Vec<u8>]) -> Vec<u8> {
+        let utxo = self.build_update_validators_utxo(&validators).await;
+        let raw = self.prepare_raw_utxo(utxo);
+        self.send_raw_utxo(raw).await
+    }
+
+    async fn build_set_block_interval_utxo(&self, block_interval: u64) -> CloudUtxoTransaction {
+        let output = block_interval.to_be_bytes().to_vec();
+        let sys_config = self.sys_config().await;
+
+        CloudUtxoTransaction {
+            version: sys_config.version,
+            pre_tx_hash: sys_config.block_interval_pre_hash.clone(),
+            output,
+            lock_id: 1003,
+        }
+    }
+
+    async fn build_emergency_brake_utxo(&self, switch: bool) -> CloudUtxoTransaction {
+        let output = if switch { vec![0] } else { vec![] };
+        let sys_config = self.sys_config().await;
+
+        CloudUtxoTransaction {
+            version: sys_config.version,
+            pre_tx_hash: sys_config.emergency_brake_pre_hash.clone(),
+            output,
+            lock_id: 1005,
+        }
+    }
+
+    async fn build_update_admin_utxo(&self, admin_addr: Vec<u8>) -> CloudUtxoTransaction {
+        let output = admin_addr;
+        let sys_config = self.sys_config().await;
+
+        CloudUtxoTransaction {
+            version: sys_config.version,
+            pre_tx_hash: sys_config.admin_pre_hash.clone(),
+            output,
+            lock_id: 1002,
+        }
+    }
+
+    async fn build_update_validators_utxo(&self, validators: &[Vec<u8>]) -> CloudUtxoTransaction {
+        let output = validators.concat();
+        let sys_config = self.sys_config().await;
+
+        CloudUtxoTransaction {
+            version: sys_config.version,
+            pre_tx_hash: sys_config.validators_pre_hash.clone(),
+            output,
+            lock_id: 1004,
+        }
+    }
+
+    fn prepare_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
+        // calc utxo hash
+        let utxo_hash = {
+            // build utxo bytes
+            let utxo_bytes = {
+                let mut buf = Vec::with_capacity(utxo.encoded_len());
+                utxo.encode(&mut buf).unwrap();
+                buf
+            };
+            hash_data(utxo_bytes.as_slice())
+        };
+
+        // sign utxo hash
+        let Account { addr, keypair } = &self.account;
+        let signature = sign_message(&keypair.0, &keypair.1, &utxo_hash);
+
+        // build raw utxo
+        let raw_utxo = {
+            let witness = Witness {
+                signature,
+                sender: addr.to_vec(),
+            };
+
+            let unverified_utxo = UnverifiedUtxoTransaction {
+                transaction: Some(utxo),
+                transaction_hash: utxo_hash,
+                witnesses: vec![witness],
+            };
+
+            RawTransaction {
+                tx: Some(Tx::UtxoTx(unverified_utxo)),
+            }
+        };
+
+        raw_utxo
+    }
+
     pub async fn get_system_config(&self) -> SystemConfig {
         self.controller
             .clone()
@@ -237,10 +349,9 @@ impl Client {
     }
 
     pub async fn get_block_by_number(&self, block_number: u64) -> CompactBlock {
-        let block_number = BlockNumber { block_number };
         self.controller
             .clone()
-            .get_block_by_number(block_number)
+            .get_block_by_number(BlockNumber { block_number })
             .await
             .unwrap()
             .into_inner()

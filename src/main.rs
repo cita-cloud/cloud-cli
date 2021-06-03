@@ -1,8 +1,8 @@
 #[cfg(all(feature = "evm", feature = "chaincode"))]
 compile_error!("features `evm` and `chaincode` are mutually exclusive");
 
-#[cfg(all(feature = "sm", feature = "eth"))]
-compile_error!("features `sm` and `eth` are mutually exclusive");
+#[cfg(all(feature = "crypto_sm", feature = "crypto_eth"))]
+compile_error!("features `crypto_sm` and `crypto_eth` are mutually exclusive");
 
 mod cli;
 mod client;
@@ -21,7 +21,7 @@ use client::Client;
 use display::Display as _;
 use futures::future::join_all;
 use interactive::Interactive;
-use util::{parse_addr, parse_data, parse_value};
+use util::{hex, parse_addr, parse_data, parse_value};
 use wallet::Wallet;
 
 use anyhow::anyhow;
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
         None => return Err(anyhow!("account no found")),
     };
 
-    let client = Arc::new(Client::new(account, &controller_addr, &executor_addr));
+    let mut client = Client::new(account, &controller_addr, &executor_addr);
 
     if let Some(subcmd) = matches.subcommand() {
         match subcmd {
@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
                 let data = parse_data(m.value_of("data").unwrap())?;
 
                 let result = client.call(from, to, data).await;
-                println!("result: 0x{}", hex::encode(&result));
+                println!("result: {}", hex(&result));
             }
             ("send", m) => {
                 let to = parse_addr(m.value_of("to").unwrap())?;
@@ -113,7 +113,7 @@ async fn main() -> Result<()> {
                 let value = parse_value(m.value_of("value").unwrap_or_default())?;
 
                 let tx_hash = client.send(to, data, value).await;
-                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
+                println!("tx_hash: {}", hex(&tx_hash));
             }
             ("block_number", m) => {
                 let for_pending = m.is_present("for_pending");
@@ -142,6 +142,7 @@ async fn main() -> Result<()> {
                 println!("{}", system_config.display());
             }
             ("bench", m) => {
+                let client = Arc::new(client);
                 let tx_count = m.value_of("count").unwrap().parse::<u64>()?;
 
                 let mut start_at = client.get_block_number(false).await;
@@ -220,15 +221,15 @@ async fn main() -> Result<()> {
                         ("create", m) => {
                             let user = m.value_of("user").unwrap();
                             let addr = wallet.create_account(user);
-                            println!("user: `{}`\naccount_addr: 0x{}", user, hex::encode(&addr));
+                            println!("user: `{}`\naccount_addr: {}", user, hex(&addr));
                         }
                         ("login", m) => {
                             let user = m.value_of("user").unwrap();
                             let addr = wallet.set_default_user(user)?;
                             println!(
-                                "OK, now the default user is `{}`, account addr is 0x{}",
+                                "OK, now the default user is `{}`, account addr is {}",
                                 user,
-                                hex::encode(&addr)
+                                hex(&addr)
                             );
                         }
                         ("import", m) => {
@@ -272,6 +273,30 @@ async fn main() -> Result<()> {
                     _ => unreachable!(),
                 }
             }
+            ("update_admin", m) => {
+                let admin_addr = parse_addr(m.value_of("admin_addr").unwrap())?;
+                let tx_hash = client.update_admin(admin_addr).await;
+                println!("tx_hash: {}", hex(&tx_hash));
+            }
+            ("update_validators", m) => {
+                let validators = m
+                    .values_of("validators")
+                    .unwrap()
+                    .map(parse_addr)
+                    .collect::<Result<Vec<_>>>()?;
+                let tx_hash = client.update_validators(&validators).await;
+                println!("tx_hash: {}", hex(&tx_hash));
+            }
+            ("emergency_brake", m) => {
+                let switch = m.value_of("switch").unwrap() == "on";
+                let tx_hash = client.emergency_brake(switch).await;
+                println!("tx_hash: {}", hex(&tx_hash));
+            }
+            ("set_block_interval", m) => {
+                let block_interval = m.value_of("block_interval").unwrap().parse::<u64>()?;
+                let tx_hash = client.set_block_interval(block_interval).await;
+                println!("tx_hash: {}", hex(&tx_hash));
+            }
             #[cfg(feature = "evm")]
             ("create", m) => {
                 let to = vec![];
@@ -279,7 +304,7 @@ async fn main() -> Result<()> {
                 let value = parse_value(m.value_of("value").unwrap_or_default())?;
 
                 let tx_hash = client.send(to, data, value).await;
-                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
+                println!("tx_hash: {}", hex(&tx_hash));
             }
             #[cfg(feature = "evm")]
             ("receipt", m) => {
@@ -293,14 +318,14 @@ async fn main() -> Result<()> {
                 let addr = parse_addr(m.value_of("addr").unwrap())?;
 
                 let code = client.get_code(addr).await;
-                println!("code: 0x{}", hex::encode(&code.byte_code));
+                println!("code: {}", hex(&code.byte_code));
             }
             #[cfg(feature = "evm")]
             ("get_balance", m) => {
                 let addr = parse_addr(m.value_of("addr").unwrap())?;
 
                 let balance = client.get_balance(addr).await;
-                println!("balance: 0x{}", hex::encode(&balance.value));
+                println!("balance: {}", hex(&balance.value));
             }
             #[cfg(feature = "evm")]
             ("store_abi", m) => {
@@ -314,7 +339,7 @@ async fn main() -> Result<()> {
                 };
 
                 let tx_hash = client.send(to, data, vec![0; 32]).await;
-                println!("tx_hash: 0x{}", hex::encode(&tx_hash));
+                println!("tx_hash: {}", hex(&tx_hash));
             }
             #[cfg(feature = "evm")]
             ("get_abi", m) => {
