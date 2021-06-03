@@ -60,12 +60,12 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_data),
         );
 
-    let block_number = App::new("block_number")
+    let block_number = App::new("block-number")
         .about("Get block number")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("for_pending").short('p').long("for_pending"));
 
-    let block_at = App::new("block_at")
+    let block_at = App::new("block-at")
         .about("Get block by number")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -74,14 +74,14 @@ pub fn build_cli() -> App<'static> {
                 .validator(str::parse::<u64>),
         );
 
-    let get_tx = App::new("get_tx")
+    let get_tx = App::new("get-tx")
         .about("Get transaction by hash")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
-    let peer_count = App::new("peer_count").about("Get peer count");
+    let peer_count = App::new("peer-count").about("Get peer count");
 
-    let system_config = App::new("system_config")
+    let system_config = App::new("system-config")
         .about("Get system config")
         .setting(AppSettings::ColoredHelp);
 
@@ -109,7 +109,7 @@ pub fn build_cli() -> App<'static> {
             "elvish",
         ]));
 
-    let update_admin = App::new("update_admin")
+    let update_admin = App::new("update-admin")
         .about("Update admin of the chain")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -119,7 +119,7 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_addr),
         );
 
-    let update_validators = App::new("update_validators")
+    let update_validators = App::new("update-validators")
         .about("Update validators of the chain")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -130,7 +130,7 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_addr),
         );
 
-    let set_block_interval = App::new("set_block_interval")
+    let set_block_interval = App::new("set-block-interval")
         .about("Set block inteval")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -140,7 +140,7 @@ pub fn build_cli() -> App<'static> {
                 .validator(str::parse::<u64>),
         );
 
-    let emergency_brake = App::new("emergency_brake")
+    let emergency_brake = App::new("emergency-brake")
         .about("Send emergency brake cmd to chain")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -171,19 +171,19 @@ pub fn build_cli() -> App<'static> {
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
     #[cfg(feature = "evm")]
-    let get_code = App::new("get_code")
+    let get_code = App::new("get-code")
         .about("Get code by contract address")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
-    let get_balance = App::new("get_balance")
+    let get_balance = App::new("get-balance")
         .about("Get balance by account address")
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
-    let store_abi = App::new("store_abi")
+    let store_abi = App::new("store-abi")
         .about("Store abi")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -197,7 +197,7 @@ pub fn build_cli() -> App<'static> {
         .arg(Arg::new("abi").required(true).takes_value(true));
 
     #[cfg(feature = "evm")]
-    let get_abi = App::new("get_abi")
+    let get_abi = App::new("get-abi")
         .about("Get specific contract abi")
         .setting(AppSettings::ColoredHelp)
         .arg(
@@ -228,7 +228,7 @@ pub fn build_cli() -> App<'static> {
 
     // main command
     let cli_app = App::new("cloud-cli")
-        .about("The command line interface to interact with `CITA-CLOUD`.")
+        .about("The command line interface to interact with `CITA-Cloud`.")
         .version("0.1.0")
         .setting(AppSettings::ColoredHelp)
         .arg(user_arg)
