@@ -7,11 +7,13 @@ edition = "2018"
 [features]
 default = ["evm", "crypto_sm"]
 # default = ["evm", "crypto_eth"]
-crypto_sm = []
-crypto_eth = []
+
 evm = []
-# unimplemented yet
-chaincode = []
+chaincode = [] # unimplemented yet
+
+crypto_sm = ["libsm", "efficient-sm2"]
+crypto_eth = ["aes", "ctr", "tiny-keccak", "secp256k1"]
+
 
 [dependencies]
 rustyline = "8.2"
@@ -24,16 +26,20 @@ rand = "0.8"
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
 tonic = "0.4"
 prost = "0.7"
-libsm = "0.4.0"
-efficient-sm2 = { git = "https://github.com/Pencil-Yao/efficient-sm2" }
 chrono = "0.4"
 serde = "1.0"
 serde_json = "1.0"
-aes = "0.7.3"
-ctr = "0.7"
 lazy_static = "1.4.0"
 anyhow = "1.0"
 home = "0.5.3"
-tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = {version = "0.20", features = ["rand-std", "recovery"]}
 rustbreak = { version = "2.0", features = ["ron_enc"] }
+
+# crypto_sm
+libsm = { version = "0.4.0", optional = true }
+efficient-sm2 = { git = "https://github.com/Pencil-Yao/efficient-sm2", optional = true }
+
+# crypto_eth
+aes = { version = "0.7", optional = true }
+ctr = { version = "0.7", optional = true }
+tiny-keccak = { version = "2.0", features = ["keccak"], optional = true }
+secp256k1 = { version = "0.20", features = ["rand-std", "recovery"], optional = true }
