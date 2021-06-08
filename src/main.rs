@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     let user = matches
         .value_of("user")
         .map(str::to_string)
-        .or_else(|| std::env::var("CITA_CLOUD_USER").ok());
+        .or_else(|| std::env::var("CITA_CLOUD_DEFAULT_USER").ok());
 
     let rpc_addr = matches
         .value_of("rpc_addr")
