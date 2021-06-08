@@ -106,7 +106,7 @@ $ export CITA_CLOUD_DEFAULT_USER="Akari"
 $ cldi send -t 0xd32c8d890697ef71f494bf7566fe8bbba032909c 0x4f2be91f
 ```
 
-We can exxport this account.
+We can export this account.
 ```json
 $ cldi account export Akari
 {
