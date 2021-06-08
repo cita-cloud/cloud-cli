@@ -103,7 +103,7 @@ $ cldi -u Akari send -t 0xd32c8d890697ef71f494bf7566fe8bbba032909c 0x4f2be91f
 
 # by env
 $ export CITA_CLOUD_DEFAULT_USER="Akari"
-$ cldi send -u Akari -t 0xd32c8d890697ef71f494bf7566fe8bbba032909c 0x4f2be91f
+$ cldi send -t 0xd32c8d890697ef71f494bf7566fe8bbba032909c 0x4f2be91f
 ```
 
 We can exxport this account.
