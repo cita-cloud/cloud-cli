@@ -12,20 +12,22 @@ mod interactive;
 mod util;
 mod wallet;
 
-use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use std::time::Duration;
+
+use futures::future::join_all;
+use rand::{thread_rng, Rng};
+use serde_json::json;
+
+use anyhow::anyhow;
+use anyhow::Result;
 
 use cli::build_cli;
 use client::Client;
 use display::Display as _;
-use futures::future::join_all;
 use interactive::Interactive;
 use util::{hex, parse_addr, parse_data, parse_value};
 use wallet::Wallet;
-
-use anyhow::anyhow;
-use anyhow::Result;
 
 /// Store action target address
 pub const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
@@ -53,13 +55,7 @@ async fn main() -> Result<()> {
     let user = matches
         .value_of("user")
         .map(str::to_string)
-        .unwrap_or_else(|| {
-            if let Ok(user) = std::env::var("CITA_CLOUD_USER") {
-                user
-            } else {
-                "default".to_string()
-            }
-        });
+        .or_else(|| std::env::var("CITA_CLOUD_USER").ok());
 
     let rpc_addr = matches
         .value_of("rpc_addr")
@@ -90,9 +86,11 @@ async fn main() -> Result<()> {
         Wallet::open(data_dir)
     };
 
-    let account = match wallet.load_account(&user) {
-        Some(account) => account,
-        None => return Err(anyhow!("account no found")),
+    let account = match user {
+        Some(user) => wallet
+            .load_account(&user)
+            .ok_or_else(|| anyhow!("account not found"))?,
+        None => wallet.default_account()?,
     };
 
     let mut client = Client::new(account, &rpc_addr, &executor_addr);
@@ -225,7 +223,7 @@ async fn main() -> Result<()> {
                         }
                         ("login", m) => {
                             let user = m.value_of("user").unwrap();
-                            let addr = wallet.set_default_user(user)?;
+                            let addr = wallet.set_default_account(user)?;
                             println!(
                                 "OK, now the default user is `{}`, account addr is {}",
                                 user,
@@ -237,7 +235,7 @@ async fn main() -> Result<()> {
                             let pk = parse_data(m.value_of("pk").unwrap())?;
                             let sk = parse_data(m.value_of("sk").unwrap())?;
                             wallet.import_account(user, pk, sk);
-                            println!("OK, account imported");
+                            println!("OK, account `{}` imported", user);
                         }
                         ("export", m) => {
                             let user = m.value_of("user").unwrap();
@@ -255,7 +253,18 @@ async fn main() -> Result<()> {
                         _ => unreachable!(),
                     }
                 } else {
-                    println!("users: {:#?}", wallet.list_account());
+                    let accounts = wallet
+                        .list_account()
+                        .into_iter()
+                        .map(|(user, addr)| {
+                            json!({
+                                "user": user,
+                                "addr": hex(&addr),
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    let display = serde_json::to_string_pretty(&json!(accounts))?;
+                    println!("{}", display);
                 }
             }
             ("completions", m) => {

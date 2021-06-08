@@ -20,14 +20,14 @@ pub struct Account {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WalletInner {
-    default_user: String,
+    default_account: String,
     accounts: HashMap<String, Account>,
 }
 
 impl Default for WalletInner {
     fn default() -> Self {
         Self {
-            default_user: "default".to_string(),
+            default_account: "default".to_string(),
             accounts: HashMap::new(),
         }
     }
@@ -42,11 +42,7 @@ pub struct Wallet {
 impl Wallet {
     pub fn open(data_dir: impl AsRef<Path>) -> Self {
         let db = PathDatabase::load_from_path_or_default(data_dir.as_ref().to_path_buf()).unwrap();
-        let wallet = Self { db };
-        if wallet.load_account("default").is_none() {
-            wallet.create_account("default");
-        }
-        wallet
+        Self { db }
     }
 
     pub fn load_account(&self, account_id: &str) -> Option<Account> {
@@ -91,8 +87,8 @@ impl Wallet {
     pub fn delete_account(&self, account_id: &str) {
         self.db
             .write(|w| {
-                if w.default_user == account_id {
-                    w.default_user = "default".to_string();
+                if w.default_account == account_id {
+                    w.default_account = "default".to_string();
                 }
                 w.accounts.remove(account_id);
             })
@@ -100,17 +96,17 @@ impl Wallet {
         self.db.save().unwrap();
     }
 
-    pub fn list_account(&self) -> Vec<String> {
+    pub fn list_account(&self) -> Vec<(String, Vec<u8>)> {
         self.db
             .borrow_data()
             .unwrap()
             .accounts
-            .keys()
-            .cloned()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.addr.clone()))
             .collect()
     }
 
-    pub fn import_account(&self, user: &str, pk: Vec<u8>, sk: Vec<u8>) {
+    pub fn import_account(&self, account_id: &str, pk: Vec<u8>, sk: Vec<u8>) {
         let account = {
             let addr = pk2address(&pk);
             Account {
@@ -118,15 +114,15 @@ impl Wallet {
                 keypair: (pk, sk),
             }
         };
-        self.store_account(user, account);
+        self.store_account(account_id, account);
     }
 
-    pub fn set_default_user(&self, user: &str) -> Result<Vec<u8>> {
+    pub fn set_default_account(&self, account_id: &str) -> Result<Vec<u8>> {
         let mut wallet = self.db.borrow_data_mut().unwrap();
-        if let Some(account) = wallet.accounts.get(user) {
+        if let Some(account) = wallet.accounts.get(account_id) {
             let addr = account.addr.clone();
 
-            wallet.default_user = user.to_string();
+            wallet.default_account = account_id.to_string();
 
             // It's actually a rwlock, so drop it here to avoid deadlock with save.
             drop(wallet);
@@ -135,6 +131,16 @@ impl Wallet {
             Ok(addr)
         } else {
             Err(anyhow!("user doesn't exist"))
+        }
+    }
+
+    pub fn default_account(&self) -> Result<Account> {
+        let wallet = self.db.borrow_data()?;
+        if let Some(account) = wallet.accounts.get(&wallet.default_account) {
+            Ok(account.clone())
+        } else {
+            self.create_account("default");
+            Ok(self.load_account("default").unwrap())
         }
     }
 }

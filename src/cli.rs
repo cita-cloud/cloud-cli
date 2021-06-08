@@ -269,7 +269,7 @@ fn build_account_subcmd() -> App<'static> {
         )
         .arg(
             Arg::new("password")
-                .about("The password of the account")
+                .about("The password of the account. (unimplemented yet)")
                 .short('p')
                 .long("password")
                 .takes_value(true),
@@ -289,8 +289,6 @@ fn build_account_subcmd() -> App<'static> {
         .arg(
             Arg::new("user")
                 .about("The user name for the incoming account")
-                .short('u')
-                .long("user")
                 .takes_value(true)
                 .required(true),
         )
