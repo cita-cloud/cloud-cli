@@ -132,6 +132,7 @@ OK, account `Kyoko` imported
 
 Check accounts.
 ```json
+$ cldi account
 [
   {
     "addr": "0x3820e159546d1c1359095db659178feb6cb43215",
@@ -148,7 +149,7 @@ Check accounts.
 ]
 ```
 
-If you want to know how to use one command exactly, you can type it with `-h` to see the help info.
+If you want to know how to use one command precisely, you can type it with `-h` to see the help info.
 
 ```
 $ cldi send -h
