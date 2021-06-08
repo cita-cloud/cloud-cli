@@ -139,6 +139,8 @@ impl Wallet {
         if let Some(account) = wallet.accounts.get(&wallet.default_account) {
             Ok(account.clone())
         } else {
+            // avoid deadlock
+            drop(wallet);
             self.create_account("default");
             Ok(self.load_account("default").unwrap())
         }
