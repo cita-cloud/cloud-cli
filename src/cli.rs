@@ -131,7 +131,7 @@ pub fn build_cli() -> App<'static> {
         );
 
     let set_block_interval = App::new("set-block-interval")
-        .about("Set block inteval")
+        .about("Set block interval")
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("block_interval")

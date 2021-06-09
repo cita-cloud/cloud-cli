@@ -61,7 +61,7 @@ SUBCOMMANDS:
     peer-count            Get peer count
     receipt               Get receipt by tx_hash
     send                  Send transaction
-    set-block-interval    Set block inteval
+    set-block-interval    Set block interval
     store-abi             Store abi
     system-config         Get system config
     update-admin          Update admin of the chain

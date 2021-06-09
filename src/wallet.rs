@@ -37,8 +37,9 @@ pub struct Wallet {
     db: PathDatabase<WalletInner, Ron>,
 }
 
-// FIXME: Those db operations may block the async runtime, but that doesn't matter for now.
-// TODO: Encrypt private key.
+// FIXME:
+// Those db operations may block the async runtime, but that doesn't matter for now.
+// We can solve this by using tokio::spawn_blocking.
 impl Wallet {
     pub fn open(data_dir: impl AsRef<Path>) -> Self {
         let db = PathDatabase::load_from_path_or_default(data_dir.as_ref().to_path_buf()).unwrap();
