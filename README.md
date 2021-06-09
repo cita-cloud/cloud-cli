@@ -72,7 +72,7 @@ SUBCOMMANDS:
 
 The `cldi` needs to know how to connect to your chain. You may tell it by `-r` (rpc addr, default to `localhost:50004`) and `-e` (executor addr, default to `localhost:50002`).
 
-Those addrs can also be specified by env `CITA_CLOUD_EXECUTOR_ADDR` and `CITA_CLOUD_CONTROLLER_ADDR`.
+Those addrs can also be specified by env `CITA_CLOUD_RPC_ADDR` and `CITA_CLOUD_EXECUTOR_ADDR`.
 
 ### Account
 
@@ -250,7 +250,7 @@ $ cldi call -t 0x21a2284ba7d03ca6b57cfc671c0f1a77e21aa925 0x06661abd
 result: 0x0000000000000000000000000000000000000000000000000000000000000000
 ```
 
-Send a tx to increase its counter.
+Send a transaction to increase its counter.
 
 ```bash
 $ cldi send -t 0x21a2284ba7d03ca6b57cfc671c0f1a77e21aa925 0x4f2be91f
