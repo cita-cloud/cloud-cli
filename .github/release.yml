@@ -1,0 +1,26 @@
+name: publish release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build
+        run: cargo build--release
+
+  release:
+    steps:
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with: 
+          files: |
+            target/release/cldi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
