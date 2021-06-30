@@ -47,6 +47,7 @@ OPTIONS:
 SUBCOMMANDS:
     account               Manage account
     bench                 Send multiple txs with random content
+    block-hash            Get block hash by block number(height)
     block-number          Get block number
     call                  Executor call
     completions           Generate completions for current shell

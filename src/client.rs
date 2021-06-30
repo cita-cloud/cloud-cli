@@ -348,6 +348,16 @@ impl Client {
             .block_number
     }
 
+    pub async fn get_block_hash(&self, block_number: u64) -> Vec<u8> {
+        self.controller
+            .clone()
+            .get_block_hash(BlockNumber { block_number })
+            .await
+            .unwrap()
+            .into_inner()
+            .hash
+    }
+
     pub async fn get_block_by_number(&self, block_number: u64) -> CompactBlock {
         self.controller
             .clone()

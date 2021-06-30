@@ -87,6 +87,16 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_value),
         );
 
+    let get_block_hash = App::new("block-hash")
+        .about("Get block hash by block number(height)")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("number")
+                .about("the block number(height)")
+                .takes_value(true)
+                .validator(str::parse::<u64>),
+        );
+
     let get_tx = App::new("get-tx")
         .about("Get transaction by hash")
         .setting(AppSettings::ColoredHelp)
@@ -253,6 +263,7 @@ pub fn build_cli() -> App<'static> {
             create,
             block_number,
             get_block,
+            get_block_hash,
             get_tx,
             peer_count,
             system_config,

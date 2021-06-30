@@ -130,6 +130,11 @@ async fn main() -> Result<()> {
 
                 println!("{}", block.display());
             }
+            ("block-hash", m) => {
+                let n = m.value_of("number").unwrap().parse().unwrap();
+                let hash = client.get_block_hash(n).await;
+                println!("hash: 0x{}", hex::encode(&hash));
+            }
             ("get-tx", m) => {
                 let tx_hash = parse_value(m.value_of("tx_hash").unwrap())?;
 
