@@ -33,7 +33,7 @@ cloud-cli 0.1.0
 The command line interface to interact with `CITA-Cloud`.
 
 USAGE:
-    cldi [OPTIONS] [SUBCOMMAND]
+    cldi.exe [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
     -h, --help       Prints help information
@@ -47,7 +47,6 @@ OPTIONS:
 SUBCOMMANDS:
     account               Manage account
     bench                 Send multiple txs with random content
-    block-at              Get block by number
     block-number          Get block number
     call                  Executor call
     completions           Generate completions for current shell
@@ -55,6 +54,7 @@ SUBCOMMANDS:
     emergency-brake       Send emergency brake cmd to chain
     get-abi               Get specific contract abi
     get-balance           Get balance by account address
+    get-block             Get block by number or hash
     get-code              Get code by contract address
     get-tx                Get transaction by hash
     help                  Prints this message or the help of the given subcommand(s)
@@ -66,6 +66,7 @@ SUBCOMMANDS:
     system-config         Get system config
     update-admin          Update admin of the chain
     update-validators     Update validators of the chain
+
 ```
 
 ### Connection 
@@ -201,7 +202,7 @@ Get block by block-number using env.
 ```json
 $ export CITA_CLOUD_RPC_ADDR="localhost:50004"
 $ export CITA_CLOUD_EXECUTOR_ADDR="localhost:50002"
-$ cldi block-at 3761
+$ cldi get-block -n 3761
 {
   "height": 3761,
   "prev_hash": "0x77eff82958a2c54058446a8bac3e01abdadf8b3cea126950a8fdd9c5ffc9fc39",

@@ -119,10 +119,15 @@ async fn main() -> Result<()> {
                 let block_number = client.get_block_number(for_pending).await;
                 println!("block_number: {}", block_number);
             }
-            ("block-at", m) => {
-                let block_number = m.value_of("block_number").unwrap().parse::<u64>()?;
+            ("get-block", m) => {
+                let block = if let Some(n) = m.value_of("number") {
+                    let block_number = n.parse()?;
+                    client.get_block_by_number(block_number).await
+                } else {
+                    let hash = parse_value(m.value_of("hash").unwrap())?;
+                    client.get_block_by_hash(hash).await
+                };
 
-                let block = client.get_block_by_number(block_number).await;
                 println!("{}", block.display());
             }
             ("get-tx", m) => {

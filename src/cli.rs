@@ -65,13 +65,26 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("for_pending").short('p').long("for_pending"));
 
-    let block_at = App::new("block-at")
-        .about("Get block by number")
+    let get_block = App::new("get-block")
+        .about("Get block by number or hash")
         .setting(AppSettings::ColoredHelp)
         .arg(
-            Arg::new("block_number")
-                .required(true)
+            Arg::new("number")
+                .about("the block number(height)")
+                .long("number")
+                .short('n')
+                .required_unless_present("hash")
+                .takes_value(true)
                 .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("hash")
+                .long("hash")
+                .about("the block hash")
+                .short('h')
+                .required_unless_present("number")
+                .takes_value(true)
+                .validator(parse_value),
         );
 
     let get_tx = App::new("get-tx")
@@ -239,7 +252,7 @@ pub fn build_cli() -> App<'static> {
             send,
             create,
             block_number,
-            block_at,
+            get_block,
             get_tx,
             peer_count,
             system_config,

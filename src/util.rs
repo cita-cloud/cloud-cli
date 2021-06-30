@@ -14,7 +14,7 @@ pub fn parse_addr(s: &str) -> Result<Vec<u8>> {
 pub fn parse_value(s: &str) -> Result<Vec<u8>> {
     let s = remove_0x(s);
     if s.len() > 64 {
-        return Err(anyhow!("can't parse addr, the given str is too long"));
+        return Err(anyhow!("can't parse value, the given str is too long"));
     }
     // padding 0 to 32 bytes
     let padded = format!("{:0>64}", s);

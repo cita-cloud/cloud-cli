@@ -357,6 +357,15 @@ impl Client {
             .into_inner()
     }
 
+    pub async fn get_block_by_hash(&self, hash: Vec<u8>) -> CompactBlock {
+        self.controller
+            .clone()
+            .get_block_by_hash(Hash { hash })
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
     pub async fn get_peer_count(&self) -> u64 {
         self.controller
             .clone()
