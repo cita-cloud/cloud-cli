@@ -162,7 +162,10 @@ impl Display for Receipt {
         let logs = self.logs.iter().map(Log::to_json).collect::<Vec<_>>();
         json!({
             "tx_hash": hex(&self.transaction_hash),
-            "block_hash": hex(&self.block_hash),
+            // FIXME:
+            // This is a legacy block_hash from cita.
+            // It's not the same as chain's block hash.
+            "legacy_cita_block_hash": hex(&self.block_hash),
             "block_number": self.block_number,
             "tx_index": self.transaction_index,
             "contract_addr": hex(&self.contract_address),
