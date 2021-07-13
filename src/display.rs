@@ -1,6 +1,6 @@
 use cita_cloud_proto::blockchain::Transaction;
-use cita_cloud_proto::blockchain::{CompactBlock, UnverifiedTransaction, Witness};
-use cita_cloud_proto::controller::{RawTransaction, SystemConfig};
+use cita_cloud_proto::blockchain::{CompactBlock, RawTransaction, UnverifiedTransaction, Witness};
+use cita_cloud_proto::controller::SystemConfig;
 use cita_cloud_proto::evm::Log;
 use cita_cloud_proto::evm::Receipt;
 
@@ -119,7 +119,7 @@ impl Display for Witness {
 
 impl Display for RawTransaction {
     fn to_json(&self) -> Json {
-        use cita_cloud_proto::controller::raw_transaction::Tx;
+        use cita_cloud_proto::blockchain::raw_transaction::Tx;
         match &self.tx {
             Some(Tx::NormalTx(tx)) => {
                 json!({

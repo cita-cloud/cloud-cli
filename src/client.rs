@@ -28,15 +28,15 @@ use cita_cloud_proto::executor::executor_service_client::ExecutorServiceClient a
 use cita_cloud_proto::executor::CallRequest;
 
 use cita_cloud_proto::blockchain::{
-    CompactBlock, Transaction as CloudTransaction, UnverifiedTransaction,
-    UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction, Witness,
+    raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
+    UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
+    Witness,
 };
 use cita_cloud_proto::common::Address;
 use cita_cloud_proto::common::Empty;
 use cita_cloud_proto::common::Hash;
 use cita_cloud_proto::controller::{
-    raw_transaction::Tx, rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber,
-    Flag, RawTransaction, SystemConfig,
+    rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
 };
 
 use cita_cloud_proto::evm::{
