@@ -219,7 +219,7 @@ impl Client {
         raw_tx
     }
 
-    pub async fn set_block_interval(&mut self, block_interval: u64) -> Vec<u8> {
+    pub async fn set_block_interval(&mut self, block_interval: u32) -> Vec<u8> {
         let utxo = self.build_set_block_interval_utxo(block_interval).await;
         let raw = self.prepare_raw_utxo(utxo);
         self.send_raw_utxo(raw).await
@@ -243,7 +243,7 @@ impl Client {
         self.send_raw_utxo(raw).await
     }
 
-    async fn build_set_block_interval_utxo(&self, block_interval: u64) -> CloudUtxoTransaction {
+    async fn build_set_block_interval_utxo(&self, block_interval: u32) -> CloudUtxoTransaction {
         let output = block_interval.to_be_bytes().to_vec();
         let sys_config = self.sys_config().await;
 

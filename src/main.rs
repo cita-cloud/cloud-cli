@@ -312,7 +312,7 @@ async fn main() -> Result<()> {
                 println!("tx_hash: {}", hex(&tx_hash));
             }
             ("set-block-interval", m) => {
-                let block_interval = m.value_of("block_interval").unwrap().parse::<u64>()?;
+                let block_interval = m.value_of("block_interval").unwrap().parse::<u32>()?;
                 let tx_hash = client.set_block_interval(block_interval).await;
                 println!("tx_hash: {}", hex(&tx_hash));
             }
