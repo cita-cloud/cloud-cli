@@ -1,5 +1,5 @@
-use cita_cloud_proto::blockchain::Transaction;
 use cita_cloud_proto::blockchain::{CompactBlock, RawTransaction, UnverifiedTransaction, Witness};
+use cita_cloud_proto::blockchain::{Transaction, UnverifiedUtxoTransaction, UtxoTransaction};
 use cita_cloud_proto::controller::SystemConfig;
 use cita_cloud_proto::evm::Log;
 use cita_cloud_proto::evm::Receipt;
@@ -55,7 +55,7 @@ impl Display for CompactBlock {
                     "proposer": hex(&header.proposer),
                 })
             }
-            None => json!("no block header"),
+            None => json!({}),
         }
     }
 }
@@ -78,9 +78,9 @@ impl Display for Transaction {
 impl Display for UnverifiedTransaction {
     fn to_json(&self) -> Json {
         json!({
-            "transaction": self.transaction.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!("None")),
+            "transaction": self.transaction.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!({})),
             "transaction_hash": hex(&self.transaction_hash),
-            "witness": self.witness.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!("None")),
+            "witness": self.witness.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!({})),
         })
     }
 }
@@ -94,19 +94,42 @@ impl Display for SystemConfig {
             "admin": hex(&self.admin),
             "block_interval": self.block_interval,
             "validators": validators,
+            "emergency_brake": self.emergency_brake,
+            "version_pre_hash": hex(&self.version_pre_hash),
+            "chain_id_pre_hash": hex(&self.chain_id_pre_hash),
+            "admin_pre_hash": hex(&self.admin_pre_hash),
+            "block_interval_pre_hash": hex(&self.block_interval_pre_hash),
+            "validators_pre_hash": hex(&self.validators_pre_hash),
+            "emergency_brake_pre_hash": hex(&self.emergency_brake_pre_hash),
         })
     }
 }
 
-// impl Display for UtxoTransaction {
-//     fn to_json(&self) -> Json {
-//         json!({
-//             "transaction": self.transaction.map(|tx| tx.to_json()).unwrap_or(json!("None")),
-//             "transaction_hash": hex(&self.transaction_hash),
-//             "witness": self.witness.map(|tx| tx.to_json()).unwrap_or(json!("None")),
-//         })
-//     }
-// }
+impl Display for UtxoTransaction {
+    fn to_json(&self) -> Json {
+        json!({
+            "version": self.version,
+            "pre_tx_hash": hex(&self.pre_tx_hash),
+            "output": hex(&self.output),
+            "lock_id": self.lock_id,
+        })
+    }
+}
+
+impl Display for UnverifiedUtxoTransaction {
+    fn to_json(&self) -> Json {
+        let witnesses = self
+            .witnesses
+            .iter()
+            .map(|w| w.to_json())
+            .collect::<Vec<_>>();
+        json!({
+            "transaction": self.transaction.as_ref().map(|tx| tx.to_json()).unwrap_or_else(|| json!({})),
+            "transaction_hash": hex(&self.transaction_hash),
+            "witnesses": witnesses,
+        })
+    }
+}
 
 impl Display for Witness {
     fn to_json(&self) -> Json {
@@ -127,11 +150,10 @@ impl Display for RawTransaction {
                     "transaction": tx.to_json()
                 })
             }
-            Some(Tx::UtxoTx(_utxo)) => {
+            Some(Tx::UtxoTx(utxo)) => {
                 json!({
                     "type": "Utxo",
-                    // "transaction": utxo.to_json()
-                    "transaction": "unimplemented" // TODO
+                    "transaction": utxo.to_json()
                 })
             }
             None => json!({}),
