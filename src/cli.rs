@@ -147,7 +147,7 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("validators")
-                .about("the new validator list")
+                .about("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
                 .multiple(true)
                 .validator(parse_addr),
