@@ -102,6 +102,16 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
+    let get_tx_index = App::new("get-tx-index")
+        .about("Get transaction's index by tx_hash")
+        .setting(AppSettings::ColoredHelp)
+        .arg(Arg::new("tx_hash").required(true).validator(parse_value));
+
+    let get_tx_block_number = App::new("get-tx-block-number")
+        .about("Get transaction's block number by tx_hash")
+        .setting(AppSettings::ColoredHelp)
+        .arg(Arg::new("tx_hash").required(true).validator(parse_value));
+
     let peer_count = App::new("peer-count").about("Get peer count");
 
     let system_config = App::new("system-config")
@@ -206,6 +216,12 @@ pub fn build_cli() -> App<'static> {
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
+    let get_tx_count = App::new("get-tx-count")
+        .about("Get the transaction count of the address")
+        .setting(AppSettings::ColoredHelp)
+        .arg(Arg::new("addr").required(true).validator(parse_addr));
+
+    #[cfg(feature = "evm")]
     let store_abi = App::new("store-abi")
         .about("Store abi")
         .setting(AppSettings::ColoredHelp)
@@ -265,6 +281,8 @@ pub fn build_cli() -> App<'static> {
             get_block,
             get_block_hash,
             get_tx,
+            get_tx_block_number,
+            get_tx_index,
             peer_count,
             system_config,
             bench,
@@ -277,7 +295,14 @@ pub fn build_cli() -> App<'static> {
         ]);
 
     #[cfg(feature = "evm")]
-    let cli_app = cli_app.subcommands(vec![receipt, get_code, get_balance, store_abi, get_abi]);
+    let cli_app = cli_app.subcommands(vec![
+        receipt,
+        get_code,
+        get_balance,
+        store_abi,
+        get_abi,
+        get_tx_count,
+    ]);
 
     cli_app
 }

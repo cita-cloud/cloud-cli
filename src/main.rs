@@ -141,6 +141,18 @@ async fn main() -> Result<()> {
                 let tx = client.get_tx(tx_hash).await;
                 println!("tx: {}", tx.display());
             }
+            ("get-tx-index", m) => {
+                let tx_hash = parse_value(m.value_of("tx_hash").unwrap())?;
+
+                let index = client.get_tx_index(tx_hash).await;
+                println!("tx index: {}", index.tx_index);
+            }
+            ("get-tx-block-number", m) => {
+                let tx_hash = parse_value(m.value_of("tx_hash").unwrap())?;
+
+                let block_number = client.get_tx_block_number(tx_hash).await;
+                println!("block number: {}", block_number.block_number);
+            }
             ("peer-count", _m) => {
                 let cnt = client.get_peer_count().await;
                 println!("peer_count: {}", cnt);
@@ -345,6 +357,13 @@ async fn main() -> Result<()> {
 
                 let balance = client.get_balance(addr).await;
                 println!("balance: {}", hex(&balance.value));
+            }
+            #[cfg(feature = "evm")]
+            ("get-tx-count", m) => {
+                let addr = parse_addr(m.value_of("addr").unwrap())?;
+
+                let tx_count = client.get_transaction_count(addr).await;
+                println!("tx count: {}", hex(&tx_count.nonce));
             }
             #[cfg(feature = "evm")]
             ("store-abi", m) => {

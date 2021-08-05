@@ -37,10 +37,11 @@ use cita_cloud_proto::common::Empty;
 use cita_cloud_proto::common::Hash;
 use cita_cloud_proto::controller::{
     rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
+    TransactionIndex,
 };
 
 use cita_cloud_proto::evm::{
-    rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Receipt,
+    rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce, Receipt,
 };
 
 use crate::crypto::hash_data;
@@ -395,6 +396,26 @@ impl Client {
             .unwrap()
             .into_inner()
     }
+
+    pub async fn get_tx_index(&self, tx_hash: Vec<u8>) -> TransactionIndex {
+        let tx_hash = Hash { hash: tx_hash };
+        self.controller
+            .clone()
+            .get_transaction_index(tx_hash)
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
+    pub async fn get_tx_block_number(&self, tx_hash: Vec<u8>) -> BlockNumber {
+        let tx_hash = Hash { hash: tx_hash };
+        self.controller
+            .clone()
+            .get_transaction_block_number(tx_hash)
+            .await
+            .unwrap()
+            .into_inner()
+    }
 }
 
 #[cfg(feature = "evm")]
@@ -419,6 +440,16 @@ impl Client {
         self.evm
             .clone()
             .get_balance(addr)
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
+    pub async fn get_transaction_count(&self, address: Vec<u8>) -> Nonce {
+        let addr = Address { address };
+        self.evm
+            .clone()
+            .get_transaction_count(addr)
             .await
             .unwrap()
             .into_inner()
