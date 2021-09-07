@@ -7,8 +7,8 @@ use cita_cloud_proto::evm::Receipt;
 use serde_json::json;
 use serde_json::Value as Json;
 
-use crate::util::display_time;
-use crate::util::hex;
+use crate::utils::display_time;
+use crate::utils::hex;
 
 use crate::wallet::Account;
 

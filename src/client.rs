@@ -134,12 +134,28 @@ impl Client {
     }
 
     pub async fn send(&self, to: Vec<u8>, data: Vec<u8>, value: Vec<u8>) -> Vec<u8> {
-        let normal_tx = self.build_normal_tx(to, data, value).await;
-        let raw_tx = self.prepare_raw_tx(normal_tx);
-        self.send_raw(raw_tx).await
+        let current_block_number = self.get_block_number(false).await;
+        let sys_config = self.sys_config().await;
+        let nonce = rand::random::<u64>().to_string();
+        let tx = CloudTransaction {
+            to,
+            nonce,
+            quota: 3_000_000,
+            valid_until_block: current_block_number + 99,
+            data,
+            value,
+            version: sys_config.version,
+            chain_id: sys_config.chain_id.to_vec(),
+        };
+        self.send_tx(tx).await
     }
 
-    async fn send_raw(&self, raw: RawTransaction) -> Vec<u8> {
+    pub async fn send_tx(&self, tx: CloudTransaction) -> Vec<u8> {
+        let raw_tx = self.prepare_raw_tx(tx);
+        self.send_raw_tx(raw_tx).await
+    }
+
+    async fn send_raw_tx(&self, raw: RawTransaction) -> Vec<u8> {
         self.controller
             .clone()
             .send_raw_transaction(raw)
@@ -159,28 +175,6 @@ impl Client {
             .unwrap()
             .into_inner()
             .hash
-    }
-
-    async fn build_normal_tx(
-        &self,
-        to: Vec<u8>,
-        data: Vec<u8>,
-        value: Vec<u8>,
-    ) -> CloudTransaction {
-        // get start block number
-        let start_block_number = self.get_block_number(false).await;
-        let sys_config = self.sys_config().await;
-        let nonce = rand::random::<u64>().to_string();
-        CloudTransaction {
-            version: sys_config.version,
-            to,
-            nonce,
-            quota: 3_000_000,
-            valid_until_block: start_block_number + 99,
-            data,
-            value,
-            chain_id: sys_config.chain_id.to_vec(),
-        }
     }
 
     fn prepare_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {

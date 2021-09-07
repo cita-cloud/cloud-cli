@@ -1,7 +1,8 @@
-use crate::util::{parse_addr, parse_data, parse_value};
 use clap::App;
 use clap::AppSettings;
 use clap::Arg;
+
+use crate::utils::{parse_addr, parse_data, parse_value};
 
 pub fn build_cli() -> App<'static> {
     // subcommands

@@ -9,12 +9,13 @@ mod client;
 mod crypto;
 mod display;
 mod interactive;
-mod util;
+mod utils;
 mod wallet;
 
 use std::sync::Arc;
 use std::time::Duration;
 
+use cita_cloud_proto::blockchain::Transaction;
 use futures::future::join_all;
 use rand::{thread_rng, Rng};
 use serde_json::json;
@@ -26,7 +27,7 @@ use cli::build_cli;
 use client::Client;
 use display::Display as _;
 use interactive::Interactive;
-use util::{hex, parse_addr, parse_data, parse_value};
+use utils::{hex, parse_addr, parse_data, parse_value};
 use wallet::Wallet;
 
 /// Store action target address
@@ -166,18 +167,24 @@ async fn main() -> Result<()> {
                 let tx_count = m.value_of("count").unwrap().parse::<u64>()?;
 
                 let mut start_at = client.get_block_number(false).await;
+                let sys_config = client.get_system_config().await;
 
                 let mut rng = thread_rng();
                 let handles = (0..tx_count)
                     .map(|_| {
                         let client = Arc::clone(&client);
+                        let tx = Transaction {
+                            to: rng.gen::<[u8; 20]>().to_vec(),
+                            data: rng.gen::<[u8; 32]>().to_vec(),
+                            value: rng.gen::<[u8; 32]>().to_vec(),
+                            nonce: rand::random::<u64>().to_string(),
+                            quota: 3_000_000,
+                            valid_until_block: start_at + 99,
+                            chain_id: sys_config.chain_id.clone(),
+                            version: sys_config.version,
+                        };
 
-                        let to: [u8; 20] = rng.gen();
-                        let data: [u8; 32] = rng.gen();
-                        let value: [u8; 32] = rng.gen();
-                        tokio::spawn(async move {
-                            client.send(to.into(), data.into(), value.into()).await
-                        })
+                        tokio::spawn(async move { client.send_tx(tx).await })
                     })
                     .collect::<Vec<_>>();
                 join_all(handles).await;
