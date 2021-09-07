@@ -169,6 +169,7 @@ async fn main() -> Result<()> {
                 let mut start_at = client.get_block_number(false).await;
                 let sys_config = client.get_system_config().await;
 
+                let t = std::time::Instant::now();
                 let mut rng = thread_rng();
                 let handles = (0..tx_count)
                     .map(|_| {
@@ -189,7 +190,7 @@ async fn main() -> Result<()> {
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
-                println!("sending txs done.");
+                println!("sending txs finished in `{}` ms", t.elapsed().as_millis());
 
                 let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut finalized_tx = 0;
