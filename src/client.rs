@@ -239,7 +239,7 @@ impl Client {
     }
 
     pub async fn update_validators(&mut self, validators: &[Vec<u8>]) -> Vec<u8> {
-        let utxo = self.build_update_validators_utxo(&validators).await;
+        let utxo = self.build_update_validators_utxo(validators).await;
         let raw = self.prepare_raw_utxo(utxo);
         self.send_raw_utxo(raw).await
     }

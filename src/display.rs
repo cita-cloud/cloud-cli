@@ -87,7 +87,7 @@ impl Display for UnverifiedTransaction {
 
 impl Display for SystemConfig {
     fn to_json(&self) -> Json {
-        let validators = self.validators.iter().map(|v| hex(&v)).collect::<Vec<_>>();
+        let validators = self.validators.iter().map(|v| hex(v)).collect::<Vec<_>>();
         json!({
             "version": self.version,
             "chain_id": hex(&self.chain_id),
