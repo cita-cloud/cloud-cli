@@ -17,7 +17,6 @@ use std::time::Duration;
 
 use cita_cloud_proto::blockchain::Transaction;
 use futures::future::join_all;
-use rand::{thread_rng, Rng};
 use serde_json::json;
 
 use anyhow::anyhow;
@@ -164,39 +163,50 @@ async fn main() -> Result<()> {
             }
             ("bench", m) => {
                 let client = Arc::new(client);
-                let tx_count = m.value_of("count").unwrap().parse::<u64>()?;
+                let tx_count_per_thread = m.value_of("count").unwrap().parse::<u64>()?;
+                let thread_number = m.value_of("number").unwrap().parse::<u64>()?;
 
                 let mut start_at = client.get_block_number(false).await;
                 let sys_config = client.get_system_config().await;
+                let chain_id = sys_config.chain_id;
+                let version = sys_config.version;
 
                 let t = std::time::Instant::now();
-                let mut rng = thread_rng();
-                let handles = (0..tx_count)
+
+                let handles = (0..thread_number)
                     .map(|_| {
                         let client = Arc::clone(&client);
-                        let tx = Transaction {
-                            to: rng.gen::<[u8; 20]>().to_vec(),
-                            data: rng.gen::<[u8; 32]>().to_vec(),
-                            value: rng.gen::<[u8; 32]>().to_vec(),
-                            nonce: rand::random::<u64>().to_string(),
-                            quota: 3_000_000,
-                            valid_until_block: start_at + 99,
-                            chain_id: sys_config.chain_id.clone(),
-                            version: sys_config.version,
-                        };
-
-                        tokio::spawn(async move { client.send_tx(tx).await })
+                        let chain_id = chain_id.clone();
+                        tokio::spawn(async move {
+                            for _ in 0..tx_count_per_thread {
+                                let tx = Transaction {
+                                    to: rand::random::<[u8; 20]>().to_vec(),
+                                    data: rand::random::<[u8; 20]>().to_vec(),
+                                    value: rand::random::<[u8; 20]>().to_vec(),
+                                    nonce: rand::random::<u64>().to_string(),
+                                    quota: 3_000_000,
+                                    valid_until_block: start_at + 99,
+                                    chain_id: chain_id.clone(),
+                                    version,
+                                };
+                                client.send_tx(tx).await;
+                            }
+                        })
                     })
                     .collect::<Vec<_>>();
                 join_all(handles).await;
 
-                println!("sending txs finished in `{}` ms", t.elapsed().as_millis());
+                println!(
+                    "sending {} txs finished in `{}` ms",
+                    tx_count_per_thread * thread_number,
+                    t.elapsed().as_millis()
+                );
 
                 let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut finalized_tx = 0;
                 let mut begin_time = None;
 
-                while finalized_tx < tx_count {
+                while finalized_tx < tx_count_per_thread * thread_number {
                     check_interval.tick().await;
                     let end_at = {
                         let n = client.get_block_number(false).await;

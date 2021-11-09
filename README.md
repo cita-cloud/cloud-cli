@@ -46,7 +46,7 @@ OPTIONS:
 
 SUBCOMMANDS:
     account               Manage account
-    bench                 Send multiple txs with random content
+    bench                 Send txs with n thread and per thread c txs
     block-hash            Get block hash by block number(height)
     block-number          Get block number
     call                  Executor call

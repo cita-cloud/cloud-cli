@@ -120,13 +120,20 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp);
 
     let bench = App::new("bench")
-        .about("Send multiple txs with random content")
+        .about("Send txs with n thread and per thread c txs")
         .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("count")
-                .about("How many txs to send in decimal")
+                .about("How many txs to send per thread")
                 .required(false)
                 .default_value("1024")
+                .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("number")
+                .about("How many threads")
+                .required(false)
+                .default_value("4")
                 .validator(str::parse::<u64>),
         );
 
