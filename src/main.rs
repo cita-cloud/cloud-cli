@@ -15,12 +15,13 @@ mod wallet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use cita_cloud_proto::blockchain::Transaction;
-use futures::future::join_all;
+use rand::{thread_rng, Rng};
 use serde_json::json;
 
 use anyhow::anyhow;
 use anyhow::Result;
+
+use cita_cloud_proto::blockchain::Transaction;
 
 use cli::build_cli;
 use client::Client;
@@ -163,8 +164,9 @@ async fn main() -> Result<()> {
             }
             ("bench", m) => {
                 let client = Arc::new(client);
-                let tx_count_per_thread = m.value_of("count").unwrap().parse::<u64>()?;
-                let thread_number = m.value_of("number").unwrap().parse::<u64>()?;
+                let tx_count_per_worker =
+                    m.value_of("tx-count-per-worker").unwrap().parse::<u64>()?;
+                let concurrency = m.value_of("concurrency").unwrap().parse::<u64>()?;
 
                 let mut start_at = client.get_block_number(false).await;
                 let sys_config = client.get_system_config().await;
@@ -173,32 +175,46 @@ async fn main() -> Result<()> {
 
                 let t = std::time::Instant::now();
 
-                let handles = (0..thread_number)
+                let mut rng = thread_rng();
+                // Collect here to avoid lazy evaluation
+                #[allow(clippy::needless_collect)]
+                let jobs: Vec<Vec<Transaction>> = (0..concurrency)
                     .map(|_| {
+                        (0..tx_count_per_worker)
+                            .map(|_| Transaction {
+                                to: rng.gen::<[u8; 20]>().to_vec(),
+                                data: rng.gen::<[u8; 32]>().to_vec(),
+                                value: rng.gen::<[u8; 32]>().to_vec(),
+                                nonce: rng.gen::<u64>().to_string(),
+                                quota: 3_000_000,
+                                valid_until_block: start_at + 99,
+                                chain_id: chain_id.clone(),
+                                version,
+                            })
+                            .collect()
+                    })
+                    .collect();
+
+                let handles = jobs
+                    .into_iter()
+                    .map(|job| {
                         let client = Arc::clone(&client);
-                        let chain_id = chain_id.clone();
                         tokio::spawn(async move {
-                            for _ in 0..tx_count_per_thread {
-                                let tx = Transaction {
-                                    to: rand::random::<[u8; 20]>().to_vec(),
-                                    data: rand::random::<[u8; 20]>().to_vec(),
-                                    value: rand::random::<[u8; 20]>().to_vec(),
-                                    nonce: rand::random::<u64>().to_string(),
-                                    quota: 3_000_000,
-                                    valid_until_block: start_at + 99,
-                                    chain_id: chain_id.clone(),
-                                    version,
-                                };
+                            for tx in job {
                                 client.send_tx(tx).await;
                             }
                         })
                     })
                     .collect::<Vec<_>>();
-                join_all(handles).await;
+
+                for h in handles {
+                    // TODO: better error handling
+                    let _ = h.await;
+                }
 
                 println!(
                     "sending {} txs finished in `{}` ms",
-                    tx_count_per_thread * thread_number,
+                    tx_count_per_worker * concurrency,
                     t.elapsed().as_millis()
                 );
 
@@ -206,7 +222,7 @@ async fn main() -> Result<()> {
                 let mut finalized_tx = 0;
                 let mut begin_time = None;
 
-                while finalized_tx < tx_count_per_thread * thread_number {
+                while finalized_tx < tx_count_per_worker * concurrency {
                     check_interval.tick().await;
                     let end_at = {
                         let n = client.get_block_number(false).await;
@@ -218,13 +234,18 @@ async fn main() -> Result<()> {
                     };
 
                     let blocks = {
+                        let mut blocks = vec![];
                         let handles = (start_at..=end_at)
                             .map(|n| {
                                 let client = Arc::clone(&client);
                                 tokio::spawn(async move { client.get_block_by_number(n).await })
                             })
                             .collect::<Vec<_>>();
-                        join_all(handles).await
+
+                        for h in handles {
+                            blocks.push(h.await);
+                        }
+                        blocks
                     };
 
                     for b in blocks {

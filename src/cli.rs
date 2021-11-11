@@ -120,20 +120,22 @@ pub fn build_cli() -> App<'static> {
         .setting(AppSettings::ColoredHelp);
 
     let bench = App::new("bench")
-        .about("Send txs with n thread and per thread c txs")
+        .about("Send txs with {-c} workers and {-n} txs per worker")
         .setting(AppSettings::ColoredHelp)
         .arg(
-            Arg::new("count")
-                .about("How many txs to send per thread")
-                .required(false)
-                .default_value("1024")
+            Arg::new("concurrency")
+                .short('c')
+                .long("concurrency")
+                .about("Number of request workers to run concurrently for sending txs")
+                .default_value("1")
                 .validator(str::parse::<u64>),
         )
         .arg(
-            Arg::new("number")
-                .about("How many threads")
-                .required(false)
-                .default_value("4")
+            Arg::new("tx-count-per-worker")
+                .short('n')
+                .long("tx-count-per-worker")
+                .about("Number of txs to send per worker")
+                .default_value("1")
                 .validator(str::parse::<u64>),
         );
 
