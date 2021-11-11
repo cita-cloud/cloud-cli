@@ -45,29 +45,31 @@ OPTIONS:
     -u, --user <user>                      the user(account) to send tx
 
 SUBCOMMANDS:
-    account               Manage account
-    bench                 Send multiple txs with random content
-    block-hash            Get block hash by block number(height)
-    block-number          Get block number
-    call                  Executor call
-    completions           Generate completions for current shell
-    create                Create contract
-    emergency-brake       Send emergency brake cmd to chain
-    get-abi               Get specific contract abi
-    get-balance           Get balance by account address
-    get-block             Get block by number or hash
-    get-code              Get code by contract address
-    get-tx                Get transaction by hash
-    help                  Prints this message or the help of the given subcommand(s)
-    peer-count            Get peer count
-    receipt               Get receipt by tx_hash
-    send                  Send transaction
-    set-block-interval    Set block interval
-    store-abi             Store abi
-    system-config         Get system config
-    update-admin          Update admin of the chain
-    update-validators     Update validators of the chain
-
+    account                Manage account
+    bench                  Send txs with {-c} workers and {-n} txs per worker
+    block-hash             Get block hash by block number(height)
+    block-number           Get block number
+    call                   Executor call
+    completions            Generate completions for current shell
+    create                 Create contract
+    emergency-brake        Send emergency brake cmd to chain
+    get-abi                Get specific contract abi
+    get-balance            Get balance by account address
+    get-block              Get block by number or hash
+    get-code               Get code by contract address
+    get-tx                 Get transaction by hash
+    get-tx-block-number    Get transaction's block number by tx_hash
+    get-tx-count           Get the transaction count of the address
+    get-tx-index           Get transaction's index by tx_hash
+    help                   Prints this message or the help of the given subcommand(s)
+    peer-count             Get peer count
+    receipt                Get receipt by tx_hash
+    send                   Send transaction
+    set-block-interval     Set block interval
+    store-abi              Store abi
+    system-config          Get system config
+    update-admin           Update admin of the chain
+    update-validators      Update validators of the chain
 ```
 
 ### Connection 
