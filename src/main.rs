@@ -173,8 +173,6 @@ async fn main() -> Result<()> {
                 let chain_id = sys_config.chain_id;
                 let version = sys_config.version;
 
-                let t = std::time::Instant::now();
-
                 let mut rng = thread_rng();
                 // Collect here to avoid lazy evaluation
                 #[allow(clippy::needless_collect)]
@@ -195,6 +193,7 @@ async fn main() -> Result<()> {
                     })
                     .collect();
 
+                let t = std::time::Instant::now();
                 let handles = jobs
                     .into_iter()
                     .map(|job| {
