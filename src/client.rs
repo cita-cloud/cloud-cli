@@ -155,7 +155,7 @@ impl Client {
         self.send_raw_tx(raw_tx).await
     }
 
-    async fn send_raw_tx(&self, raw: RawTransaction) -> Vec<u8> {
+    pub async fn send_raw_tx(&self, raw: RawTransaction) -> Vec<u8> {
         self.controller
             .clone()
             .send_raw_transaction(raw)
@@ -177,7 +177,7 @@ impl Client {
             .hash
     }
 
-    fn prepare_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
+    pub fn prepare_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
         // calc tx hash
         let tx_hash = {
             // build tx bytes
