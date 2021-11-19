@@ -191,7 +191,7 @@ async fn main() -> Result<()> {
                 let mut conns = vec![];
                 let addr = format!("http://{}", rpc_addr);
                 let timeout = Duration::from_secs(15);
-                for _ in 1..=connections {
+                for _ in 0..connections {
                     let conn = {
                         let channel = Endpoint::from_shared(addr.clone())
                             .unwrap()
@@ -212,21 +212,37 @@ async fn main() -> Result<()> {
                 .into_iter()
                 .enumerate()
                 .map(|(i, conn)| {
-                    let (txs_per_conn, workers) = if (i as u64) != connections {
-                        (total / connections, workers / connections)
-                    } else {
-                        (total % connections, workers % connections)
+                    let i = i as u64;
+                    // Those residual_* are for distributing residual evenly.
+                    let residual_txs_for_this_conn = total % connections;
+                    let residual_workers_for_this_conn = workers % connections;
+
+                    let (txs_for_this_conn, workers_for_this_conn) = {
+                        let txs_for_this_conn = if i < residual_txs_for_this_conn {
+                            total / connections + 1
+                        } else {
+                            total / connections
+                        };
+                        let workers_for_this_conn = if i < residual_workers_for_this_conn {
+                            workers / connections + 1
+                        } else {
+                            workers / connections
+                        };
+                        (txs_for_this_conn, workers_for_this_conn)
                     };
 
-                    let worker_workloads = (1..=workers)
+                    let worker_workloads = (0..workers_for_this_conn)
                         .map(|w| {
-                            let txs_per_worker = if (w as u64) != workers {
-                                txs_per_conn / workers
+                            let residual_txs_for_this_worker =
+                                txs_for_this_conn % workers_for_this_conn;
+
+                            let txs_for_this_worker = if w < residual_txs_for_this_worker {
+                                txs_for_this_conn / workers_for_this_conn + 1
                             } else {
-                                txs_per_conn % workers
+                                txs_for_this_conn / workers_for_this_conn
                             };
 
-                            (0..txs_per_worker)
+                            (0..txs_for_this_worker)
                                 .map(|_| {
                                     let tx = Transaction {
                                         to: rng.gen::<[u8; 20]>().to_vec(),
@@ -293,13 +309,16 @@ async fn main() -> Result<()> {
             for h in hs {
                 let _ = h.await;
             }
-            progbar.finish();
+            progbar.finish_at_current_pos();
 
             println!(
                 "sending `{}` transactions finished in `{}` ms",
                 total,
                 t.elapsed().as_millis()
             );
+            let success = progbar.position();
+            let failure = total - success;
+            println!("`{}` success, `{}` failure", success, failure);
 
             let mut check_interval = tokio::time::interval(Duration::from_secs(1));
             let mut finalized_tx = 0;
