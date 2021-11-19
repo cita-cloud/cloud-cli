@@ -8,6 +8,7 @@ mod cli;
 mod client;
 mod crypto;
 mod display;
+mod proto;
 mod utils;
 mod wallet;
 
@@ -20,11 +21,13 @@ use serde_json::json;
 use anyhow::anyhow;
 use anyhow::Result;
 
-use tonic::transport::Channel;
+use tonic::transport::channel::Channel;
+use tonic::transport::channel::Endpoint;
 
-use cita_cloud_proto::blockchain::RawTransaction;
-use cita_cloud_proto::blockchain::Transaction;
-use cita_cloud_proto::controller::rpc_service_client::RpcServiceClient as ControllerClient;
+use proto::{
+    blockchain::{RawTransaction, Transaction},
+    controller::rpc_service_client::RpcServiceClient as ControllerClient,
+};
 
 use cli::build_cli;
 use client::Client;
@@ -175,8 +178,7 @@ async fn main() -> Result<()> {
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
             let workers = m
                 .value_of("concurrency")
-                .unwrap()
-                .parse::<u64>()
+                .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
 
             let mut start_at = client.get_block_number(false).await;
@@ -188,8 +190,17 @@ async fn main() -> Result<()> {
             let conns = {
                 let mut conns = vec![];
                 let addr = format!("http://{}", rpc_addr);
+                let timeout = Duration::from_secs(15);
                 for _ in 1..=connections {
-                    let conn = ControllerClient::connect(addr.clone()).await.unwrap();
+                    let conn = {
+                        let channel = Endpoint::from_shared(addr.clone())
+                            .unwrap()
+                            .timeout(timeout)
+                            .connect()
+                            .await
+                            .unwrap();
+                        ControllerClient::new(channel)
+                    };
                     conns.push(conn);
                 }
                 conns

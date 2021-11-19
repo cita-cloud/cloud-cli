@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package blockchain;
+
+message BlockHeader {
+    // hash of previous BlockHeader
+    bytes prevhash = 1;
+    uint64 timestamp = 2;
+    uint64 height = 3;
+    bytes transactions_root = 4;
+    bytes proposer = 5;
+}
+
+message Transaction {
+    uint32 version = 1;
+    // 1. length is 20 bytes for evm.
+    // 2. if executor is multi-vm, it will be a path.
+    bytes to = 2;
+    // length is less than 128
+    string nonce = 3;
+    uint64 quota = 4;
+    uint64 valid_until_block = 5;
+    bytes data = 6;
+    // length is 32 bytes.
+    bytes value = 7;
+    // length is 32 bytes.
+    bytes chain_id = 8;
+}
+
+message Witness {
+    bytes signature = 1;
+    // add to support multi-address, or we don't know which address algorithm to use
+    bytes sender = 2;
+}
+
+message UnverifiedTransaction {
+    Transaction transaction = 1;
+    // add to support multi-hash, or we don't know which hash algorithm to use
+    bytes transaction_hash = 2;
+    Witness witness = 3;
+}
+
+message UtxoTransaction {
+    uint32 version = 1;
+    bytes pre_tx_hash = 2;
+    bytes output = 3;
+    uint64 lock_id = 4;
+}
+
+message UnverifiedUtxoTransaction {
+    UtxoTransaction transaction = 1;
+    // add to support multi-hash, or we don't know which hash algorithm to use
+    bytes transaction_hash = 2;
+    repeated Witness witnesses = 3;
+}
+
+message RawTransactions {
+    repeated RawTransaction body = 1;
+}
+
+message RawTransaction {
+    oneof tx {
+        UnverifiedTransaction normal_tx = 1;
+        UnverifiedUtxoTransaction utxo_tx = 2;
+    }
+}
+
+message CompactBlockBody {
+    // transaction hash of UnverifiedTransaction or UnverifyedUtxoTransaction.
+    repeated bytes tx_hashes = 1;
+}
+
+message CompactBlock {
+    uint32 version = 1;
+    BlockHeader header = 2;
+    CompactBlockBody body = 3;
+}
+
+message Block {
+    uint32 version = 1;
+    BlockHeader header = 2;
+    RawTransactions body = 3;
+    bytes proof = 4;
+}

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "common.proto";
+import "blockchain.proto";
+
+package executor;
+
+// executor won't define structure of executed block/receipt/log etc.
+// implement can customize it.
+
+message CallRequest {
+    // 1. length is 20 bytes for evm.
+    // 2. if executor is multi-vm, it will be a path.
+    bytes to = 1;
+    bytes from = 2;
+    // 4 bytes for evm.
+    bytes method = 3;
+    repeated bytes args = 4;
+}
+
+message CallResponse {
+    bytes value = 1;
+}
+
+service ExecutorService {
+    // exec a block return executed_block_hash
+    rpc Exec(blockchain.Block) returns (common.HashResponse);
+
+    rpc Call(CallRequest) returns (CallResponse);
+}

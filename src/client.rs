@@ -23,25 +23,22 @@ use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 use tonic::Request;
 
-use cita_cloud_proto::executor::executor_service_client::ExecutorServiceClient as ExecutorClient;
-
-use cita_cloud_proto::executor::CallRequest;
-
-use cita_cloud_proto::blockchain::{
-    raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-    UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-    Witness,
-};
-use cita_cloud_proto::common::Address;
-use cita_cloud_proto::common::Empty;
-use cita_cloud_proto::common::Hash;
-use cita_cloud_proto::controller::{
-    rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-    TransactionIndex,
-};
-
-use cita_cloud_proto::evm::{
-    rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce, Receipt,
+use crate::proto::{
+    blockchain::{
+        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
+        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
+        Witness,
+    },
+    common::{Address, Empty, Hash},
+    controller::{
+        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
+        TransactionIndex,
+    },
+    evm::{
+        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
+        Receipt,
+    },
+    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
 use crate::crypto::hash_data;
@@ -65,12 +62,12 @@ impl Client {
     pub fn new(account: Account, controller_addr: &str, executor_addr: &str) -> Self {
         let controller = {
             let addr = format!("http://{}", controller_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy().unwrap();
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
             ControllerClient::new(channel)
         };
         let executor = {
             let addr = format!("http://{}", executor_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy().unwrap();
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
             ExecutorClient::new(channel)
         };
 
@@ -78,7 +75,7 @@ impl Client {
         let evm = {
             // use the same addr as executor
             let addr = format!("http://{}", executor_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy().unwrap();
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
             EvmClient::new(channel)
         };
 

@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+import "common.proto";
+import "blockchain.proto";
+
+package controller;
+
+message Flag {
+    bool flag = 1;
+}
+
+message BlockNumber {
+    uint64 block_number = 1;
+}
+
+message SystemConfig {
+    uint32 version = 1;
+    bytes chain_id = 2;
+    bytes admin = 3;
+    uint32 block_interval = 4;
+    repeated bytes validators = 5;
+    bool emergency_brake = 6;
+    bytes version_pre_hash = 7;
+    bytes chain_id_pre_hash = 8;
+    bytes admin_pre_hash = 9;
+    bytes block_interval_pre_hash = 10;
+    bytes validators_pre_hash = 11;
+    bytes emergency_brake_pre_hash = 12;
+}
+
+message SoftwareVersion {
+    string version = 1;
+}
+
+message PeerCount {
+    uint64 peer_count = 1;
+}
+
+message TransactionIndex {
+    uint64 tx_index = 1;
+}
+
+service RPCService {
+    // flag means latest or pending.
+    // true means pending, false means latest.
+    rpc GetBlockNumber(Flag) returns (BlockNumber);
+
+    rpc SendRawTransaction(blockchain.RawTransaction) returns (common.Hash);
+
+    rpc SendRawTransactions(blockchain.RawTransactions) returns (common.Hashes);
+
+    rpc GetBlockByHash(common.Hash) returns (blockchain.CompactBlock);
+
+    rpc GetBlockByNumber(BlockNumber) returns (blockchain.CompactBlock);
+
+    rpc GetTransaction(common.Hash) returns (blockchain.RawTransaction);
+
+    rpc GetSystemConfig(common.Empty) returns (SystemConfig);
+
+    rpc GetVersion(common.Empty) returns (SoftwareVersion);
+
+    rpc GetBlockHash(BlockNumber) returns (common.Hash);
+
+    rpc GetTransactionBlockNumber(common.Hash) returns (BlockNumber);
+
+    rpc GetTransactionIndex(common.Hash) returns (TransactionIndex);
+
+    rpc GetPeerCount(common.Empty) returns (PeerCount);
+
+    // add new node
+    rpc AddNode(common.NodeNetInfo) returns (common.StatusCode);
+
+    // get peers info
+    rpc GetPeersInfo(common.Empty) returns (common.TotalNodeInfo);
+}
+
+service Consensus2ControllerService {
+    // Consensus request a Proposal to start consensus
+    // ret: proposal
+    rpc GetProposal(common.Empty) returns (common.ProposalResponse);
+
+    // when Consensus received a new proposal from other nodes, it will ask controller to check it
+    // args: proposal hash
+    // ret: ok or not
+    rpc CheckProposal(common.Proposal) returns (common.StatusCode);
+
+    // after Consensus, tell controller a proposal has committed
+    rpc CommitBlock(common.ProposalWithProof) returns (common.ConsensusConfigurationResponse);
+}

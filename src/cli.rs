@@ -260,7 +260,7 @@ pub fn build_cli() -> App<'static> {
 
     // main command
     let cli_app = App::new("cloud-cli")
-        .about("The command line interface to interact with `CITA-Cloud`.")
+        .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
         .version(env!("CARGO_PKG_VERSION"))
         .arg(user_arg)
         .arg(rpc_addr_arg)
