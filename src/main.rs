@@ -24,6 +24,8 @@ use anyhow::Result;
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 
+use rayon::prelude::*;
+
 use proto::{
     blockchain::{RawTransaction, Transaction},
     controller::rpc_service_client::RpcServiceClient as ControllerClient,
@@ -190,25 +192,24 @@ async fn main() -> Result<()> {
             println!("Preparing connections and transactions..");
             let conns = {
                 let mut conns = vec![];
-                let addr = format!("http://{}", rpc_addr);
+                let endpoint = {
+                    let addr = format!("http://{}", rpc_addr);
+                    let mut endpoint = Endpoint::from_shared(addr).unwrap();
+                    if timeout > 0 {
+                        endpoint = endpoint.timeout(Duration::from_secs(timeout));
+                    }
+                    endpoint
+                };
                 for _ in 0..connections {
-                    let conn = {
-                        let mut ep = Endpoint::from_shared(addr.clone()).unwrap();
-                        if timeout > 0 {
-                            ep = ep.timeout(Duration::from_secs(timeout));
-                        }
-                        let channel = ep.connect().await.unwrap();
-                        ControllerClient::new(channel)
-                    };
-                    conns.push(conn);
+                    let conn = endpoint.connect().await.unwrap();
+                    conns.push(ControllerClient::new(conn));
                 }
                 conns
             };
-            let mut rng = thread_rng();
             // Avoid lazy evaluation.
             #[allow(clippy::needless_collect)]
             let conn_workloads = conns
-                .into_iter()
+                .into_par_iter()
                 .enumerate()
                 .map(|(i, conn)| {
                     let i = i as u64;
@@ -231,6 +232,7 @@ async fn main() -> Result<()> {
                     };
 
                     let worker_workloads = (0..workers_for_this_conn)
+                        .into_par_iter()
                         .map(|w| {
                             let residual_txs_for_this_worker =
                                 txs_for_this_conn % workers_for_this_conn;
@@ -242,7 +244,9 @@ async fn main() -> Result<()> {
                             };
 
                             (0..txs_for_this_worker)
+                                .into_par_iter()
                                 .map(|_| {
+                                    let mut rng = thread_rng();
                                     let tx = Transaction {
                                         to: rng.gen::<[u8; 20]>().to_vec(),
                                         data: rng.gen::<[u8; 32]>().to_vec(),
