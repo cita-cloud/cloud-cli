@@ -121,7 +121,7 @@ pub fn build_cli() -> App<'static> {
                 .long("concurrency")
                 .takes_value(true)
                 .required(false)
-                .validator(str::parse::<u32>),
+                .validator(str::parse::<u64>),
         )
         .arg(
             Arg::new("connections")
@@ -129,7 +129,15 @@ pub fn build_cli() -> App<'static> {
                 .long("connections")
                 .takes_value(true)
                 .default_value("16")
-                .validator(str::parse::<u32>),
+                .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("timeout")
+                .about("Timeout for each request (in seconds). Use 0 for infinite")
+                .long("timeout")
+                .takes_value(true)
+                .default_value("120")
+                .validator(str::parse::<u64>),
         )
         .arg(
             Arg::new("total")

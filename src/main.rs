@@ -176,6 +176,7 @@ async fn main() -> Result<()> {
         ("bench", m) => {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
+            let timeout = m.value_of("timeout").unwrap().parse::<u64>().unwrap();
             let workers = m
                 .value_of("concurrency")
                 .map(|s| s.parse::<u64>().unwrap())
@@ -190,15 +191,13 @@ async fn main() -> Result<()> {
             let conns = {
                 let mut conns = vec![];
                 let addr = format!("http://{}", rpc_addr);
-                let timeout = Duration::from_secs(15);
                 for _ in 0..connections {
                     let conn = {
-                        let channel = Endpoint::from_shared(addr.clone())
-                            .unwrap()
-                            .timeout(timeout)
-                            .connect()
-                            .await
-                            .unwrap();
+                        let mut ep = Endpoint::from_shared(addr.clone()).unwrap();
+                        if timeout > 0 {
+                            ep = ep.timeout(Duration::from_secs(timeout));
+                        }
+                        let channel = ep.connect().await.unwrap();
                         ControllerClient::new(channel)
                     };
                     conns.push(conn);
@@ -250,7 +249,7 @@ async fn main() -> Result<()> {
                                         value: rng.gen::<[u8; 32]>().to_vec(),
                                         nonce: rng.gen::<u64>().to_string(),
                                         quota: 3_000_000,
-                                        valid_until_block: start_at + 99,
+                                        valid_until_block: start_at + 64,
                                         chain_id: chain_id.clone(),
                                         version,
                                     };
