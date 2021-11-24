@@ -15,6 +15,7 @@
 // Those addtional lets make the code more readable.
 #![allow(clippy::let_and_return)]
 
+use cita_cloud_proto::common::NodeNetInfo;
 use tokio::sync::OnceCell;
 
 use prost::Message;
@@ -376,6 +377,16 @@ impl Client {
             .unwrap()
             .into_inner()
             .peer_count
+    }
+
+    pub async fn add_node(&self, address: String) -> u32 {
+        self.controller
+            .clone()
+            .add_node(NodeNetInfo { multi_address: address, origin: 0 })
+            .await
+            .unwrap()
+            .into_inner()
+            .code
     }
 
     pub async fn get_tx(&self, tx_hash: Vec<u8>) -> RawTransaction {

@@ -172,6 +172,11 @@ async fn main() -> Result<()> {
             let cnt = client.get_peer_count().await;
             println!("peer_count: {}", cnt);
         }
+        ("add-node", m) => {
+            let address = String::from(m.value_of("address").unwrap());
+            let add_node = client.add_node(address).await;
+            println!("StatusCode: {}", add_node);
+        }
         ("system-config", _m) => {
             let system_config = client.get_system_config().await;
             println!("{}", system_config.display());

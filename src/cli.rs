@@ -105,7 +105,18 @@ pub fn build_cli() -> App<'static> {
         .about("Get transaction's block number by tx_hash")
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
-    let peer_count = App::new("peer-count").about("Get peer count");
+    let peer_count = App::new("peer-count")
+        .about("Get peer count")
+        .setting(AppSettings::ColoredHelp);
+
+    let add_node = App::new("add-node")
+        .about("Add node")
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::new("address")
+                .required(true)
+                .validator(parse_addr)
+        );
 
     let system_config = App::new("system-config").about("Get system config");
 
@@ -292,6 +303,7 @@ pub fn build_cli() -> App<'static> {
             get_tx_block_number,
             get_tx_index,
             peer_count,
+            add_node,
             system_config,
             bench,
             account,
