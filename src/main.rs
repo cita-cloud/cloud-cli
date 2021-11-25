@@ -237,11 +237,61 @@ async fn main() -> Result<()> {
                         (txs_for_this_conn, workers_for_this_conn)
                     };
 
+<<<<<<< HEAD
                     let worker_workloads = (0..workers_for_this_conn)
                         .into_par_iter()
                         .map(|w| {
                             let residual_txs_for_this_worker =
                                 txs_for_this_conn % workers_for_this_conn;
+=======
+                let block_number = client.get_tx_block_number(tx_hash).await;
+                println!("block number: {}", block_number.block_number);
+            }
+            ("peer-count", _m) => {
+                let cnt = client.get_peer_count().await;
+                println!("peer_count: {}", cnt);
+            }
+            ("add-node", m) => {
+                let address = ::prost::alloc::string::String::from(m.value_of("address").unwrap());
+                println!("Adding node: {}", address);
+                let add_node = client.add_node(address).await;
+                println!("StatusCode: {}", add_node);
+            }
+            ("system-config", _m) => {
+                let system_config = client.get_system_config().await;
+                println!("{}", system_config.display());
+            }
+            ("bench", m) => {
+                let client = Arc::new(client);
+                let tx_count_per_worker =
+                    m.value_of("tx-count-per-worker").unwrap().parse::<u64>()?;
+                let concurrency = m.value_of("concurrency").unwrap().parse::<u64>()?;
+
+                let mut start_at = client.get_block_number(false).await;
+                let sys_config = client.get_system_config().await;
+                let chain_id = sys_config.chain_id;
+                let version = sys_config.version;
+
+                let mut rng = thread_rng();
+                // Collect here to avoid lazy evaluation
+                #[allow(clippy::needless_collect)]
+                let jobs: Vec<Vec<Transaction>> = (0..concurrency)
+                    .map(|_| {
+                        (0..tx_count_per_worker)
+                            .map(|_| Transaction {
+                                to: rng.gen::<[u8; 20]>().to_vec(),
+                                data: rng.gen::<[u8; 32]>().to_vec(),
+                                value: rng.gen::<[u8; 32]>().to_vec(),
+                                nonce: rng.gen::<u64>().to_string(),
+                                quota: 3_000_000,
+                                valid_until_block: start_at + 99,
+                                chain_id: chain_id.clone(),
+                                version,
+                            })
+                            .collect()
+                    })
+                    .collect();
+>>>>>>> aca0076 ('add-node')
 
                             let txs_for_this_worker = if w < residual_txs_for_this_worker {
                                 txs_for_this_conn / workers_for_this_conn + 1

@@ -115,7 +115,6 @@ pub fn build_cli() -> App<'static> {
         .arg(
             Arg::new("address")
                 .required(true)
-                .validator(parse_addr)
         );
 
     let system_config = App::new("system-config").about("Get system config");
