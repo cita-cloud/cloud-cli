@@ -309,6 +309,7 @@ pub fn build_cli() -> App<'static> {
             get_tx_index,
             peer_count,
             add_node,
+            peers_info,
             system_config,
             bench,
             account,

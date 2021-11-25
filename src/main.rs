@@ -15,7 +15,6 @@ mod wallet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use cita_cloud_proto::common::NodeInfo;
 use rand::{thread_rng, Rng};
 use serde_json::json;
 
