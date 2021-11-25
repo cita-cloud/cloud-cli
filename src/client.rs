@@ -15,7 +15,6 @@
 // Those addtional lets make the code more readable.
 #![allow(clippy::let_and_return)]
 
-use cita_cloud_proto::common::NodeNetInfo;
 use tokio::sync::OnceCell;
 
 use prost::Message;
@@ -387,6 +386,16 @@ impl Client {
             .unwrap()
             .into_inner()
             .code
+    }
+
+    pub async fn get_peers_info(&self) -> ::prost::alloc::vec::Vec<NodeInfo>{
+        self.controller
+            .clone()
+            .get_peers_info(Empty {})
+            .await
+            .unwrap()
+            .into_inner()
+            .nodes
     }
 
     pub async fn get_tx(&self, tx_hash: Vec<u8>) -> RawTransaction {

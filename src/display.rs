@@ -162,6 +162,14 @@ impl Display for RawTransaction {
     }
 }
 
+impl Display for NodeInfo{
+    fn to_json(&self) -> Json {
+        json!({
+            "peer address": hex(&self.address),
+        })
+    }
+}
+
 #[cfg(feature = "evm")]
 impl Display for Log {
     fn to_json(&self) -> Json {

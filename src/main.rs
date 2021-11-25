@@ -15,6 +15,7 @@ mod wallet;
 use std::sync::Arc;
 use std::time::Duration;
 
+use cita_cloud_proto::common::NodeInfo;
 use rand::{thread_rng, Rng};
 use serde_json::json;
 
@@ -256,6 +257,12 @@ async fn main() -> Result<()> {
                 println!("Adding node: {}", address);
                 let add_node = client.add_node(address).await;
                 println!("StatusCode: {}", add_node);
+            }
+            ("peers-info",_m) => {
+                let peers_info= client.get_peers_info().await;
+                for info in &peers_info{
+                    println!("{}", info.display());
+                }
             }
             ("system-config", _m) => {
                 let system_config = client.get_system_config().await;

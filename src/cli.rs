@@ -117,7 +117,13 @@ pub fn build_cli() -> App<'static> {
                 .required(true)
         );
 
-    let system_config = App::new("system-config").about("Get system config");
+    let peers_info = App::new("peers-info")
+        .about("Get peers info")
+        .setting(AppSettings::ColoredHelp);
+
+    let system_config = App::new("system-config")
+        .about("Get system config")
+        .setting(AppSettings::ColoredHelp);
 
     let bench = App::new("bench")
         .about("Send transactions with {-c} workers over {--connections} connections")
