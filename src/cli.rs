@@ -61,10 +61,10 @@ pub fn build_cli() -> App<'static> {
         );
 
     let block_number = App::new("block-number").about("Get block number").arg(
-        Arg::new("for-pending")
+        Arg::new("for_pending")
             .about("get the block number of pending block")
             .short('p')
-            .long("for-pending"),
+            .long("for_pending"),
     );
 
     let get_block = App::new("get-block")

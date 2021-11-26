@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
             println!("tx_hash: {}", hex(&tx_hash));
         }
         ("block-number", m) => {
-            let for_pending = m.is_present("for-pending");
+            let for_pending = m.is_present("for_pending");
 
             let block_number = client.get_block_number(for_pending).await;
             println!("block_number: {}", block_number);
