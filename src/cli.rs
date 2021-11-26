@@ -149,10 +149,17 @@ pub fn build_cli() -> App<'static> {
     let account = build_account_subcmd();
 
     let completions = App::new("completions")
-        .about("Generate completions for current shell")
+        .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
         .arg(
             Arg::new("shell")
                 .required(true)
+                .possible_values(&[
+                    "bash",
+                    "zsh",
+                    "powershell",
+                    "fish",
+                    "elvish",
+                ])
                 .validator(|s| s.parse::<clap_generate::Shell>()),
         );
 
@@ -228,7 +235,7 @@ pub fn build_cli() -> App<'static> {
 
     #[cfg(feature = "evm")]
     let store_abi = App::new("store-abi")
-        .about("Store abi")
+        .about("Store contract ABI")
         .arg(
             Arg::new("addr")
                 .short('a')
@@ -240,7 +247,7 @@ pub fn build_cli() -> App<'static> {
         .arg(Arg::new("abi").required(true).takes_value(true));
 
     #[cfg(feature = "evm")]
-    let get_abi = App::new("get-abi").about("Get specific contract abi").arg(
+    let get_abi = App::new("get-abi").about("Get specific contract ABI").arg(
         Arg::new("addr")
             .required(true)
             .takes_value(true)
