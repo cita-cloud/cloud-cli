@@ -138,7 +138,7 @@ impl Client {
             to,
             nonce,
             quota: 3_000_000,
-            valid_until_block: current_block_number + 99,
+            valid_until_block: current_block_number + 95,
             data,
             value,
             version: sys_config.version,

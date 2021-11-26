@@ -253,7 +253,7 @@ async fn main() -> Result<()> {
                                         value: rng.gen::<[u8; 32]>().to_vec(),
                                         nonce: rng.gen::<u64>().to_string(),
                                         quota: 3_000_000,
-                                        valid_until_block: start_at + 64,
+                                        valid_until_block: start_at + 95,
                                         chain_id: chain_id.clone(),
                                         version,
                                     };
