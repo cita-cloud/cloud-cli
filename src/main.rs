@@ -128,18 +128,19 @@ async fn main() -> Result<()> {
             println!("tx_hash: {}", hex(&tx_hash));
         }
         ("block-number", m) => {
-            let for_pending = m.is_present("for_pending");
+            let for_pending = m.is_present("for-pending");
 
             let block_number = client.get_block_number(for_pending).await;
             println!("block_number: {}", block_number);
         }
         ("get-block", m) => {
-            let block = if let Some(n) = m.value_of("number") {
-                let block_number = n.parse()?;
-                client.get_block_by_number(block_number).await
-            } else {
-                let hash = parse_value(m.value_of("hash").unwrap())?;
+            let s = m.value_of("number_or_hash").unwrap();
+            let block = if s.starts_with("0x") {
+                let hash = parse_value(s)?;
                 client.get_block_by_hash(hash).await
+            } else {
+                let block_number = s.parse()?;
+                client.get_block_by_number(block_number).await
             };
 
             println!("{}", block.display());

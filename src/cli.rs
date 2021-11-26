@@ -1,6 +1,8 @@
 use clap::App;
 use clap::Arg;
 
+use anyhow::Context;
+
 use crate::utils::{parse_addr, parse_data, parse_value};
 
 pub fn build_cli() -> App<'static> {
@@ -58,29 +60,28 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_data),
         );
 
-    let block_number = App::new("block-number")
-        .about("Get block number")
-        .arg(Arg::new("for_pending").short('p').long("for_pending"));
+    let block_number = App::new("block-number").about("Get block number").arg(
+        Arg::new("for-pending")
+            .about("get the block number of pending block")
+            .short('p')
+            .long("for-pending"),
+    );
 
     let get_block = App::new("get-block")
-        .about("Get block by number or hash")
+        .about("Get block by block number(height) or hash")
         .arg(
-            Arg::new("number")
-                .about("the block number(height)")
-                .long("number")
-                .short('n')
-                .required_unless_present("hash")
+            Arg::new("number_or_hash")
+                .about("plain decimal number or hash with `0x` prefix")
+                .required(true)
                 .takes_value(true)
-                .validator(str::parse::<u64>),
-        )
-        .arg(
-            Arg::new("hash")
-                .long("hash")
-                .about("the block hash")
-                .short('h')
-                .required_unless_present("number")
-                .takes_value(true)
-                .validator(parse_value),
+                .validator(|s| {
+                    if s.starts_with("0x") {
+                        parse_value(s)?;
+                    } else {
+                        s.parse::<u64>().context("cannot parse block number, if you want to get block by hash, please prefix it with `0x`")?;
+                    }
+                    Ok::<(), anyhow::Error>(())
+                })
         );
 
     let get_block_hash = App::new("block-hash")
@@ -332,7 +333,7 @@ fn build_account_subcmd() -> App<'static> {
         );
 
     let login = App::new("login")
-        .about("Login to use the user's account by default")
+        .about("Login to use the user's account as default")
         .arg(
             Arg::new("user")
                 .about("The user name to login")
