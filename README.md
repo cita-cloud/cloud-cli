@@ -31,7 +31,7 @@ $ cldi help
 
 cloud-cli 0.2.0
 
-The command line interface to interact with `CITA-Cloud`.
+The command line interface to interact with `CITA-Cloud v6.3.0`.
 
 USAGE:
     cldi.exe [OPTIONS] [SUBCOMMAND]
@@ -49,10 +49,11 @@ SUBCOMMANDS:
     block-hash             Get block hash by block number(height)
     block-number           Get block number
     call                   Executor call
-    completions            Generate completions for current shell
+    completions            Generate completions for current shell. Add the output script to
+                           `.profile` or `.bashrc` etc. to make it effective.
     create                 Create contract
     emergency-brake        Send emergency brake cmd to chain
-    get-abi                Get specific contract abi
+    get-abi                Get specific contract ABI
     get-balance            Get balance by account address
     get-block              Get block by number or hash
     get-code               Get code by contract address
@@ -65,7 +66,7 @@ SUBCOMMANDS:
     receipt                Get receipt by tx_hash
     send                   Send transaction
     set-block-interval     Set block interval
-    store-abi              Store abi
+    store-abi              Store contract ABI
     system-config          Get system config
     update-admin           Update admin of the chain
     update-validators      Update validators of the chain
