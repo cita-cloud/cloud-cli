@@ -1,6 +1,7 @@
 use clap::App;
-use clap::AppSettings;
 use clap::Arg;
+
+use anyhow::Context;
 
 use crate::utils::{parse_addr, parse_data, parse_value};
 
@@ -8,7 +9,6 @@ pub fn build_cli() -> App<'static> {
     // subcommands
     let call = App::new("call")
         .about("Executor call")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("from")
                 .short('f')
@@ -34,7 +34,6 @@ pub fn build_cli() -> App<'static> {
 
     let send = App::new("send")
         .about("Send transaction")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("to")
                 .about("the address to send")
@@ -61,36 +60,32 @@ pub fn build_cli() -> App<'static> {
                 .validator(parse_data),
         );
 
-    let block_number = App::new("block-number")
-        .about("Get block number")
-        .setting(AppSettings::ColoredHelp)
-        .arg(Arg::new("for_pending").short('p').long("for_pending"));
+    let block_number = App::new("block-number").about("Get block number").arg(
+        Arg::new("for_pending")
+            .about("get the block number of pending block")
+            .short('p')
+            .long("for_pending"),
+    );
 
     let get_block = App::new("get-block")
-        .about("Get block by number or hash")
-        .setting(AppSettings::ColoredHelp)
+        .about("Get block by block number(height) or hash")
         .arg(
-            Arg::new("number")
-                .about("the block number(height)")
-                .long("number")
-                .short('n')
-                .required_unless_present("hash")
+            Arg::new("number_or_hash")
+                .about("plain decimal number or hash with `0x` prefix")
+                .required(true)
                 .takes_value(true)
-                .validator(str::parse::<u64>),
-        )
-        .arg(
-            Arg::new("hash")
-                .long("hash")
-                .about("the block hash")
-                .short('h')
-                .required_unless_present("number")
-                .takes_value(true)
-                .validator(parse_value),
+                .validator(|s| {
+                    if s.starts_with("0x") {
+                        parse_value(s)?;
+                    } else {
+                        s.parse::<u64>().context("cannot parse block number, if you want to get block by hash, please prefix it with `0x`")?;
+                    }
+                    Ok::<(), anyhow::Error>(())
+                })
         );
 
     let get_block_hash = App::new("block-hash")
         .about("Get block hash by block number(height)")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("number")
                 .about("the block number(height)")
@@ -100,61 +95,77 @@ pub fn build_cli() -> App<'static> {
 
     let get_tx = App::new("get-tx")
         .about("Get transaction by hash")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
     let get_tx_index = App::new("get-tx-index")
         .about("Get transaction's index by tx_hash")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
     let get_tx_block_number = App::new("get-tx-block-number")
         .about("Get transaction's block number by tx_hash")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
     let peer_count = App::new("peer-count").about("Get peer count");
 
-    let system_config = App::new("system-config")
-        .about("Get system config")
-        .setting(AppSettings::ColoredHelp);
+    let system_config = App::new("system-config").about("Get system config");
 
     let bench = App::new("bench")
-        .about("Send txs with {-c} workers and {-n} txs per worker")
-        .setting(AppSettings::ColoredHelp)
+        .about("Send transactions with {-c} workers over {--connections} connections")
         .arg(
             Arg::new("concurrency")
+                .about(
+                    "Number of request workers to run concurrently for sending transactions. \
+                    Workers will be distributed evenly among all the connections. \
+                    [default: the same as total]",
+                )
                 .short('c')
                 .long("concurrency")
-                .about("Number of request workers to run concurrently for sending txs")
-                .default_value("1")
+                .takes_value(true)
+                .required(false)
                 .validator(str::parse::<u64>),
         )
         .arg(
-            Arg::new("tx-count-per-worker")
-                .short('n')
-                .long("tx-count-per-worker")
-                .about("Number of txs to send per worker")
-                .default_value("1")
+            Arg::new("connections")
+                .about("Number of connections connects to server")
+                .long("connections")
+                .takes_value(true)
+                .default_value("16")
                 .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("timeout")
+                .about("Timeout for each request (in seconds). Use 0 for infinite")
+                .long("timeout")
+                .takes_value(true)
+                .default_value("120")
+                .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("total")
+                .about("Number of transactions to send")
+                .default_value("200")
+                .validator(str::parse::<u32>),
         );
 
     let account = build_account_subcmd();
 
     let completions = App::new("completions")
-        .about("Generate completions for current shell")
-        .setting(AppSettings::ColoredHelp)
-        .arg(Arg::new("shell").required(true).possible_values(&[
-            "bash",
-            "powershell",
-            "zsh",
-            "fish",
-            "elvish",
-        ]));
+        .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
+        .arg(
+            Arg::new("shell")
+                .required(true)
+                .possible_values(&[
+                    "bash",
+                    "zsh",
+                    "powershell",
+                    "fish",
+                    "elvish",
+                ])
+                .validator(|s| s.parse::<clap_generate::Shell>()),
+        );
 
     let update_admin = App::new("update-admin")
         .about("Update admin of the chain")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("admin_addr")
                 .about("the address of the new admin")
@@ -164,18 +175,16 @@ pub fn build_cli() -> App<'static> {
 
     let update_validators = App::new("update-validators")
         .about("Update validators of the chain")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("validators")
                 .about("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .validator(parse_addr),
         );
 
     let set_block_interval = App::new("set-block-interval")
         .about("Set block interval")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("block_interval")
                 .about("new block interval")
@@ -185,7 +194,6 @@ pub fn build_cli() -> App<'static> {
 
     let emergency_brake = App::new("emergency-brake")
         .about("Send emergency brake cmd to chain")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("switch")
                 .about("turn on/off")
@@ -196,7 +204,6 @@ pub fn build_cli() -> App<'static> {
     #[cfg(feature = "evm")]
     let create = App::new("create")
         .about("Create contract")
-        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::new("value")
                 .short('v')
@@ -210,31 +217,26 @@ pub fn build_cli() -> App<'static> {
     #[cfg(feature = "evm")]
     let receipt = App::new("receipt")
         .about("Get receipt by tx_hash")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
     #[cfg(feature = "evm")]
     let get_code = App::new("get-code")
         .about("Get code by contract address")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
     let get_balance = App::new("get-balance")
         .about("Get balance by account address")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
     let get_tx_count = App::new("get-tx-count")
         .about("Get the transaction count of the address")
-        .setting(AppSettings::ColoredHelp)
         .arg(Arg::new("addr").required(true).validator(parse_addr));
 
     #[cfg(feature = "evm")]
     let store_abi = App::new("store-abi")
-        .about("Store abi")
-        .setting(AppSettings::ColoredHelp)
+        .about("Store contract ABI")
         .arg(
             Arg::new("addr")
                 .short('a')
@@ -246,15 +248,12 @@ pub fn build_cli() -> App<'static> {
         .arg(Arg::new("abi").required(true).takes_value(true));
 
     #[cfg(feature = "evm")]
-    let get_abi = App::new("get-abi")
-        .about("Get specific contract abi")
-        .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("addr")
-                .required(true)
-                .takes_value(true)
-                .validator(parse_addr),
-        );
+    let get_abi = App::new("get-abi").about("Get specific contract ABI").arg(
+        Arg::new("addr")
+            .required(true)
+            .takes_value(true)
+            .validator(parse_addr),
+    );
 
     let user_arg = Arg::new("user")
         .about("the user(account) to send tx")
@@ -277,9 +276,8 @@ pub fn build_cli() -> App<'static> {
 
     // main command
     let cli_app = App::new("cloud-cli")
-        .about("The command line interface to interact with `CITA-Cloud`.")
-        .version("0.1.0")
-        .setting(AppSettings::ColoredHelp)
+        .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(user_arg)
         .arg(rpc_addr_arg)
         .arg(executor_addr_arg)
@@ -335,7 +333,7 @@ fn build_account_subcmd() -> App<'static> {
         );
 
     let login = App::new("login")
-        .about("Login to use the user's account by default")
+        .about("Login to use the user's account as default")
         .arg(
             Arg::new("user")
                 .about("The user name to login")

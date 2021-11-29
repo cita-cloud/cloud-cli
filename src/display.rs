@@ -1,16 +1,18 @@
-use cita_cloud_proto::blockchain::{CompactBlock, RawTransaction, UnverifiedTransaction, Witness};
-use cita_cloud_proto::blockchain::{Transaction, UnverifiedUtxoTransaction, UtxoTransaction};
-use cita_cloud_proto::controller::SystemConfig;
-use cita_cloud_proto::evm::Log;
-use cita_cloud_proto::evm::Receipt;
-
 use serde_json::json;
 use serde_json::Value as Json;
 
-use crate::utils::display_time;
-use crate::utils::hex;
-
-use crate::wallet::Account;
+use crate::{
+    proto::{
+        blockchain::{
+            raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
+            UnverifiedUtxoTransaction, UtxoTransaction, Witness,
+        },
+        controller::SystemConfig,
+        evm::{Log, Receipt},
+    },
+    utils::{display_time, hex},
+    wallet::Account,
+};
 
 pub trait Display {
     fn to_json(&self) -> Json;
@@ -142,7 +144,6 @@ impl Display for Witness {
 
 impl Display for RawTransaction {
     fn to_json(&self) -> Json {
-        use cita_cloud_proto::blockchain::raw_transaction::Tx;
         match &self.tx {
             Some(Tx::NormalTx(tx)) => {
                 json!({

@@ -29,31 +29,31 @@ cargo install --path cloud-cli
 ```
 $ cldi help
 
-cloud-cli 0.1.0
-The command line interface to interact with `CITA-Cloud`.
+cloud-cli 0.2.0
+
+The command line interface to interact with `CITA-Cloud v6.3.0`.
 
 USAGE:
     cldi.exe [OPTIONS] [SUBCOMMAND]
 
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
 OPTIONS:
     -e, --executor_addr <executor_addr>    executor address
+    -h, --help                             Print help information
     -r, --rpc_addr <rpc_addr>              rpc(controller) address
     -u, --user <user>                      the user(account) to send tx
+    -V, --version                          Print version information
 
 SUBCOMMANDS:
     account                Manage account
-    bench                  Send txs with {-c} workers and {-n} txs per worker
+    bench                  Send transactions with {-c} workers over {--connections} connections
     block-hash             Get block hash by block number(height)
     block-number           Get block number
     call                   Executor call
-    completions            Generate completions for current shell
+    completions            Generate completions for current shell. Add the output script to
+                           `.profile` or `.bashrc` etc. to make it effective.
     create                 Create contract
     emergency-brake        Send emergency brake cmd to chain
-    get-abi                Get specific contract abi
+    get-abi                Get specific contract ABI
     get-balance            Get balance by account address
     get-block              Get block by number or hash
     get-code               Get code by contract address
@@ -61,12 +61,12 @@ SUBCOMMANDS:
     get-tx-block-number    Get transaction's block number by tx_hash
     get-tx-count           Get the transaction count of the address
     get-tx-index           Get transaction's index by tx_hash
-    help                   Prints this message or the help of the given subcommand(s)
+    help                   Print this message or the help of the given subcommand(s)
     peer-count             Get peer count
     receipt                Get receipt by tx_hash
     send                   Send transaction
     set-block-interval     Set block interval
-    store-abi              Store abi
+    store-abi              Store contract ABI
     system-config          Get system config
     update-admin           Update admin of the chain
     update-validators      Update validators of the chain

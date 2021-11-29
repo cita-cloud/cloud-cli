@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+import "blockchain.proto";
+
+package common;
+
+message Empty {}
+
+message Hash {
+    bytes hash = 1;
+}
+
+message Hashes {
+    repeated Hash hashes = 1;
+}
+
+message Address {
+    bytes address = 1;
+}
+
+message Proposal {
+    uint64 height = 1;
+    bytes data = 2;
+}
+
+message ProposalWithProof {
+    Proposal proposal = 1;
+    bytes proof = 2;
+}
+
+message BFTProposal {
+    bytes pre_state_root = 1;
+    bytes pre_proof = 2;
+    blockchain.Block proposal = 3;
+}
+
+message ProposalEnum {
+    oneof proposal {
+        BFTProposal bft_proposal = 1;
+    }
+}
+
+message ConsensusConfiguration {
+    uint64 height = 1;
+    uint32 block_interval = 2;
+    repeated bytes validators = 3;
+}
+
+message StatusCode {
+    uint32 code = 1;
+}
+
+message HashResponse {
+    StatusCode status = 1;
+    Hash hash = 2;
+}
+
+message ProposalResponse {
+    StatusCode status = 1;
+    Proposal proposal = 2;
+}
+
+message ConsensusConfigurationResponse {
+    StatusCode status = 1;
+    ConsensusConfiguration config = 2;
+}
+
+message NodeNetInfo {
+    string multi_address = 1;
+    uint64 origin = 2;
+}
+
+message TotalNodeNetInfo {
+    repeated NodeNetInfo nodes = 1;
+}
+
+message NodeInfo {
+    bytes address = 1;
+    NodeNetInfo net_info = 2;
+}
+
+message TotalNodeInfo {
+    repeated NodeInfo nodes = 1;
+}
