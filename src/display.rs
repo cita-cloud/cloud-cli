@@ -164,8 +164,12 @@ impl Display for RawTransaction {
 
 impl Display for NodeInfo{
     fn to_json(&self) -> Json {
+        let s: Vec<&str> = self.net_info.as_ref().unwrap().multi_address.split('/').collect();
         json!({
-            "peer address": hex(&self.address),
+            "origin": &self.net_info.as_ref().unwrap().origin,
+            "host": s[2],
+            "port": s[4],
+            "domain": hex(&self.address),
         })
     }
 }
