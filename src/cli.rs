@@ -105,25 +105,15 @@ pub fn build_cli() -> App<'static> {
         .about("Get transaction's block number by tx_hash")
         .arg(Arg::new("tx_hash").required(true).validator(parse_value));
 
-    let peer_count = App::new("peer-count")
-        .about("Get peer count")
-        .setting(AppSettings::ColoredHelp);
+    let peer_count = App::new("peer-count").about("Get peer count");
 
     let add_node = App::new("add-node")
         .about("Add node")
-        .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::new("address")
-                .required(true)
-        );
+        .arg(Arg::new("multi_address").required(true));
 
-    let peers_info = App::new("peers-info")
-        .about("Get peers info")
-        .setting(AppSettings::ColoredHelp);
+    let peers_info = App::new("peers-info").about("Get peers info");
 
-    let system_config = App::new("system-config")
-        .about("Get system config")
-        .setting(AppSettings::ColoredHelp);
+    let system_config = App::new("system-config").about("Get system config");
 
     let bench = App::new("bench")
         .about("Send transactions with {-c} workers over {--connections} connections")

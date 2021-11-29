@@ -29,7 +29,7 @@ use crate::proto::{
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Address, Empty, Hash},
+    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
     controller::{
         rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
         TransactionIndex,

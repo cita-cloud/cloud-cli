@@ -173,7 +173,7 @@ async fn main() -> Result<()> {
             println!("peer_count: {}", cnt);
         }
         ("add-node", m) => {
-            let address = ::prost::alloc::string::String::from(m.value_of("address").unwrap());
+            let address = ::prost::alloc::string::String::from(m.value_of("multi_address").unwrap());
             println!("Adding node: {}", address);
             let add_node = client.add_node(address).await;
             println!("StatusCode: {}", add_node);

@@ -7,6 +7,7 @@ use crate::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
             UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
+        common::NodeInfo,
         controller::SystemConfig,
         evm::{Log, Receipt},
     },
