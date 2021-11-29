@@ -163,9 +163,15 @@ impl Display for RawTransaction {
     }
 }
 
-impl Display for NodeInfo{
+impl Display for NodeInfo {
     fn to_json(&self) -> Json {
-        let s: Vec<&str> = self.net_info.as_ref().unwrap().multi_address.split('/').collect();
+        let s: Vec<&str> = self
+            .net_info
+            .as_ref()
+            .unwrap()
+            .multi_address
+            .split('/')
+            .collect();
         json!({
             "origin": &self.net_info.as_ref().unwrap().origin,
             "host": s[2],

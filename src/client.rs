@@ -381,14 +381,17 @@ impl Client {
     pub async fn add_node(&self, address: String) -> u32 {
         self.controller
             .clone()
-            .add_node(NodeNetInfo { multi_address: address, origin: 0 })
+            .add_node(NodeNetInfo {
+                multi_address: address,
+                origin: 0,
+            })
             .await
             .unwrap()
             .into_inner()
             .code
     }
 
-    pub async fn get_peers_info(&self) -> ::prost::alloc::vec::Vec<NodeInfo>{
+    pub async fn get_peers_info(&self) -> ::prost::alloc::vec::Vec<NodeInfo> {
         self.controller
             .clone()
             .get_peers_info(Empty {})
