@@ -172,6 +172,22 @@ async fn main() -> Result<()> {
             let cnt = client.get_peer_count().await;
             println!("peer_count: {}", cnt);
         }
+        ("add-node", m) => {
+            let address = m.value_of("multi_address").unwrap();
+            println!("Adding node: {}", address);
+            let status = client.add_node(address.into()).await;
+            if status != 0 {
+                println!("`add_node` failed with status `{}`", status);
+            } else {
+                println!("Ok");
+            }
+        }
+        ("peers-info", _m) => {
+            let peers_info = client.get_peers_info().await;
+            for info in &peers_info {
+                println!("{}", info.display());
+            }
+        }
         ("system-config", _m) => {
             let system_config = client.get_system_config().await;
             println!("{}", system_config.display());

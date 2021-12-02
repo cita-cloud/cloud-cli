@@ -7,6 +7,7 @@ use crate::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
             UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
+        common::NodeInfo,
         controller::SystemConfig,
         evm::{Log, Receipt},
     },
@@ -159,6 +160,24 @@ impl Display for RawTransaction {
             }
             None => json!({}),
         }
+    }
+}
+
+impl Display for NodeInfo {
+    fn to_json(&self) -> Json {
+        let s: Vec<&str> = self
+            .net_info
+            .as_ref()
+            .unwrap()
+            .multi_address
+            .split('/')
+            .collect();
+        json!({
+            "origin": &self.net_info.as_ref().unwrap().origin,
+            "host": s[2],
+            "port": s[4],
+            "domain": hex(&self.address),
+        })
     }
 }
 
