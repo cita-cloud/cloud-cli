@@ -391,7 +391,7 @@ impl Client {
             .code
     }
 
-    pub async fn get_peers_info(&self) -> ::prost::alloc::vec::Vec<NodeInfo> {
+    pub async fn get_peers_info(&self) -> Vec<NodeInfo> {
         self.controller
             .clone()
             .get_peers_info(Empty {})
