@@ -173,11 +173,14 @@ async fn main() -> Result<()> {
             println!("peer_count: {}", cnt);
         }
         ("add-node", m) => {
-            let address =
-                ::prost::alloc::string::String::from(m.value_of("multi_address").unwrap());
+            let address = m.value_of("multi_address").unwrap();
             println!("Adding node: {}", address);
-            let add_node = client.add_node(address).await;
-            println!("StatusCode: {}", add_node);
+            let status = client.add_node(address.into()).await;
+            if status != 0 {
+                println!("`add_node` failed with status `{}`", status);
+            } else {
+                println!("Ok");
+            }
         }
         ("peers-info", _m) => {
             let peers_info = client.get_peers_info().await;
