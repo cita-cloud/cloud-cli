@@ -107,6 +107,12 @@ pub fn build_cli() -> App<'static> {
 
     let peer_count = App::new("peer-count").about("Get peer count");
 
+    let add_node = App::new("add-node")
+        .about("Add node")
+        .arg(Arg::new("multi_address").required(true));
+
+    let peers_info = App::new("peers-info").about("Get peers info");
+
     let system_config = App::new("system-config").about("Get system config");
 
     let bench = App::new("bench")
@@ -292,6 +298,8 @@ pub fn build_cli() -> App<'static> {
             get_tx_block_number,
             get_tx_index,
             peer_count,
+            add_node,
+            peers_info,
             system_config,
             bench,
             account,

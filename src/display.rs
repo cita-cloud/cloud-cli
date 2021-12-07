@@ -1,5 +1,7 @@
 use serde_json::json;
 use serde_json::Value as Json;
+use serde_json::map::Map;
+use tentacle_multiaddr::{Multiaddr, Protocol};
 
 use crate::{
     proto::{
@@ -7,6 +9,7 @@ use crate::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
             UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
+        common::NodeInfo,
         controller::SystemConfig,
         evm::{Log, Receipt},
     },
@@ -159,6 +162,34 @@ impl Display for RawTransaction {
             }
             None => json!({}),
         }
+    }
+}
+
+impl Display for NodeInfo {
+    fn to_json(&self) -> Json {
+        let mut info_pair = Map::new();
+        info_pair.insert(
+            String::from("address"),
+            Json::from(format!("0x{}", hex::encode(&self.address))),
+        );
+        let net_info = self.net_info.as_ref().unwrap();
+        info_pair.insert(String::from("origin"), Json::from(net_info.origin));
+        let multi_address: Multiaddr = net_info.multi_address[..].parse().unwrap();
+        for ptcl in multi_address.iter() {
+            match ptcl {
+                Protocol::Dns4(host) => {
+                    info_pair.insert(String::from("host"), Json::from(host));
+                }
+                Protocol::Tcp(port) => {
+                    info_pair.insert(String::from("port"), Json::from(port));
+                }
+                Protocol::Tls(domain) => {
+                    info_pair.insert(String::from("domain"), Json::from(domain));
+                }
+                _ => panic!("multi address({:?}) can't parse", net_info.multi_address),
+            };
+        }
+        Json::from(info_pair)
     }
 }
 

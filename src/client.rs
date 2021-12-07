@@ -29,7 +29,7 @@ use crate::proto::{
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Address, Empty, Hash},
+    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
     controller::{
         rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
         TransactionIndex,
@@ -376,6 +376,29 @@ impl Client {
             .unwrap()
             .into_inner()
             .peer_count
+    }
+
+    pub async fn add_node(&self, address: String) -> u32 {
+        self.controller
+            .clone()
+            .add_node(NodeNetInfo {
+                multi_address: address,
+                origin: 0,
+            })
+            .await
+            .unwrap()
+            .into_inner()
+            .code
+    }
+
+    pub async fn get_peers_info(&self) -> Vec<NodeInfo> {
+        self.controller
+            .clone()
+            .get_peers_info(Empty {})
+            .await
+            .unwrap()
+            .into_inner()
+            .nodes
     }
 
     pub async fn get_tx(&self, tx_hash: Vec<u8>) -> RawTransaction {
