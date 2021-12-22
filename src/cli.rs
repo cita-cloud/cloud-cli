@@ -185,7 +185,7 @@ pub fn build_cli() -> App<'static> {
             Arg::new("validators")
                 .about("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
-                .multiple_occurrences(true)
+                .multiple_values(true)
                 .validator(parse_addr),
         );
 
