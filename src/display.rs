@@ -1,6 +1,6 @@
 use serde_json::json;
-use serde_json::Value as Json;
 use serde_json::map::Map;
+use serde_json::Value as Json;
 use tentacle_multiaddr::{Multiaddr, Protocol};
 
 use crate::{
