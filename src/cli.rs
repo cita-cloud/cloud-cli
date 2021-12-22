@@ -36,7 +36,7 @@ pub fn build_cli() -> App<'static> {
         .about("Send transaction")
         .arg(
             Arg::new("to")
-                .about("the address to send")
+                .help("the address to send")
                 .short('t')
                 .long("to")
                 .required(true)
@@ -45,7 +45,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("value")
-                .about("the value to send")
+                .help("the value to send")
                 .short('v')
                 .long("value")
                 .required(false)
@@ -54,7 +54,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("data")
-                .about("the data of the tx")
+                .help("the data of the tx")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_data),
@@ -62,7 +62,7 @@ pub fn build_cli() -> App<'static> {
 
     let block_number = App::new("block-number").about("Get block number").arg(
         Arg::new("for_pending")
-            .about("get the block number of pending block")
+            .help("get the block number of pending block")
             .short('p')
             .long("for_pending"),
     );
@@ -71,7 +71,7 @@ pub fn build_cli() -> App<'static> {
         .about("Get block by block number(height) or hash")
         .arg(
             Arg::new("number_or_hash")
-                .about("plain decimal number or hash with `0x` prefix")
+                .help("plain decimal number or hash with `0x` prefix")
                 .required(true)
                 .takes_value(true)
                 .validator(|s| {
@@ -88,7 +88,7 @@ pub fn build_cli() -> App<'static> {
         .about("Get block hash by block number(height)")
         .arg(
             Arg::new("number")
-                .about("the block number(height)")
+                .help("the block number(height)")
                 .takes_value(true)
                 .validator(str::parse::<u64>),
         );
@@ -119,7 +119,7 @@ pub fn build_cli() -> App<'static> {
         .about("Send transactions with {-c} workers over {--connections} connections")
         .arg(
             Arg::new("concurrency")
-                .about(
+                .help(
                     "Number of request workers to run concurrently for sending transactions. \
                     Workers will be distributed evenly among all the connections. \
                     [default: the same as total]",
@@ -132,7 +132,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("connections")
-                .about("Number of connections connects to server")
+                .help("Number of connections connects to server")
                 .long("connections")
                 .takes_value(true)
                 .default_value("16")
@@ -140,7 +140,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("timeout")
-                .about("Timeout for each request (in seconds). Use 0 for infinite")
+                .help("Timeout for each request (in seconds). Use 0 for infinite")
                 .long("timeout")
                 .takes_value(true)
                 .default_value("120")
@@ -148,7 +148,7 @@ pub fn build_cli() -> App<'static> {
         )
         .arg(
             Arg::new("total")
-                .about("Number of transactions to send")
+                .help("Number of transactions to send")
                 .default_value("200")
                 .validator(str::parse::<u32>),
         );
@@ -174,7 +174,7 @@ pub fn build_cli() -> App<'static> {
         .about("Update admin of the chain")
         .arg(
             Arg::new("admin_addr")
-                .about("the address of the new admin")
+                .help("the address of the new admin")
                 .required(true)
                 .validator(parse_addr),
         );
@@ -183,9 +183,9 @@ pub fn build_cli() -> App<'static> {
         .about("Update validators of the chain")
         .arg(
             Arg::new("validators")
-                .about("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
+                .help("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
-                .multiple_occurrences(true)
+                .multiple_values(true)
                 .validator(parse_addr),
         );
 
@@ -193,7 +193,7 @@ pub fn build_cli() -> App<'static> {
         .about("Set block interval")
         .arg(
             Arg::new("block_interval")
-                .about("new block interval")
+                .help("new block interval")
                 .required(true)
                 .validator(str::parse::<u64>),
         );
@@ -202,7 +202,7 @@ pub fn build_cli() -> App<'static> {
         .about("Send emergency brake cmd to chain")
         .arg(
             Arg::new("switch")
-                .about("turn on/off")
+                .help("turn on/off")
                 .required(true)
                 .possible_values(&["on", "off"]),
         );
@@ -262,20 +262,20 @@ pub fn build_cli() -> App<'static> {
     );
 
     let user_arg = Arg::new("user")
-        .about("the user(account) to send tx")
+        .help("the user(account) to send tx")
         .short('u')
         .long("user")
         .takes_value(true);
 
     // addrs args
     let rpc_addr_arg = Arg::new("rpc_addr")
-        .about("rpc(controller) address")
+        .help("rpc(controller) address")
         .short('r')
         .long("rpc_addr")
         .takes_value(true);
 
     let executor_addr_arg = Arg::new("executor_addr")
-        .about("executor address")
+        .help("executor address")
         .short('e')
         .long("executor_addr")
         .takes_value(true);
@@ -328,13 +328,13 @@ fn build_account_subcmd() -> App<'static> {
         .about("Create an account")
         .arg(
             Arg::new("user")
-                .about("The user name of the account")
+                .help("The user name of the account")
                 .takes_value(true)
                 .required(true),
         )
         .arg(
             Arg::new("password")
-                .about("The password of the account. (unimplemented yet)")
+                .help("The password of the account. (unimplemented yet)")
                 .short('p')
                 .long("password")
                 .takes_value(true),
@@ -344,7 +344,7 @@ fn build_account_subcmd() -> App<'static> {
         .about("Login to use the user's account as default")
         .arg(
             Arg::new("user")
-                .about("The user name to login")
+                .help("The user name to login")
                 .takes_value(true)
                 .required(true),
         );
@@ -353,13 +353,13 @@ fn build_account_subcmd() -> App<'static> {
         .about("Import an account")
         .arg(
             Arg::new("user")
-                .about("The user name for the incoming account")
+                .help("The user name for the incoming account")
                 .takes_value(true)
                 .required(true),
         )
         .arg(
             Arg::new("pk")
-                .about("The public key of the incoming account")
+                .help("The public key of the incoming account")
                 .short('p')
                 .long("pk")
                 .takes_value(true)
@@ -368,7 +368,7 @@ fn build_account_subcmd() -> App<'static> {
         )
         .arg(
             Arg::new("sk")
-                .about("The secret key of the incoming account")
+                .help("The secret key of the incoming account")
                 .short('s')
                 .long("sk")
                 .takes_value(true)
@@ -378,14 +378,14 @@ fn build_account_subcmd() -> App<'static> {
 
     let export = App::new("export").about("Export an account").arg(
         Arg::new("user")
-            .about("The user name of the account to be exported")
+            .help("The user name of the account to be exported")
             .takes_value(true)
             .required(true),
     );
 
     let delete = App::new("delete").about("Delete an account").arg(
         Arg::new("user")
-            .about("The user name of the account to be deleted")
+            .help("The user name of the account to be deleted")
             .takes_value(true)
             .required(true),
     );
