@@ -1,9 +1,11 @@
-name: audit
+name: Security Audit
 on:
   push:
     paths: 
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+  schedule:
+    - cron: '0 18 * * *' # run at 18 AM UTC. AM 2 utc+8
   workflow_dispatch:
 jobs:
   security_audit:
