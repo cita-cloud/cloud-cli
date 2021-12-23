@@ -37,6 +37,7 @@ jobs:
           profile: minimal
           toolchain: stable
           target: ${{ matrix.target }}
+          override: true
           components: rustfmt, clippy
 
       - name: Checkout Repository
