@@ -69,3 +69,22 @@ jobs:
           command: test
           args: --all-targets
   
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Use cache
+        uses: Swatinem/rust-cache@v1
+      - name: Run build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets
