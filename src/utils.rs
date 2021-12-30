@@ -30,14 +30,15 @@ pub fn hex(data: &[u8]) -> String {
 }
 
 pub fn display_time(timestamp: u64) -> String {
-    use chrono::offset::Local;
-    use chrono::offset::TimeZone;
-    use chrono::Utc;
-
-    format!(
-        "{}",
-        Utc.timestamp_millis(timestamp as i64).with_timezone(&Local)
+    let format = time::format_description::parse(
+        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+            sign:mandatory]:[offset_minute]",
     )
+    .unwrap();
+    time::OffsetDateTime::from_unix_timestamp(timestamp as i64)
+        .expect("invalid timestamp")
+        .format(&format)
+        .unwrap()
 }
 
 fn remove_0x(s: &str) -> &str {
