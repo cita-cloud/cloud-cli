@@ -5,4 +5,4 @@ COPY . /build
 RUN cargo build --release
 FROM debian:buster
 COPY --from=builder /build/target/release/cldi /usr/bin/
-CMD ["cldi"]
+ENTRYPOINT ["cldi"]
