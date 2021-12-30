@@ -30,13 +30,14 @@ pub fn hex(data: &[u8]) -> String {
 }
 
 pub fn display_time(timestamp: u64) -> String {
+    let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
     let format = time::format_description::parse(
-        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
-            sign:mandatory]:[offset_minute]",
+        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]",
     )
     .unwrap();
     time::OffsetDateTime::from_unix_timestamp(timestamp as i64)
         .expect("invalid timestamp")
+        .to_offset(local_offset)
         .format(&format)
         .unwrap()
 }
