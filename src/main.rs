@@ -444,10 +444,10 @@ async fn main() -> Result<()> {
             }
         }
         ("completions", m) => {
-            let shell: clap_generate::Shell = m.value_of("shell").unwrap().parse().unwrap();
+            let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
             let mut cli = cli::build_cli();
             let mut stdout = std::io::stdout();
-            clap_generate::generate(shell, &mut cli, "cldi", &mut stdout);
+            clap_complete::generate(shell, &mut cli, "cldi", &mut stdout);
         }
         ("update-admin", m) => {
             let admin_addr = parse_addr(m.value_of("admin_addr").unwrap())?;
