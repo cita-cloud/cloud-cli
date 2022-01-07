@@ -42,6 +42,6 @@ pub fn display_time(timestamp: u64) -> String {
         .unwrap()
 }
 
-fn remove_0x(s: &str) -> &str {
+pub fn remove_0x(s: &str) -> &str {
     s.strip_prefix("0x").unwrap_or(s)
 }

@@ -11,6 +11,8 @@ mod display;
 mod proto;
 mod utils;
 mod wallet;
+mod cmd;
+mod context;
 
 use std::sync::Arc;
 use std::time::Duration;

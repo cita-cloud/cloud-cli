@@ -162,9 +162,7 @@ impl Client {
             .hash
     }
 
-    async fn send_raw_utxo(&mut self, raw: RawTransaction) -> Vec<u8> {
-        // invalidate current sys_config
-        self.sys_config.take();
+    pub async fn send_raw_utxo(&self, raw: RawTransaction) -> Vec<u8> {
         self.controller
             .clone()
             .send_raw_transaction(raw)

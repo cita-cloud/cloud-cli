@@ -20,9 +20,7 @@ use rand::RngCore;
 const HASH_BYTES_LEN: usize = 32;
 
 fn sm3_hash(input: &[u8]) -> [u8; HASH_BYTES_LEN] {
-    let mut result = [0u8; HASH_BYTES_LEN];
-    result.copy_from_slice(libsm::sm3::hash::Sm3Hash::new(input).get_hash().as_ref());
-    result
+    libsm::sm3::hash::Sm3Hash::new(input).get_hash()
 }
 
 const SM2_PUBKEY_BYTES_LEN: usize = 64;
