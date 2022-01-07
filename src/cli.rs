@@ -167,7 +167,7 @@ pub fn build_cli() -> App<'static> {
                     "fish",
                     "elvish",
                 ])
-                .validator(|s| s.parse::<clap_generate::Shell>()),
+                .validator(|s| s.parse::<clap_complete::Shell>()),
         );
 
     let update_admin = App::new("update-admin")
