@@ -5,26 +5,33 @@ use rustbreak::PathDatabase;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use anyhow::Result;
 
-use crate::crypto::{generate_keypair, pk2address};
+use crate::crypto::Crypto;
 
 // TODO: encrypt it!
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Account {
-    pub addr: Vec<u8>,
-    pub keypair: (Vec<u8>, Vec<u8>),
+pub struct Account<C: Crypto> {
+    pub addr: C::Address,
+    pub keypair: (C::PublicKey, C::SecretKey),
+}
+
+impl<C: Crypto> Account<C> {
+    pub fn sign(&self, msg: &[u8]) -> C::Signature {
+        C::sign(msg, &self.keypair.1)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct WalletInner {
+struct WalletInner<C> {
     default_account: String,
-    accounts: HashMap<String, Account>,
+    accounts: HashMap<String, Account<C>>,
 }
 
-impl Default for WalletInner {
+impl<C> Default for WalletInner<C> {
     fn default() -> Self {
         Self {
             default_account: "default".to_string(),
@@ -33,20 +40,21 @@ impl Default for WalletInner {
     }
 }
 
-pub struct Wallet {
-    db: PathDatabase<WalletInner, Ron>,
+#[derive(Debug, Clone)]
+pub struct Wallet<C: Crypto> {
+    db: Arc<PathDatabase<WalletInner<C>, Ron>>,
 }
 
 // FIXME:
 // Those db operations may block the async runtime, but that doesn't matter for now.
 // We can solve this by using tokio::spawn_blocking.
-impl Wallet {
+impl<C: Crypto> Wallet<C> {
     pub fn open(data_dir: impl AsRef<Path>) -> Self {
         let db = PathDatabase::load_from_path_or_default(data_dir.as_ref().to_path_buf()).unwrap();
-        Self { db }
+        Self { db: Arc::new(db) }
     }
 
-    pub fn load_account(&self, account_id: &str) -> Option<Account> {
+    pub fn load_account(&self, account_id: &str) -> Option<Account<C>> {
         self.db
             .borrow_data()
             .unwrap()
@@ -55,7 +63,7 @@ impl Wallet {
             .cloned()
     }
 
-    pub fn store_account(&self, account_id: &str, account: Account) {
+    pub fn store_account(&self, account_id: &str, account: Account<C>) {
         self.db
             .borrow_data_mut()
             .unwrap()
@@ -66,8 +74,8 @@ impl Wallet {
 
     pub fn create_account(&self, account_id: &str) -> Vec<u8> {
         let account = {
-            let (pk, sk) = generate_keypair();
-            let addr = pk2address(&pk);
+            let (pk, sk) = C::gen_keypair();
+            let addr = C::pk2addr(&pk);
             Account {
                 addr,
                 keypair: (pk, sk),
@@ -109,7 +117,7 @@ impl Wallet {
 
     pub fn import_account(&self, account_id: &str, pk: Vec<u8>, sk: Vec<u8>) {
         let account = {
-            let addr = pk2address(&pk);
+            let addr = C::pk2addr(&pk);
             Account {
                 addr,
                 keypair: (pk, sk),
@@ -135,7 +143,7 @@ impl Wallet {
         }
     }
 
-    pub fn default_account(&self) -> Result<Account> {
+    pub fn default_account(&self) -> Result<Account<C>> {
         let wallet = self.db.borrow_data()?;
         if let Some(account) = wallet.accounts.get(&wallet.default_account) {
             Ok(account.clone())

@@ -13,6 +13,7 @@ use crate::{
         controller::SystemConfig,
         evm::{Log, Receipt},
     },
+    crypto::Crypto,
     utils::{display_time, hex},
     wallet::Account,
 };
@@ -30,12 +31,12 @@ impl<T: Display> Display for &T {
     }
 }
 
-impl Display for Account {
+impl<C: Crypto> Display for Account<C> {
     fn to_json(&self) -> Json {
         json!({
-            "account_addr": hex(&self.addr),
-            "public_key": hex(&self.keypair.0),
-            "private_key": hex(&self.keypair.1),
+            "account_addr": hex(&self.addr.as_slice()),
+            "public_key": hex(&self.keypair.0.as_slice()),
+            "private_key": hex(&self.keypair.1.as_slice()),
         })
     }
 }

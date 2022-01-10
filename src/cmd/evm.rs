@@ -20,22 +20,29 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::crypto::{ hash_data, sign_message };
+use crate::crypto::Crypto;
+use anyhow::Result;
 
 
 #[tonic::async_trait]
 pub trait EvmBehaviour {
-    async fn get_receipt(&self, hash: Vec<u8>) -> Receipt;
-    async fn get_code(&self, address: Vec<u8>) -> ByteCode;
-    async fn get_balance(&self, address: Vec<u8>) -> Balance;
-    async fn get_transaction_count(&self, address: Vec<u8>) -> Nonce;
-    async fn get_abi(&self, address: Vec<u8>) -> ByteAbi;
+    type Hash;
+    type Address;
+
+    async fn get_receipt(&self, hash: Self::Hash) -> Result<Receipt>;
+    async fn get_code(&self, address: Self::Address) -> Result<ByteCode>;
+    async fn get_balance(&self, address: Self::Address) -> Result<Balance>;
+    async fn get_transaction_count(&self, address: Self::Address) -> Result<Nonce>;
+    async fn get_abi(&self, address: Self::Address) -> Result<ByteAbi>;
 }
 
 
 #[tonic::async_trait]
-impl EvmBehaviour for Context {
-    async fn get_receipt(&self, hash: Vec<u8>) -> Receipt {
+impl<C: Crypto> EvmBehaviour for Context<C> {
+    type Hash = C::Hash;
+    type Address = C::Address;
+
+    async fn get_receipt(&self, hash: Self::Hash) -> Result<Receipt> {
         let hash = Hash { hash };
         self.evm
             .clone()
@@ -45,12 +52,12 @@ impl EvmBehaviour for Context {
             .into_inner()
     }
 
-    async fn get_code(&self, address: Vec<u8>) -> ByteCode {
+    async fn get_code(&self, address: Self::Address) -> Result<ByteCode> {
         let addr = Address { address };
         self.evm.clone().get_code(addr).await.unwrap().into_inner()
     }
 
-    async fn get_balance(&self, address: Vec<u8>) -> Balance {
+    async fn get_balance(&self, address: Self::Address) -> Result<Balance> {
         let addr = Address { address };
         self.evm
             .clone()
@@ -60,7 +67,7 @@ impl EvmBehaviour for Context {
             .into_inner()
     }
 
-    async fn get_transaction_count(&self, address: Vec<u8>) -> Nonce {
+    async fn get_transaction_count(&self, address: Self::Address) -> Result<Nonce> {
         let addr = Address { address };
         self.evm
             .clone()
@@ -70,8 +77,10 @@ impl EvmBehaviour for Context {
             .into_inner()
     }
 
-    async fn get_abi(&self, address: Vec<u8>) -> ByteAbi {
+    async fn get_abi(&self, address: Self::Address) -> Result<ByteAbi> {
         let addr = Address { address };
         self.evm.clone().get_abi(addr).await.unwrap().into_inner()
     }
+
+
 }

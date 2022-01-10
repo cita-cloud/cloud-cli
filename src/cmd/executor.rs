@@ -20,24 +20,21 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::crypto::{ hash_data, sign_message };
+use crate::crypto::Crypto;
+use anyhow::Result;
 
 #[tonic::async_trait]
 pub trait ExecutorBehaviour {
-    async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8>;
+    type Address;
+
+    async fn call(&self, from: Address, to: Address, payload: Vec<u8>) -> Result<Vec<u8>>;
 }
 
 #[tonic::async_trait]
-impl ExecutorBehaviour for Context {
-    async fn call(&self, from: Vec<u8>, to: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
-        #[cfg(feature = "chaincode")]
-        let req = CallRequest {
-            from,
-            to,
-            args: vec![payload],
-            ..Default::default()
-        };
-        #[cfg(feature = "evm")]
+impl<C: Crypto> ExecutorBehaviour for Context<C> {
+    type Address = C::Address;
+
+    async fn call(&self, from: Self::Address, to: Self::Address, payload: Vec<u8>) -> Result<Vec<u8>> {
         let req = CallRequest {
             from,
             to,

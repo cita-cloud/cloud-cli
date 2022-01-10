@@ -8,22 +8,26 @@ mod evm;
 use clap::{App, ArgMatches};
 use std::collections::HashMap;
 use crate::context::Context;
+use crate::crypto::Crypto;
 
 use anyhow::{
     bail, ensure, Context as _, Result
 };
 
-pub type CommandHandler = fn(&mut Context, &mut ArgMatches) -> Result<()>;
+/// Command handler that associated with a command.
+pub type CommandHandler<C: Crypto> = fn(&mut Context<C>, &mut ArgMatches) -> Result<()>;
 
-pub struct Command {
+
+/// Command
+pub struct Command<C: Crypto> {
     app: App<'static>,
-    handler: Option<CommandHandler>,
+    handler: Option<CommandHandler<C>>,
 
     subcmds: HashMap<String, Self>,
 }
 
 
-impl Command {
+impl<C: Crypto> Command<C> {
     /// Accept an clap App without subcommands.
     /// Subcommands should be passed by using [`Command::subcommand`] or [`Command::subcommands`].
     /// 
@@ -56,7 +60,7 @@ impl Command {
     /// It should not handle any subcommands. Subcommand has its own handler, which will be called after.
     /// 
     /// Default to no-op.
-    pub fn handler(mut self, handler: CommandHandler) -> Self {
+    pub fn handler(mut self, handler: CommandHandler<C>) -> Self {
         self.handler.replace(handler);
         self
     }
@@ -82,7 +86,7 @@ impl Command {
     }
 
     /// Execute this command with context and args.
-    pub fn exec(&self, context: &mut Context, mut m: ArgMatches) -> Result<()> {
+    pub fn exec(&self, context: &mut Context<C>, mut m: ArgMatches) -> Result<()> {
         if let Some(handler) = self.handler {
             (handler)(context, &mut m).with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }

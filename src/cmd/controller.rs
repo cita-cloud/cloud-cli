@@ -20,32 +20,36 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::crypto::{ hash_data, sign_message };
+use anyhow::Result;
+use anyhow::anyhow;
+use crate::crypto::{Crypto, BytesLike};
 
 #[tonic::async_trait]
 pub trait ControllerBehaviour {
-    async fn send_tx(&self, tx: CloudTransaction) -> Vec<u8> ;
-    async fn send_utxo(&self, utxo: CloudUtxoTransaction) -> Vec<u8>;
+    type Hash;
 
-    async fn get_system_config(&self) -> SystemConfig;
+    async fn send_tx(&self, tx: CloudTransaction) -> Result<Self::Hash>;
+    async fn send_utxo(&self, utxo: CloudUtxoTransaction) -> Result<Self::Hash>;
 
-    async fn get_block_number(&self, for_pending: bool) -> u64;
-    async fn get_block_hash(&self, block_number: u64) -> Vec<u8>;
+    async fn get_system_config(&self) -> Result<SystemConfig>;
 
-    async fn get_block_by_number(&self, block_number: u64) -> CompactBlock;
-    async fn get_block_by_hash(&self, hash: Vec<u8>) -> CompactBlock;
+    async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
+    async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
 
-    async fn get_tx(&self, tx_hash: Vec<u8>) -> RawTransaction;
-    async fn get_tx_index(&self, tx_hash: Vec<u8>) -> TransactionIndex;
-    async fn get_tx_block_number(&self, tx_hash: Vec<u8>) -> BlockNumber;
+    async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
+    async fn get_block_by_hash(&self, hash: Self::Hash) -> Result<CompactBlock>;
 
-    async fn get_peer_count(&self) -> u64;
-    async fn get_peers_info(&self) -> Vec<NodeInfo>;
+    async fn get_tx(&self, tx_hash: Self::Hash) -> Result<RawTransaction>;
+    async fn get_tx_index(&self, tx_hash: Self::Hash) -> Result<TransactionIndex>;
+    async fn get_tx_block_number(&self, tx_hash: Self::Hash) -> Result<BlockNumber>;
 
-    async fn add_node(&self, address: String) -> u32;
+    async fn get_peer_count(&self) -> Result<u64>;
+    async fn get_peers_info(&self) -> Result<Vec<NodeInfo>>;
+
+    async fn add_node(&self, multiaddr: String) -> Result<u32>;
 }
 
-impl Context {
+impl<C: Crypto> Context<C> {
     fn prepare_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
         // calc tx hash
         let tx_hash = {
@@ -55,18 +59,18 @@ impl Context {
                 tx.encode(&mut buf).unwrap();
                 buf
             };
-            hash_data(tx_bytes.as_slice())
+            C::hash(tx_bytes.as_slice())
         };
 
         // sign tx hash
-        let Account { addr, keypair } = &self.account;
-        let signature = sign_message(&keypair.0, &keypair.1, &tx_hash);
+        let signature = self.account.sign(&tx_hash);
 
         // build raw tx
         let raw_tx = {
+            let sender = self.account.addr.as_slice().to_vec();
             let witness = Witness {
                 signature,
-                sender: addr.to_vec(),
+                sender,
             };
 
             let unverified_tx = UnverifiedTransaction {
@@ -92,18 +96,18 @@ impl Context {
                 utxo.encode(&mut buf).unwrap();
                 buf
             };
-            hash_data(utxo_bytes.as_slice())
+            C::hash(utxo_bytes.as_slice())
         };
 
         // sign utxo hash
-        let Account { addr, keypair } = &self.account;
-        let signature = sign_message(&keypair.0, &keypair.1, &utxo_hash);
+        let signature = self.account.sign(&utxo_hash);
 
         // build raw utxo
         let raw_utxo = {
+            let sender = self.account.addr.as_slice().to_vec();
             let witness = Witness {
                 signature,
-                sender: addr.to_vec(),
+                sender,
             };
 
             let unverified_utxo = UnverifiedUtxoTransaction {
@@ -120,131 +124,128 @@ impl Context {
         raw_utxo
     }
 
-    async fn send_raw(&self, raw: RawTransaction) -> Vec<u8> {
+    async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
         self.controller
             .clone()
             .send_raw_transaction(raw)
             .await
-            .unwrap()
-            .into_inner()
-            .hash
+            .map(|resp| Ok(resp.into_inner().hash))
+            .map_err(|status| anyhow!("failed to send raw transaction, status: `{}`", status))
     }
 }
 
 #[tonic::async_trait]
-impl ControllerBehaviour for Context {
-    async fn send_tx(&self, tx: CloudTransaction) -> Vec<u8> {
+impl<C: Crypto> ControllerBehaviour for Context<C> {
+    type Hash = C::Hash;
+
+    async fn send_tx(&self, tx: CloudTransaction) -> Result<Self::Hash> {
         let raw = self.prepare_raw_tx(tx);
-        self.send_raw(raw).await
+        self.send_raw(raw).await.context("failed to send transaction")
     }
 
-    async fn send_utxo(&self, utxo: CloudUtxoTransaction) -> Vec<u8> {
+    async fn send_utxo(&self, utxo: CloudUtxoTransaction) -> Result<Self::Hash> {
         let raw = self.prepare_raw_utxo(utxo);
-        self.send_raw(raw).await
+        self.send_raw(raw).await.context("fail to send utxo")
     }
 
-    async fn get_system_config(&self) -> SystemConfig {
+    async fn get_system_config(&self) -> Result<SystemConfig> {
         self.controller
             .clone()
             .get_system_config(Empty {})
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get system config, status: `{}`", status))
     }
 
-    async fn get_block_number(&self, for_pending: bool) -> u64 {
+    async fn get_block_number(&self, for_pending: bool) -> Result<u64> {
         let flag = Flag { flag: for_pending };
         self.controller
             .clone()
             .get_block_number(flag)
             .await
-            .unwrap()
-            .into_inner()
-            .block_number
+            .map(|resp| resp.into_inner().block_number)
+            .map_err(|status| anyhow!("failed to get block number, status: `{}`", status))
     }
 
-    async fn get_block_hash(&self, block_number: u64) -> Vec<u8> {
+    async fn get_block_hash(&self, block_number: u64) -> Result<Self::Hash> {
         self.controller
             .clone()
             .get_block_hash(BlockNumber { block_number })
             .await
-            .unwrap()
-            .into_inner()
-            .hash
+            .map(|resp| resp.into_inner().hash)
+            .map_err(|status| anyhow!("failed to get block hash, status: `{}`", status))
     }
 
-    async fn get_block_by_number(&self, block_number: u64) -> CompactBlock {
+    async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock> {
         self.controller
             .clone()
             .get_block_by_number(BlockNumber { block_number })
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get block by number, status: `{}`", status))
     }
 
-    async fn get_block_by_hash(&self, hash: Vec<u8>) -> CompactBlock {
+    async fn get_block_by_hash(&self, hash: Self::Hash) -> Result<CompactBlock> {
         self.controller
             .clone()
             .get_block_by_hash(Hash { hash })
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get block by hash, status: `{}`", status))
     }
 
-    async fn get_tx(&self, tx_hash: Vec<u8>) -> RawTransaction {
+    async fn get_tx(&self, tx_hash: Self::Hash) -> Result<RawTransaction> {
         self.controller
             .clone()
             .get_transaction(Hash { hash: tx_hash })
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get tx, status: `{}`", status))
     }
 
-    async fn get_tx_index(&self, tx_hash: Vec<u8>) -> TransactionIndex {
+    async fn get_tx_index(&self, tx_hash: Self::Hash) -> Result<TransactionIndex> {
         self.controller
             .clone()
             .get_transaction_index(Hash { hash: tx_hash })
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get tx index, status: `{}`", status))
     }
 
-    async fn get_tx_block_number(&self, tx_hash: Vec<u8>) -> BlockNumber {
+    async fn get_tx_block_number(&self, tx_hash: Self::Hash) -> Result<BlockNumber> {
         self.controller
             .clone()
             .get_transaction_block_number(Hash { hash: tx_hash })
             .await
-            .unwrap()
-            .into_inner()
+            .map(|resp| resp.into_inner())
+            .map_err(|status| anyhow!("failed to get tx block number, status: `{}`", status))
     }
 
-    async fn get_peer_count(&self) -> u64 {
+    async fn get_peer_count(&self) -> Result<u64> {
         self.controller
             .clone()
             .get_peer_count(Empty {})
             .await
-            .unwrap()
-            .into_inner()
-            .peer_count
+            .map(|resp| resp.into_inner().peer_count)
+            .map_err(|status| anyhow!("failed to get peer count, status: `{}`", status))
     }
 
-    async fn get_peers_info(&self) -> Vec<NodeInfo> {
+    async fn get_peers_info(&self) -> Result<Vec<NodeInfo>> {
         self.controller
             .clone()
             .get_peers_info(Empty {})
             .await
-            .unwrap()
-            .into_inner()
-            .nodes
+            .map(|resp| resp.into_inner().nodes)
+            .map_err(|status| anyhow!("failed to get peers info, status: `{}`", status))
     }
 
-    async fn add_node(&self, address: String) -> u32 {
+    async fn add_node(&self, multiaddr: String) -> Result<u32> {
         self.controller
             .clone()
-            .add_node(NodeNetInfo { multi_address: address, origin: 0 })
+            .add_node(NodeNetInfo { multi_address: multiaddr, origin: 0 })
             .await
             .unwrap()
-            .into_inner()
-            .code
+            .map(|resp| resp.into_inner().code)
+            .map_err(|status| anyhow!("failed to add node, status: `{}`", status))
     }
 }
