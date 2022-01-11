@@ -46,8 +46,7 @@ impl<C: Crypto> ExecutorBehaviour for Context<C> {
             .clone()
             .call(req)
             .await
-            .unwrap()
-            .into_inner()
-            .value
+            .map(|resp| resp.into_inner().value)
+            .context("failed to do executor call")
     }
 }
