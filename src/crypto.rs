@@ -16,16 +16,16 @@ use anyhow::Context;
 // I tried this, but it's not easy to constrain the Error type of TryFrom
 // since type bound on associated type is unstable.
 //
-// pub trait BytesLike: AsRef<[u8]> + for<'a> TryFrom<&'a [u8]> { }
+// pub trait ArrayLike: AsRef<[u8]> + for<'a> TryFrom<&'a [u8]> { }
 
 
 // TODO: better name
-pub trait BytesLike {
+pub trait ArrayLike {
     fn as_slice(&self) -> &[u8];
     fn try_from_slice(slice: &[u8]) -> Result<Self>;
 }
 
-impl<const N: usize> BytesLike for [u8; N] {
+impl<const N: usize> ArrayLike for [u8; N] {
     fn as_slice(&self) -> &[u8] {
         self.as_slice()
     }
@@ -37,13 +37,13 @@ impl<const N: usize> BytesLike for [u8; N] {
 
 
 pub trait Crypto {
-    type Hash: BytesLike;
-    type Address: BytesLike;
+    type Hash: ArrayLike;
+    type Address: ArrayLike;
 
-    type PublicKey: BytesLike;
-    type SecretKey: BytesLike;
+    type PublicKey: ArrayLike;
+    type SecretKey: ArrayLike;
 
-    type Signature: BytesLike;
+    type Signature: ArrayLike;
 
     fn gen_keypair() -> (Self::PublicKey, Self::SecretKey);
 
