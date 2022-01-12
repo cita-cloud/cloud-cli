@@ -30,33 +30,30 @@ use crate::crypto::{ hash_data, sign_message };
 
 use crate::utils::hex;
 use crate::cmd::controller::ControllerBehaviour;
+use crate::cmd::controller::TransactionSenderBehaviour;
+use super::wallet::AccountBehaviour;
 // use crate::types::{ Hash, Address };
 use super::{ Command, CommandHandler };
 
 use anyhow::Result;
 
 
-/// CITA-Cloud's system config is managed in [UTXO](https://github.com/cita-cloud/rfcs/blob/master/rfcs/0002-technology/0002-technology.md#%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE).
+/// CITA-Cloud's system config is managed by [UTXO](https://github.com/cita-cloud/rfcs/blob/master/rfcs/0002-technology/0002-technology.md#%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE).
 /// Admin commands depend on and will change system config.
 /// Make sure the system config is up-to-date before issues any admin commands.
+/// Otherwise it will fail.
 #[tonic::async_trait]
-pub trait AdminBehaviour {
-    type Hash;
-    type Address;
-
+pub trait AdminBehaviour<C: Crypto> {
     // TODO: maybe we can use some concrete error types that allows user to handle them better.
-    async fn set_block_interval(&self, block_interval: u32) -> Result<Self::Hash>;
-    async fn emergency_brake(&self, switch: bool) -> Result<Self::Hash>;
-    async fn update_admin(&self, admin: Self::Address) -> Result<Self::Hash>;
-    async fn update_validators(&self, validators: &[Self::Address]) -> Result<Self::Hash>;
+    async fn set_block_interval(&self, block_interval: u32) -> Result<C::Hash>;
+    async fn emergency_brake(&self, switch: bool) -> Result<C::Hash>;
+    async fn update_admin(&self, admin: C::Address) -> Result<C::Hash>;
+    async fn update_validators(&self, validators: &[C::Address]) -> Result<C::Hash>;
 }
 
 #[tonic::async_trait]
-impl<C: Crypto> AdminBehaviour for Context<C> {
-    type Hash = <C as Crypto>::Hash;
-    type Address = <C as Crypto>::Address;
-
-    async fn set_block_interval(&self, block_interval: u32) -> Result<Self::Hash> {
+impl<C: Crypto, T: TransactionSenderBehaviour<C>> AdminBehaviour<C> for T {
+    async fn set_block_interval(&self, block_interval: u32) -> Result<C::Hash> {
         let output = block_interval.to_be_bytes().to_vec();
         let utxo = CloudUtxoTransaction {
             version: self.system_config.version,
@@ -68,7 +65,7 @@ impl<C: Crypto> AdminBehaviour for Context<C> {
         self.send_utxo(utxo).await.context("failed to send `set_block_interval` utxo")
     }
 
-    async fn emergency_brake(&self, switch: bool) -> Result<Self::Hash> {
+    async fn emergency_brake(&self, switch: bool) -> Result<C::Hash> {
         let output = if switch { vec![0] } else { vec![] };
         let utxo = CloudUtxoTransaction {
             version: self.system_config.version,
@@ -80,7 +77,7 @@ impl<C: Crypto> AdminBehaviour for Context<C> {
         self.send_utxo(utxo).await.context("failed to send `emergency_brake` utxo")
     }
 
-    async fn update_admin(&self, admin: Self::Address) -> Result<Self::Hash> {
+    async fn update_admin(&self, admin: C::Address) -> Result<C::Hash> {
         let output = admin.as_ref().to_vec();
         let utxo = CloudUtxoTransaction {
             version: self.system_config.version,
@@ -91,7 +88,7 @@ impl<C: Crypto> AdminBehaviour for Context<C> {
         self.send_utxo(utxo).await.context("failed to send `update_admin` utxo")
     }
 
-    async fn update_validators(&self, validators: &[Address]) -> Result<Self::Hash> {
+    async fn update_validators(&self, validators: &[C::Address]) -> Result<C::Hash> {
         let output = validators.concat();
         let utxo = CloudUtxoTransaction {
             version: self.system_config.version,

@@ -20,9 +20,13 @@ use anyhow::Context;
 
 
 // TODO: better name
-pub trait ArrayLike {
+pub trait ArrayLike: Sized + Send + Sync + 'static {
     fn as_slice(&self) -> &[u8];
     fn try_from_slice(slice: &[u8]) -> Result<Self>;
+
+    fn to_vec(&self) -> Vec<u8> {
+        self.as_slice().to_vec()
+    }
 }
 
 impl<const N: usize> ArrayLike for [u8; N] {
