@@ -20,6 +20,7 @@ use crate::crypto::{ ArrayLike, Crypto };
 
 use serde::{Deserialize, Serialize};
 
+use super::account::Account;
 use super::account::AccountBehaviour;
 
 pub trait WalletBehaviour<C: Crypto> {
@@ -34,3 +35,30 @@ pub trait WalletBehaviour<C: Crypto> {
     fn list_account(&self) -> Vec<String>;
 }
 
+pub struct Wallet {
+
+}
+
+impl<C: Crypto> WalletBehaviour<C> for Wallet {
+    type Account = Account<C>;
+
+    fn generate_account(&self, id: &str) -> Self::Account {
+        todo!()
+    }
+
+    fn import_account(&self, id: &str, sk: C::SecretKey) {
+        todo!()
+    }
+
+    fn export_account(&self, id: &str) -> Option<&Self::Account> {
+        todo!()
+    }
+
+    fn delete_account(&self, id: &str) -> Option<Self::Account> {
+        todo!()
+    }
+
+    fn list_account(&self) -> Vec<String> {
+        todo!()
+    }
+}

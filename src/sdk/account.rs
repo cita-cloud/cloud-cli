@@ -30,7 +30,7 @@ pub trait AccountBehaviour {
     fn expose_secret_key(&self) -> &<Self::SigningAlgorithm as Crypto>::SecretKey;
 
     fn sign(&self, msg: &[u8]) -> <Self::SigningAlgorithm as Crypto>::Signature {
-        <Self::SigningAlgorithm as Crypto>::sign(msg, self.secret_key())
+        <Self::SigningAlgorithm as Crypto>::sign(msg, self.expose_secret_key())
     }
 }
 
@@ -62,12 +62,9 @@ impl<C: Crypto> AccountBehaviour for Account<C> {
     fn public_key(&self) -> &C::PublicKey {
         &self.public_key
     }
+
     fn expose_secret_key(&self) -> &C::SecretKey {
         &self.secret_key
-    }
-
-    fn sign(&self, msg: &[u8]) -> C::Signature {
-        C::sign(msg, self.secret_key())
     }
 }
 

@@ -32,6 +32,8 @@ pub type ControllerClient = crate::proto::controller::rpc_service_client::RpcSer
 
 #[tonic::async_trait]
 pub trait ControllerBehaviour<C: Crypto> {
+    // TODO: should I use the protobuf type instead of concrete type? e.g. u64 -> BlockNumber
+
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash>;
 
     async fn get_system_config(&self) -> Result<SystemConfig>;
@@ -270,11 +272,98 @@ where
 
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]
+#[derive(Debug, Clone, Copy)]
 pub enum UtxoType {
     Admin = 1002,
     BlockInterval = 1003,
     Validators = 1004,
     EmergencyBrake = 1005,
+}
+
+pub trait TransactionPreparerBehaviour<C: Crypto> {
+    fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudTransaction;
+}
+
+pub trait UtxoTransactionPreparerBehaviour<C: Crypto> {
+    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction;
+}
+
+impl<C: Crypto> UtxoTransactionPreparerBehaviour<C> for SystemConfig {
+    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
+        let lock_id = utxo_type as u64;
+        let pre_tx_hash = match utxo_type {
+            UtxoType::Admin => &self.admin_pre_hash,
+            UtxoType::BlockInterval => &self.block_interval_pre_hash,
+            UtxoType::Validators => &self.validators_pre_hash,
+            UtxoType::EmergencyBrake => &self.emergency_brake_pre_hash,
+        }.clone();
+
+        CloudUtxoTransaction {
+            version: self.version,
+            pre_tx_hash,
+            output,
+            lock_id,
+        }
+    }
+}
+
+pub struct TransactionDetail {
+    pub nonce: u64,
+    pub quota: u64,
+    pub valid_until_block: u64,
+}
+
+pub struct DetailTransactionPreparer<'a, 'b> {
+    pub detail: &'a TransactionDetail,
+    pub system_config: &'b SystemConfig,
+}
+
+impl<'a, 'b, C: Crypto> TransactionPreparerBehaviour<C> for DetailTransactionPreparer<'a, 'b> {
+    fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudTransaction {
+        CloudTransaction {
+            version: self.system_config.version,
+            to: to.to_vec(),
+            data,
+            value,
+            nonce: self.detail.nonce.to_string(),
+            quota: self.detail.quota,
+            valid_until_block: self.detail.valid_until_block,
+            chain_id: self.system_config.chain_id.clone(),
+        }
+    }
+}
+
+impl<'a, 'b, C: Crypto> UtxoTransactionPreparerBehaviour<C> for DetailTransactionPreparer<'a, 'b> {
+    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
+        <SystemConfig as UtxoTransactionPreparerBehaviour<C>>::prepare_raw_utxo(self.system_config, output, utxo_type)
+    }
+}
+
+pub struct DefaultTransactionPreparer<'a> {
+    pub current_block_number: u64,
+    pub system_config: &'a SystemConfig,
+}
+
+impl<'a, C: Crypto> TransactionPreparerBehaviour<C> for DefaultTransactionPreparer<'a> {
+    fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudTransaction {
+        let nonce = rand::random::<u64>().to_string();
+        CloudTransaction {
+            version: self.system_config.version,
+            to: to.to_vec(),
+            data,
+            value,
+            nonce,
+            quota: 3_000_000,
+            valid_until_block: self.current_block_number + 95,
+            chain_id: self.system_config.chain_id.clone(),
+        }
+    }
+}
+
+impl<'a, C: Crypto> UtxoTransactionPreparerBehaviour<C> for DefaultTransactionPreparer<'a> {
+    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
+        <SystemConfig as UtxoTransactionPreparerBehaviour<C>>::prepare_raw_utxo(self.system_config, output, utxo_type)
+    }
 }
 
 #[tonic::async_trait]
@@ -326,58 +415,5 @@ where
     ) -> Result<C::Hash> {
         let raw_utxo = self.prepare_raw_utxo(output, utxo_type);
         self.send_raw_utxo(raw_utxo).await
-    }
-}
-
-pub trait TransactionPreparerBehaviour<C: Crypto> {
-    fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudTransaction;
-}
-
-pub struct TransactionDetail {
-    pub nonce: String,
-    pub quota: u64,
-    pub valid_until_block: u64,
-}
-
-pub struct TransactionPreparer {
-    tx_detail: TransactionDetail,
-    system_config: SystemConfig,
-}
-
-impl<C: Crypto> TransactionPreparerBehaviour<C> for TransactionPreparer {
-    fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudTransaction {
-        CloudTransaction {
-            version: self.system_config.version,
-            to: to.to_vec(),
-            data,
-            value,
-            nonce: self.tx_detail.nonce.clone(),
-            quota: self.tx_detail.quota,
-            valid_until_block: self.tx_detail.valid_until_block,
-            chain_id: self.system_config.chain_id.clone(),
-        }
-    }
-}
-
-pub trait UtxoTransactionPreparerBehaviour<C: Crypto> {
-    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction;
-}
-
-impl<C: Crypto> UtxoTransactionPreparerBehaviour<C> for SystemConfig {
-    fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
-        let lock_id = utxo_type as u64;
-        let pre_tx_hash = match utxo_type {
-            UtxoType::Admin => self.admin_pre_hash,
-            UtxoType::BlockInterval => self.block_interval_pre_hash,
-            UtxoType::Validators => self.validators_pre_hash,
-            UtxoType::EmergencyBrake => self.emergency_brake_pre_hash,
-        }.clone();
-
-        CloudUtxoTransaction {
-            version: self.version,
-            pre_tx_hash,
-            output,
-            lock_id,
-        }
     }
 }

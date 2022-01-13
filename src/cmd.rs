@@ -8,7 +8,7 @@ mod wallet;
 
 use clap::{App, ArgMatches};
 use std::collections::HashMap;
-use crate::context::Context;
+use crate::sdk::context::Context;
 use crate::crypto::Crypto;
 
 use anyhow::{
