@@ -1,6 +1,7 @@
 use prost::Message;
-use crate::context::Context;
-use crate::wallet::Account;
+// use crate::context::Context;
+// use crate::wallet::Account;
+use anyhow::Context;
 
 use crate::proto::{
     blockchain::{
@@ -17,36 +18,34 @@ use crate::proto::{
         rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
         Receipt,
     },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
+    executor::{executor_service_client::ExecutorServiceClient, CallRequest, CallResponse},
 };
 
 use crate::crypto::Crypto;
+use crate::crypto::ArrayLike;
 use anyhow::Result;
+use tonic::transport::Channel;
+
+pub type ExecutorClient = crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
 
 #[tonic::async_trait]
-pub trait ExecutorBehaviour {
-    type Address;
-
-    async fn call(&self, from: Address, to: Address, payload: Vec<u8>) -> Result<Vec<u8>>;
+pub trait ExecutorBehaviour<C: Crypto> {
+    async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse>;
 }
 
 #[tonic::async_trait]
-impl<C: Crypto> ExecutorBehaviour for Context<C> {
-    type Address = C::Address;
-
-    async fn call(&self, from: Self::Address, to: Self::Address, payload: Vec<u8>) -> Result<Vec<u8>> {
+impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
+    async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse> {
         let req = CallRequest {
-            from,
-            to,
+            from: from.to_vec(),
+            to: to.to_vec(),
             method: payload,
             args: vec![],
         };
 
-        self.executor
-            .clone()
-            .call(req)
+        ExecutorClient::call(&mut self.clone(), req)
             .await
-            .map(|resp| resp.into_inner().value)
-            .context("failed to do executor call")
+            .map(|resp| resp.into_inner())
+            .context("failed to do executor gRpc call")
     }
 }

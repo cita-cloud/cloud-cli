@@ -1,7 +1,7 @@
 use prost::Message;
 // use crate::context::Context;
 // use crate::wallet::Account;
-use super::wallet::AccountBehaviour;
+use super::account::AccountBehaviour;
 
 use crate::proto::{
     blockchain::{
@@ -259,12 +259,12 @@ where
 {
     async fn send_raw_tx(&self, tx: CloudTransaction) -> Result<C::Hash> {
         let raw = self.sign_raw_tx(tx);
-        self.send_raw(raw).await.context("failed to send raw tx")
+        self.send_raw(raw).await.context("failed to send raw")
     }
 
     async fn send_raw_utxo(&self, utxo: CloudUtxoTransaction) -> Result<C::Hash> {
         let raw = self.sign_raw_utxo(utxo);
-        self.send_raw(raw).await.context("failed to send raw utxo")
+        self.send_raw(raw).await.context("failed to send raw")
     }
 }
 

@@ -1,6 +1,6 @@
 use prost::Message;
-use crate::context::Context;
-use crate::wallet::Account;
+use super::context::Context;
+// use crate::wallet::Account;
 
 use crate::proto::{
     blockchain::{
@@ -14,18 +14,24 @@ use crate::proto::{
         TransactionIndex,
     },
     evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
+        rpc_service_client::RpcServiceClient, Balance, ByteAbi, ByteCode, Nonce,
         Receipt,
     },
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
 use crate::crypto::Crypto;
+use crate::crypto::ArrayLike;
 use super::controller::ControllerBehaviour;
+use super::controller::TransactionSenderBehaviour;
 use crate::utils::parse_addr;
 use anyhow::Result;
 use anyhow::Context as _;
+use tonic::transport::Channel;
 
+pub type EvmClient = crate::proto::evm::rpc_service_client::RpcServiceClient<Channel>;
+
+// TODO: use constant array for these constant to avoid runtime parsing.
 
 /// Store action target address
 const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
@@ -45,27 +51,22 @@ const AMEND_BALANCE: &str = "0x05";
 
 
 #[tonic::async_trait]
-pub trait EvmBehaviour {
-    type Hash;
-    type Address;
+pub trait EvmBehaviour<C: Crypto> {
+    // TODO: better address name
 
-    async fn get_receipt(&self, hash: Self::Hash) -> Result<Receipt>;
-    async fn get_code(&self, address: Self::Address) -> Result<ByteCode>;
-    async fn get_balance(&self, address: Self::Address) -> Result<Balance>;
-    async fn get_transaction_count(&self, address: Self::Address) -> Result<Nonce>;
-    async fn get_abi(&self, address: Self::Address) -> Result<ByteAbi>;
-    async fn store_abi(&self, abi: &[u8]) -> Result<Self::Hash>;
+    async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt>;
+    async fn get_code(&self, addr: C::Address) -> Result<ByteCode>;
+    async fn get_balance(&self, addr: C::Address) -> Result<Balance>;
+    async fn get_tx_count(&self, addr: C::Address) -> Result<Nonce>;
+    async fn get_abi(&self, addr: C::Address) -> Result<ByteAbi>;
 }
 
 
 #[tonic::async_trait]
-impl<C: Crypto> EvmBehaviour for Context<C> {
-    type Hash = C::Hash;
-    type Address = C::Address;
-
-    async fn get_receipt(&self, hash: Self::Hash) -> Result<Receipt> {
-        let hash = Hash { hash };
-        self.evm
+impl<C: Crypto> EvmBehaviour<C> for EvmClient {
+    async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt> {
+        let hash = Hash { hash: hash.to_vec() };
+        self
             .clone()
             .get_transaction_receipt(hash)
             .await
@@ -73,26 +74,25 @@ impl<C: Crypto> EvmBehaviour for Context<C> {
             .context("failed to get receipt")
     }
 
-    async fn get_code(&self, address: Self::Address) -> Result<ByteCode> {
-        let addr = Address { address };
-        self.evm.clone().get_code(addr).await
+    async fn get_code(&self, addr: C::Address) -> Result<ByteCode> {
+        let addr = Address { address: addr.to_vec() };
+        EvmClient::get_code(&mut self.clone(), addr)
+            .await
             .map(|resp| resp.into_inner())
             .context("failed to get code")
     }
 
-    async fn get_balance(&self, address: Self::Address) -> Result<Balance> {
-        let addr = Address { address };
-        self.evm
-            .clone()
-            .get_balance(addr)
+    async fn get_balance(&self, addr: C::Address) -> Result<Balance> {
+        let addr = Address { address: addr.to_vec() };
+        EvmClient::get_balance(&mut self.clone(), addr)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get balance")
     }
 
-    async fn get_transaction_count(&self, address: Self::Address) -> Result<Nonce> {
-        let addr = Address { address };
-        self.evm
+    async fn get_tx_count(&self, addr: C::Address) -> Result<Nonce> {
+        let addr = Address { address: addr.to_vec() };
+        self
             .clone()
             .get_transaction_count(addr)
             .await
@@ -100,20 +100,51 @@ impl<C: Crypto> EvmBehaviour for Context<C> {
             .context("failed to get tx count")
     }
 
-    async fn get_abi(&self, address: Self::Address) -> Result<ByteAbi> {
-        let addr = Address { address };
-        self.evm.clone().get_abi(addr).await
+    async fn get_abi(&self, addr: C::Address) -> Result<ByteAbi> {
+        let addr = Address { address: addr.to_vec() };
+        EvmClient::get_abi(&mut self.clone(), addr)
+            .await
             .map(|resp| resp.into_inner())
             .context("failed to get abi")
     }
+}
 
-    async fn store_abi(&self, contract_addr: Self::Address, abi: &[u8]) -> Result<Self::Hash> {
-        let abi_to = parse_addr(ABI_ADDRESS)?;
-        let payload = [contract_addr.as_slice(), abi].concat();
-        let tx_hash = self.controller.send_tx(abi_to, payload)?;
+#[tonic::async_trait]
+pub trait EvmBehaviourExt<C: Crypto> {
+    async fn store_abi(&self, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>;
+}
 
+#[tonic::async_trait]
+impl<C, T> EvmBehaviourExt<C> for T
+where
+    C: Crypto,
+    T: TransactionSenderBehaviour<C> + Send + Sync + 'static,
+{
+    // The binary protocol is the implementation details of the current EVM service.
+    async fn store_abi(&self, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash> {
+        let abi_to = C::Address::try_from_slice(&parse_addr(ABI_ADDRESS)?)?;
+        let data = [contract_addr.as_slice(), abi].concat();
+        let tx_hash = self.send_tx(abi_to, data, vec![0; 32]).await?;
+
+        Ok(tx_hash)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::parse_data;
+
+    fn test_constant() -> Result<()> {
+        parse_addr(STORE_ADDRESS)?;
+        parse_addr(ABI_ADDRESS)?;
+        parse_addr(AMEND_ADDRESS)?;
+
+        parse_data(AMEND_ABI)?;
+        parse_data(AMEND_CODE)?;
+        parse_data(AMEND_KV_H256)?;
+        parse_data(AMEND_BALANCE)?;
         Ok(())
     }
-
 
 }

@@ -1,9 +1,3 @@
-use clap::App;
-use clap::ArgMatches;
-
-use crate::client::Client;
-use crate::wallet::Wallet;
-use crate::wallet::Account;
 use crate::crypto::Crypto;
 
 use tonic::transport::channel::Channel;
@@ -16,29 +10,30 @@ use crate::proto::{
     },
     common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
     controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
+        BlockNumber, Flag, SystemConfig,
         TransactionIndex,
     },
     evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
+        Balance, ByteAbi, ByteCode, Nonce,
         Receipt,
     },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
+    executor::{CallRequest},
 };
+
+use super::controller::ControllerClient;
+use super::executor::ExecutorClient;
+use super::evm::EvmClient;
+// use super::controller::ControllerClient;
 
 
 #[derive(Clone)]
 pub struct Context<C: Crypto> {
-    pub account: Account<C>,
-    pub wallet: Wallet<C>,
-
     pub system_config: SystemConfig,
 
     /// Those gRPC client are connected lazily.
-    pub controller: ControllerClient<Channel>,
-    pub executor: ExecutorClient<Channel>,
-    #[cfg(feature = "evm")]
-    pub evm: EvmClient<Channel>,
+    pub controller: ControllerClient,
+    pub executor: ExecutorClient,
+    pub evm: EvmClient,
 
     pub rt: tokio::runtime::Handle,
 }

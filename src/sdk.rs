@@ -1,15 +1,16 @@
-
 mod admin;
 mod controller;
-// mod executor;
-// #[cfg(feature = "evm")]
-// mod evm;
+mod executor;
+#[cfg(feature = "evm")]
+mod evm;
+mod account;
 mod wallet;
+mod context;
 
 use clap::{App, ArgMatches};
 use std::collections::HashMap;
-use crate::context::Context;
 use crate::crypto::Crypto;
+use context::Context;
 
 use anyhow::{
     bail, ensure, Context as _, Result
@@ -29,7 +30,7 @@ pub struct Command<C: Crypto> {
 
 
 impl<C: Crypto> Command<C> {
-    /// Accept an clap App without subcommands.
+    /// Accept a clap App without subcommands.
     /// Subcommands should be passed by using [`Command::subcommand`] or [`Command::subcommands`].
     /// 
     /// # Panics
@@ -101,4 +102,5 @@ impl<C: Crypto> Command<C> {
         Ok(())
     }
 }
+
 

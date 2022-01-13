@@ -18,27 +18,19 @@ use crate::proto::{
 
 use crate::crypto::{ ArrayLike, Crypto };
 
-pub trait AccountBehaviour {
-    type SigningAlgorithm: Crypto;
-    fn address(&self) -> &<Self::SigningAlgorithm as Crypto>::Address;
-    fn public_key(&self) -> &<Self::SigningAlgorithm as Crypto>::PublicKey;
-    // TODO: better name, expose_secret_key?
-    fn secret_key(&self) -> &<Self::SigningAlgorithm as Crypto>::SecretKey;
+use serde::{Deserialize, Serialize};
 
-    fn sign(&self, msg: &[u8]) -> <Self::SigningAlgorithm as Crypto>::Signature {
-        <Self::SigningAlgorithm as Crypto>::sign(msg, self.secret_key())
-    }
+use super::account::AccountBehaviour;
+
+pub trait WalletBehaviour<C: Crypto> {
+    type Account: AccountBehaviour<SigningAlgorithm = C>;
+
+    fn generate_account(&self, id: &str) -> Self::Account;
+    fn import_account(&self, id: &str, sk: C::SecretKey);
+    fn export_account(&self, id: &str) -> Option<&Self::Account>;
+    fn delete_account(&self, id: &str) -> Option<Self::Account>;
+
+    // TODO: better API
+    fn list_account(&self) -> Vec<String>;
 }
-
-// pub trait WalletBehaviour<C: Crypto> {
-//     type Account: AccountBehaviour<C>;
-
-//     fn generate_account(&self, id: &str) -> Self::Account;
-//     fn import_account(&self, id: &str, sk: C::SecretKey);
-//     fn export_account(&self, id: &str) -> Option<&Self::Account>;
-//     fn delete_account(&self, id: &str) -> Option<Self::Account>;
-
-//     // TODO: better API
-//     fn list_account(&self) -> Vec<String>;
-// }
 

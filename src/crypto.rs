@@ -19,7 +19,8 @@ use anyhow::Context;
 // pub trait ArrayLike: AsRef<[u8]> + for<'a> TryFrom<&'a [u8]> { }
 
 
-// TODO: better name
+// TODO: better name + add Copy?
+/// assert_eq!(ArrayLike::try_from_slice(arr.as_slice()), Ok(arr));
 pub trait ArrayLike: Sized + Send + Sync + 'static {
     fn as_slice(&self) -> &[u8];
     fn try_from_slice(slice: &[u8]) -> Result<Self>;
@@ -49,7 +50,7 @@ pub trait Crypto {
 
     type Signature: ArrayLike;
 
-    fn gen_keypair() -> (Self::PublicKey, Self::SecretKey);
+    fn generate_keypair() -> (Self::PublicKey, Self::SecretKey);
 
     fn hash(msg: &[u8]) -> Self::Hash;
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
