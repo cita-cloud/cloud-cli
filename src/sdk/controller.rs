@@ -253,22 +253,22 @@ pub trait RawTransactionSenderBehaviour<C: Crypto> {
     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>;
 }
     
-#[tonic::async_trait]
-impl<C, T> RawTransactionSenderBehaviour<C> for T
-where
-    C: Crypto,
-    T: ControllerBehaviour<C> + SignerBehaviour<C> + Send + Sync,
-{
-    async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
-        let raw = self.sign_raw_tx(raw_tx);
-        self.send_raw(raw).await.context("failed to send raw")
-    }
+// #[tonic::async_trait]
+// impl<C, T> RawTransactionSenderBehaviour<C> for T
+// where
+//     C: Crypto,
+//     T: ControllerBehaviour<C> + SignerBehaviour<C> + Send + Sync,
+// {
+//     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
+//         let raw = self.sign_raw_tx(raw_tx);
+//         self.send_raw(raw).await.context("failed to send raw")
+//     }
 
-    async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
-        let raw = self.sign_raw_utxo(raw_utxo);
-        self.send_raw(raw).await.context("failed to send raw")
-    }
-}
+//     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
+//         let raw = self.sign_raw_utxo(raw_utxo);
+//         self.send_raw(raw).await.context("failed to send raw")
+//     }
+// }
 
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]

@@ -4,7 +4,7 @@ use tonic::transport::channel::Channel;
 
 use crate::proto::{
     blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
+        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudNormalTransaction,
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
@@ -27,6 +27,8 @@ use super::executor::ExecutorClient;
 use super::evm::EvmClient;
 // use super::controller::ControllerClient;
 use anyhow::Result;
+use anyhow::Context as _;
+
 use super::wallet::Wallet;
 
 
@@ -204,7 +206,28 @@ where
     }
 }
 
-impl<C, Ac, Co, Ex, Ev, Wa> SignerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+// impl<C, Ac, Co, Ex, Ev, Wa> SignerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+// where
+//     C: Crypto,
+//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+//     Co: ControllerBehaviour<C> + Send + Sync,
+//     Ex: ExecutorBehaviour<C> + Send + Sync,
+//     Ev: EvmBehaviour<C> + Send + Sync,
+//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+// {
+//     fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
+//         let account = <Self as WalletBehaviour<C>>::current_account(self);
+//         account.sign_raw_tx(tx)
+//     }
+
+//     fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
+//         let account = <Self as WalletBehaviour<C>>::current_account(self);
+//         account.sign_raw_utxo(utxo)
+//     }
+// }
+
+#[tonic::async_trait]
+impl<C, Ac, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -213,14 +236,16 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
-    fn sign_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
-        let account = <Self as WalletBehaviour<C>>::current_account(self);
-        account.sign_raw_tx(tx)
+    async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
+        let account = self.current_account();
+        let raw = account.sign_raw_tx(raw_tx);
+        self.send_raw(raw).await.context("failed to send raw")
     }
 
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
-        let account = <Self as WalletBehaviour<C>>::current_account(self);
-        account.sign_raw_utxo(utxo)
+    async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
+        let account = self.current_account();
+        let raw = account.sign_raw_utxo(raw_utxo);
+        self.send_raw(raw).await.context("failed to send raw")
     }
 }
 
@@ -241,7 +266,7 @@ where
         data: Vec<u8>,
         value: Vec<u8>,
     ) -> Result<C::Hash> {
-        let raw_tx = CloudTransaction {
+        let raw_tx = CloudNormalTransaction {
             version: self.system_config.version,
             to: to.to_vec(),
             data,

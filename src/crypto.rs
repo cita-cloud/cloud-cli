@@ -14,7 +14,7 @@ use anyhow::Result;
 use anyhow::Context;
 
 // I tried this, but it's not easy to constrain the Error type of TryFrom
-// since type bound on associated type is unstable.
+// since type bound on generic param's associated type is unstable.
 //
 // pub trait ArrayLike: AsRef<[u8]> + for<'a> TryFrom<&'a [u8]> { }
 

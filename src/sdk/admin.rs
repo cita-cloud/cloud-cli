@@ -56,7 +56,7 @@ pub trait AdminBehaviour<C: Crypto> {
 impl<C, T> AdminBehaviour<C> for T
 where
     C: Crypto,
-    T: UtxoTransactionSenderBehaviour<C> + Send + Sync + 'static,
+    T: UtxoTransactionSenderBehaviour<C> + Send + Sync,
 {
     async fn update_admin(&self, admin: C::Address) -> Result<C::Hash> {
         let output = admin.to_vec();
