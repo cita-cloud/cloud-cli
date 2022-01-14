@@ -67,17 +67,3 @@ impl<C: Crypto> AccountBehaviour for Account<C> {
         &self.secret_key
     }
 }
-
-// pub trait WalletBehaviour<C: Crypto> {
-//     type Account: AccountBehaviour<C>;
-
-//     fn generate_account(&self, id: &str) -> Self::Account;
-//     fn import_account(&self, id: &str, sk: C::SecretKey);
-//     fn export_account(&self, id: &str) -> Option<&Self::Account>;
-//     fn delete_account(&self, id: &str) -> Option<Self::Account>;
-
-//     // TODO: better API
-//     fn list_account(&self) -> Vec<String>;
-// }
-
-
