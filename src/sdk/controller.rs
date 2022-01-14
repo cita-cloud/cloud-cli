@@ -257,7 +257,7 @@ pub trait RawTransactionSenderBehaviour<C: Crypto> {
 impl<C, T> RawTransactionSenderBehaviour<C> for T
 where
     C: Crypto,
-    T: ControllerBehaviour<C> + SignerBehaviour<C> + Send + Sync + 'static
+    T: ControllerBehaviour<C> + SignerBehaviour<C> + Send + Sync,
 {
     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
         let raw = self.sign_raw_tx(raw_tx);

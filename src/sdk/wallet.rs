@@ -64,9 +64,6 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet {
         todo!()
     }
 
-    // fn list_account(&self) -> Vec<String> {
-    //     todo!()
-    // }
     fn list_account(&self) -> Vec<(&str, &Self::Account)> {
         todo!()
     }

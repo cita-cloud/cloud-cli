@@ -30,43 +30,29 @@ use anyhow::Result;
 use super::wallet::Wallet;
 
 
-// pub struct GenericContext<C, Ac, Co, Ex, Ev, Wa>
-// where
-//     C: Crypto,
-//     Ac: AccountBehaviour<SigningAlgorithm = C>,
-//     Co: ControllerBehaviour<C>,
-//     Ex: ExecutorBehaviour<C>,
-//     Ev: EvmBehaviour<C>,
-//     Wa: WalletBehaviour<C, Account = Ac>,
-// {
-//     pub current_block_number: u64,
-//     pub system_config: SystemConfig,
-
-//     pub wallet: Wa,
-
-//     /// Those gRPC client are connected lazily.
-//     pub controller: Co,
-//     pub executor: Ex,
-//     pub evm: Ev,
-
-//     pub rt: tokio::runtime::Handle,
-
-//     // TODO: re-consider this field. Did I do it right?
-//     _phantom: std::marker::PhantomData<Ac>,
-// }
-
-pub struct Context {
+pub struct Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     pub current_block_number: u64,
     pub system_config: SystemConfig,
 
-    pub wallet: Wallet,
+    pub wallet: Wa,
 
     /// Those gRPC client are connected lazily.
-    pub controller: ControllerClient,
-    pub executor: ExecutorClient,
-    pub evm: EvmClient,
+    pub controller: Co,
+    pub executor: Ex,
+    pub evm: Ev,
 
     pub rt: tokio::runtime::Handle,
+
+    // TODO: re-consider this field. Did I do it right?
+    _phantom: std::marker::PhantomData<Ac>,
 }
 
 // I miss [Delegation](https://github.com/contactomorph/rfcs/blob/delegation/text/0000-delegation-of-implementation.md)
@@ -76,117 +62,157 @@ pub struct Context {
 // re-export functionality for Context
 
 #[tonic::async_trait]
-impl<C: Crypto> ControllerBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
-        <ControllerClient as ControllerBehaviour<C>>::send_raw(&self.controller, raw).await
+        <Co as ControllerBehaviour<C>>::send_raw(&self.controller, raw).await
     }
 
     async fn get_system_config(&self) -> Result<SystemConfig> {
-        <ControllerClient as ControllerBehaviour<C>>::get_system_config(&self.controller).await
+        <Co as ControllerBehaviour<C>>::get_system_config(&self.controller).await
     }
 
     async fn get_block_number(&self, for_pending: bool) -> Result<u64> {
-        <ControllerClient as ControllerBehaviour<C>>::get_block_number(&self.controller, for_pending).await
+        <Co as ControllerBehaviour<C>>::get_block_number(&self.controller, for_pending).await
     }
     async fn get_block_hash(&self, block_number: u64) -> Result<C::Hash> {
-        <ControllerClient as ControllerBehaviour<C>>::get_block_hash(&self.controller, block_number).await
+        <Co as ControllerBehaviour<C>>::get_block_hash(&self.controller, block_number).await
     }
 
     async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock> {
-        <ControllerClient as ControllerBehaviour<C>>::get_block_by_number(&self.controller, block_number).await
+        <Co as ControllerBehaviour<C>>::get_block_by_number(&self.controller, block_number).await
     }
 
     async fn get_block_by_hash(&self, hash: C::Hash) -> Result<CompactBlock> {
-        <ControllerClient as ControllerBehaviour<C>>::get_block_by_hash(&self.controller, hash).await
+        <Co as ControllerBehaviour<C>>::get_block_by_hash(&self.controller, hash).await
     }
 
     async fn get_tx(&self, tx_hash: C::Hash) -> Result<RawTransaction> {
-        <ControllerClient as ControllerBehaviour<C>>::get_tx(&self.controller, tx_hash).await
+        <Co as ControllerBehaviour<C>>::get_tx(&self.controller, tx_hash).await
     }
 
     async fn get_tx_index(&self, tx_hash: C::Hash) -> Result<u64> {
-        <ControllerClient as ControllerBehaviour<C>>::get_tx_index(&self.controller, tx_hash).await
+        <Co as ControllerBehaviour<C>>::get_tx_index(&self.controller, tx_hash).await
     }
 
     async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64> {
-        <ControllerClient as ControllerBehaviour<C>>::get_tx_block_number(&self.controller, tx_hash).await
+        <Co as ControllerBehaviour<C>>::get_tx_block_number(&self.controller, tx_hash).await
     }
 
     async fn get_peer_count(&self) -> Result<u64> {
-        <ControllerClient as ControllerBehaviour<C>>::get_peer_count(&self.controller).await
+        <Co as ControllerBehaviour<C>>::get_peer_count(&self.controller).await
     }
 
     async fn get_peers_info(&self) -> Result<Vec<NodeInfo>> {
-        <ControllerClient as ControllerBehaviour<C>>::get_peers_info(&self.controller).await
+        <Co as ControllerBehaviour<C>>::get_peers_info(&self.controller).await
     }
 
     async fn add_node(&self, multiaddr: String) -> Result<u32> {
-        <ControllerClient as ControllerBehaviour<C>>::add_node(&self.controller, multiaddr).await
+        <Co as ControllerBehaviour<C>>::add_node(&self.controller, multiaddr).await
     }
 }
 
 
 #[tonic::async_trait]
-impl<C: Crypto> ExecutorBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse> {
-        <ExecutorClient as ExecutorBehaviour<C>>::call(&self.executor, from, to, payload).await
+        <Ex as ExecutorBehaviour<C>>::call(&self.executor, from, to, payload).await
     }
 }
 
 #[tonic::async_trait]
-impl<C: Crypto> EvmBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt> {
-        <EvmClient as EvmBehaviour<C>>::get_receipt(&self.evm, hash).await
+        <Ev as EvmBehaviour<C>>::get_receipt(&self.evm, hash).await
     }
 
     async fn get_code(&self, addr: C::Address) -> Result<ByteCode> {
-        <EvmClient as EvmBehaviour<C>>::get_code(&self.evm, addr).await
+        <Ev as EvmBehaviour<C>>::get_code(&self.evm, addr).await
     }
 
     async fn get_balance(&self, addr: C::Address) -> Result<Balance> {
-        <EvmClient as EvmBehaviour<C>>::get_balance(&self.evm, addr).await
+        <Ev as EvmBehaviour<C>>::get_balance(&self.evm, addr).await
     }
 
     async fn get_tx_count(&self, addr: C::Address) -> Result<Nonce> {
-        <EvmClient as EvmBehaviour<C>>::get_tx_count(&self.evm, addr).await
+        <Ev as EvmBehaviour<C>>::get_tx_count(&self.evm, addr).await
     }
 
     async fn get_abi(&self, addr: C::Address) -> Result<ByteAbi> {
-        <EvmClient as EvmBehaviour<C>>::get_abi(&self.evm, addr).await
+        <Ev as EvmBehaviour<C>>::get_abi(&self.evm, addr).await
     }
 }
 
 
-impl<C: Crypto> WalletBehaviour<C> for Context {
-    type Account = <Wallet as WalletBehaviour<C>>::Account;
+impl<C, Ac, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
+    type Account = Ac;
 
     fn generate_account(&self, id: &str) -> Self::Account {
-        <Wallet as WalletBehaviour<C>>::generate_account(&self.wallet, id)
+        <Wa as WalletBehaviour<C>>::generate_account(&self.wallet, id)
     }
 
     fn import_account(&self, id: &str, sk: C::SecretKey) {
-        <Wallet as WalletBehaviour<C>>::import_account(&self.wallet, id, sk)
+        <Wa as WalletBehaviour<C>>::import_account(&self.wallet, id, sk)
     }
 
     fn export_account(&self, id: &str) -> Option<&Self::Account> {
-        <Wallet as WalletBehaviour<C>>::export_account(&self.wallet, id)
+        <Wa as WalletBehaviour<C>>::export_account(&self.wallet, id)
     }
 
     fn delete_account(&self, id: &str) -> Option<Self::Account> {
-        <Wallet as WalletBehaviour<C>>::delete_account(&self.wallet, id)
+        <Wa as WalletBehaviour<C>>::delete_account(&self.wallet, id)
     }
 
     fn current_account(&self) -> &Self::Account {
-        <Wallet as WalletBehaviour<C>>::current_account(&self.wallet)
+        <Wa as WalletBehaviour<C>>::current_account(&self.wallet)
     }
 
     // TODO: better API
     fn list_account(&self) -> Vec<(&str, &Self::Account)> {
-        <Wallet as WalletBehaviour<C>>::list_account(&self.wallet)
+        <Wa as WalletBehaviour<C>>::list_account(&self.wallet)
     }
 }
 
-impl<C: Crypto> SignerBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> SignerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     fn sign_raw_tx(&self, tx: CloudTransaction) -> RawTransaction {
         let account = <Self as WalletBehaviour<C>>::current_account(self);
         account.sign_raw_tx(tx)
@@ -200,7 +226,15 @@ impl<C: Crypto> SignerBehaviour<C> for Context {
 
 
 #[tonic::async_trait]
-impl<C: Crypto> NormalTransactionSenderBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     async fn send_tx(
         &self,
         to: C::Address,
@@ -218,12 +252,20 @@ impl<C: Crypto> NormalTransactionSenderBehaviour<C> for Context {
             chain_id: self.system_config.chain_id.clone(),
         };
 
-        <Context as RawTransactionSenderBehaviour<C>>::send_raw_tx(&self, raw_tx).await
+        <Self as RawTransactionSenderBehaviour<C>>::send_raw_tx(&self, raw_tx).await
     }
 }
 
 #[tonic::async_trait]
-impl<C: Crypto> UtxoTransactionSenderBehaviour<C> for Context {
+impl<C, Ac, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+    Co: ControllerBehaviour<C> + Send + Sync,
+    Ex: ExecutorBehaviour<C> + Send + Sync,
+    Ev: EvmBehaviour<C> + Send + Sync,
+    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     async fn send_utxo(
         &self,
         output: Vec<u8>,
@@ -247,6 +289,6 @@ impl<C: Crypto> UtxoTransactionSenderBehaviour<C> for Context {
             }
         };
 
-        <Context as RawTransactionSenderBehaviour<C>>::send_raw_utxo(&self, raw_utxo).await
+        <Self as RawTransactionSenderBehaviour<C>>::send_raw_utxo(&self, raw_utxo).await
     }
 }
