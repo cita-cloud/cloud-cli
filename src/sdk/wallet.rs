@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use super::account::Account;
 use super::account::AccountBehaviour;
 
+// TODO: use async?
 pub trait WalletBehaviour<C: Crypto> {
     type Account: AccountBehaviour<SigningAlgorithm = C>;
 
@@ -31,8 +32,9 @@ pub trait WalletBehaviour<C: Crypto> {
     fn export_account(&self, id: &str) -> Option<&Self::Account>;
     fn delete_account(&self, id: &str) -> Option<Self::Account>;
 
+    fn current_account(&self) -> &Self::Account;
     // TODO: better API
-    fn list_account(&self) -> Vec<String>;
+    fn list_account(&self) -> Vec<(&str, &Self::Account)>;
 }
 
 pub struct Wallet {
@@ -58,7 +60,14 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet {
         todo!()
     }
 
-    fn list_account(&self) -> Vec<String> {
+    fn current_account(&self) -> &Self::Account {
+        todo!()
+    }
+
+    // fn list_account(&self) -> Vec<String> {
+    //     todo!()
+    // }
+    fn list_account(&self) -> Vec<(&str, &Self::Account)> {
         todo!()
     }
 }
