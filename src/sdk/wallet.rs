@@ -16,7 +16,7 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::crypto::{ ArrayLike, Crypto };
+use crate::crypto::{ArrayLike, Crypto};
 
 use serde::{Deserialize, Serialize};
 
@@ -37,9 +37,7 @@ pub trait WalletBehaviour<C: Crypto> {
     fn list_account(&self) -> Vec<(&str, &Self::Account)>;
 }
 
-pub struct Wallet {
-
-}
+pub struct Wallet {}
 
 impl<C: Crypto> WalletBehaviour<C> for Wallet {
     type Account = Account<C>;

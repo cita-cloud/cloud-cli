@@ -1,4 +1,4 @@
-use crate::crypto::{ Crypto, ArrayLike };
+use crate::crypto::{ArrayLike, Crypto};
 
 use tonic::transport::channel::Channel;
 
@@ -9,37 +9,38 @@ use crate::proto::{
         Witness,
     },
     common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
+    controller::{BlockNumber, Flag, SystemConfig, TransactionIndex},
+    evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
     executor::{CallRequest, CallResponse},
 };
 
-use super::{controller::{
-    ControllerClient, ControllerBehaviour, SignerBehaviour, RawTransactionSenderBehaviour, NormalTransactionSenderBehaviour, UtxoTransactionSenderBehaviour, UtxoType,
-}, wallet::WalletBehaviour, evm::EvmBehaviour, executor::ExecutorBehaviour, account::AccountBehaviour };
-use super::executor::ExecutorClient;
 use super::evm::EvmClient;
+use super::executor::ExecutorClient;
+use super::{
+    account::AccountBehaviour,
+    controller::{
+        ControllerBehaviour, ControllerClient, NormalTransactionSenderBehaviour,
+        RawTransactionSenderBehaviour, SignerBehaviour, UtxoTransactionSenderBehaviour, UtxoType,
+    },
+    evm::EvmBehaviour,
+    evm::EvmBehaviourExt,
+    executor::ExecutorBehaviour,
+    wallet::WalletBehaviour,
+};
 // use super::controller::ControllerClient;
-use anyhow::Result;
 use anyhow::Context as _;
+use anyhow::Result;
 
 use super::wallet::Wallet;
 
-
-pub struct Context<C, Ac, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
-    Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+pub struct Context<Ac, Co, Ex, Ev, Wa>
+// where
+//     C: Crypto,
+//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+//     Co: ControllerBehaviour<C> + Send + Sync,
+//     Ex: ExecutorBehaviour<C> + Send + Sync,
+//     Ev: EvmBehaviour<C> + Send + Sync,
+//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
     pub current_block_number: u64,
     pub system_config: SystemConfig,
@@ -64,7 +65,7 @@ where
 // re-export functionality for Context
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -121,9 +122,8 @@ where
     }
 }
 
-
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -132,13 +132,18 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
-    async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse> {
+    async fn call(
+        &self,
+        from: C::Address,
+        to: C::Address,
+        payload: Vec<u8>,
+    ) -> Result<CallResponse> {
         <Ex as ExecutorBehaviour<C>>::call(&self.executor, from, to, payload).await
     }
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -168,8 +173,7 @@ where
     }
 }
 
-
-impl<C, Ac, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -206,28 +210,8 @@ where
     }
 }
 
-// impl<C, Ac, Co, Ex, Ev, Wa> SignerBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
-// where
-//     C: Crypto,
-//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
-//     Co: ControllerBehaviour<C> + Send + Sync,
-//     Ex: ExecutorBehaviour<C> + Send + Sync,
-//     Ev: EvmBehaviour<C> + Send + Sync,
-//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
-// {
-//     fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
-//         let account = <Self as WalletBehaviour<C>>::current_account(self);
-//         account.sign_raw_tx(tx)
-//     }
-
-//     fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
-//         let account = <Self as WalletBehaviour<C>>::current_account(self);
-//         account.sign_raw_utxo(utxo)
-//     }
-// }
-
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -249,9 +233,8 @@ where
     }
 }
 
-
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -260,12 +243,7 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
-    async fn send_tx(
-        &self,
-        to: C::Address,
-        data: Vec<u8>,
-        value: Vec<u8>,
-    ) -> Result<C::Hash> {
+    async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
         let raw_tx = CloudNormalTransaction {
             version: self.system_config.version,
             to: to.to_vec(),
@@ -282,7 +260,7 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<C, Ac, Co, Ex, Ev, Wa>
+impl<C, Ac, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
@@ -291,11 +269,7 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
-    async fn send_utxo(
-        &self,
-        output: Vec<u8>,
-        utxo_type: UtxoType,
-    ) -> Result<C::Hash> {
+    async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {
         let raw_utxo = {
             let lock_id = utxo_type as u64;
             let system_config = &self.system_config;
@@ -304,7 +278,8 @@ where
                 UtxoType::BlockInterval => &system_config.block_interval_pre_hash,
                 UtxoType::Validators => &system_config.validators_pre_hash,
                 UtxoType::EmergencyBrake => &system_config.emergency_brake_pre_hash,
-            }.clone();
+            }
+            .clone();
 
             CloudUtxoTransaction {
                 version: system_config.version,

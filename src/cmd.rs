@@ -1,10 +1,9 @@
-
 mod admin;
-mod controller;
+// mod controller;
 // mod executor;
 // #[cfg(feature = "evm")]
-// mod evm;
-mod wallet;
+mod evm;
+// mod wallet;
 
 use clap::{App, ArgMatches};
 use std::collections::HashMap;
@@ -15,20 +14,38 @@ use anyhow::{
     bail, ensure, Context as _, Result
 };
 
+use crate::sdk::{
+    admin::AdminBehaviour,
+    account::AccountBehaviour,
+    controller::ControllerBehaviour,
+    executor::ExecutorBehaviour,
+    evm::EvmBehaviour,
+    wallet::WalletBehaviour,
+};
+
 /// Command handler that associated with a command.
-pub type CommandHandler<C: Crypto> = fn(&mut Context<C>, &mut ArgMatches) -> Result<()>;
+pub type CommandHandler<Ac, Co, Ex, Ev, Wa> = fn(&mut Context<Ac, Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
 
 
 /// Command
-pub struct Command<C: Crypto> {
+pub struct Command<Ac, Co, Ex, Ev, Wa>
+{
     app: App<'static>,
-    handler: Option<CommandHandler<C>>,
+    handler: Option<CommandHandler<Ac, Co, Ex, Ev, Wa>>,
 
     subcmds: HashMap<String, Self>,
 }
 
 
-impl<C: Crypto> Command<C> {
+impl<Ac, Co, Ex, Ev, Wa> Command<Ac, Co, Ex, Ev, Wa>
+// where
+//     C: Crypto,
+//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
+//     Co: ControllerBehaviour<C> + Send + Sync,
+//     Ex: ExecutorBehaviour<C> + Send + Sync,
+//     Ev: EvmBehaviour<C> + Send + Sync,
+//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+{
     /// Accept an clap App without subcommands.
     /// Subcommands should be passed by using [`Command::subcommand`] or [`Command::subcommands`].
     /// 
@@ -53,15 +70,18 @@ impl<C: Crypto> Command<C> {
     }
 
     /// Get matches from the underlaying clap App.
-    pub fn get_matches(self) -> ArgMatches {
+    pub fn get_matches(&self) -> ArgMatches {
         self.app.get_matches()
     }
+    
+    // TODO: get matches from
+
 
     /// Command handler is for handling leaf command(that has no subcommands) or modifying context for subcommands.
     /// It should not handle any subcommands. Subcommand has its own handler, which will be called after.
     /// 
     /// Default to no-op.
-    pub fn handler(mut self, handler: CommandHandler<C>) -> Self {
+    pub fn handler(mut self, handler: CommandHandler<Ac, Co, Ex, Ev, Wa>) -> Self {
         self.handler.replace(handler);
         self
     }
@@ -87,7 +107,7 @@ impl<C: Crypto> Command<C> {
     }
 
     /// Execute this command with context and args.
-    pub fn exec(&self, context: &mut Context<C>, mut m: ArgMatches) -> Result<()> {
+    pub fn exec(&self, context: &mut Context<Ac, Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
         if let Some(handler) = self.handler {
             (handler)(context, &mut m).with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }

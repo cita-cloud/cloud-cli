@@ -21,21 +21,32 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient, CallRequest, CallResponse},
 };
 
-use crate::crypto::Crypto;
 use crate::crypto::ArrayLike;
+use crate::crypto::Crypto;
 use anyhow::Result;
 use tonic::transport::Channel;
 
-pub type ExecutorClient = crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
+pub type ExecutorClient =
+    crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
 
 #[tonic::async_trait]
 pub trait ExecutorBehaviour<C: Crypto> {
-    async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse>;
+    async fn call(
+        &self,
+        from: C::Address,
+        to: C::Address,
+        payload: Vec<u8>,
+    ) -> Result<CallResponse>;
 }
 
 #[tonic::async_trait]
 impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
-    async fn call(&self, from: C::Address, to: C::Address, payload: Vec<u8>) -> Result<CallResponse> {
+    async fn call(
+        &self,
+        from: C::Address,
+        to: C::Address,
+        payload: Vec<u8>,
+    ) -> Result<CallResponse> {
         let req = CallRequest {
             from: from.to_vec(),
             to: to.to_vec(),

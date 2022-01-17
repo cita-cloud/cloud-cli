@@ -50,10 +50,10 @@ lazy_static::lazy_static! {
 
 
 fn keccak_hash(input: &[u8]) -> Hash {
-    let hasher = Keccak::v256();
+    let mut hasher = Keccak::v256();
     hasher.update(input);
 
-    let output = [0u8; HASH_BYTES_LEN];
+    let mut output = [0u8; HASH_BYTES_LEN];
     hasher.finalize(&mut output);
 
     output
@@ -64,7 +64,7 @@ fn aes(data: &[u8], pw: &[u8]) -> Vec<u8> {
 
     let mut output = data.to_vec();
 
-    let pw_hash = keccak_hash(data);
+    let pw_hash = keccak_hash(pw);
     let (key, nonce) = pw_hash.split_at(16);
 
     let mut cipher = Aes128Ctr::new(key.into(), nonce.into());

@@ -1,11 +1,11 @@
 use clap::App;
 use clap::Arg;
 
-use crate::context::Context;
-use crate::utils::{parse_addr, parse_data, parse_value};
+use crate::utils::{parse_addr, parse_data};
 
 use prost::Message;
 use super::*;
+use crate::sdk::context::Context;
 
 
 use crate::proto::{
@@ -29,25 +29,34 @@ use crate::proto::{
 use crate::crypto::{ArrayLike, Crypto};
 use crate::utils::hex;
 
-pub fn update_admin<C: Crypto>() -> Command<C> {
+
+pub fn update_admin<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+{
     let app = App::new("update-admin")
         .about("Update admin of the chain")
         .arg(
             Arg::new("admin")
                 .help("the address of the new admin")
                 .required(true)
-                .validator(parse_addr)
+                .validator(parse_addr::<C>)
         );
     Command::new(app)
         .handler(|ctx, m| {
-            let admin = parse_addr(m.value_of("admin").unwrap())?;
+            let admin = parse_addr::<C>(m.value_of("admin").unwrap())?;
             let tx_hash = ctx.rt.block_on(ctx.update_admin(admin))?;
-            println!("tx_hash: {}", hex(&tx_hash));
+            println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
 }
 
-pub fn update_validators<C: Crypto>() -> Command<C> {
+pub fn update_validators<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+{
     let app = App::new("update-validators")
         .about("Update validators of the chain")
         .arg(
@@ -55,22 +64,26 @@ pub fn update_validators<C: Crypto>() -> Command<C> {
                 .help("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
                 .multiple_values(true)
-                .validator(parse_addr)
+                .validator(parse_addr::<C>)
         );
     Command::new(app)
         .handler(|ctx, m| {
             let validators = m
                 .values_of("validators")
                 .unwrap()
-                .map(parse_addr)
-                .collect::<Result<Vec<_>>>()?;
+                .map(parse_addr::<C>)
+                .collect::<Result<Vec<C::Address>>>()?;
             let tx_hash = ctx.rt.block_on(ctx.update_validators(&validators))?;
-            println!("tx_hash: {}", hex(&tx_hash));
+            println!("tx_hash: {}", hex(&tx_hash.as_slice()));
             Ok(())
         })
 }
 
-pub fn set_block_interval<C: Crypto>() -> Command<C> {
+pub fn set_block_interval<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa> 
+where
+    C: Crypto,
+    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+{
     let app = App::new("set-block-interval")
         .about("Set block interval")
         .arg(
@@ -83,12 +96,16 @@ pub fn set_block_interval<C: Crypto>() -> Command<C> {
         .handler(|ctx, m| {
             let block_interval = m.value_of("block_interval").unwrap().parse::<u32>()?;
             let tx_hash = ctx.rt.block_on(ctx.set_block_interval(block_interval))?;
-            println!("tx_hash: {}", hex(&tx_hash));
+            println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
 }
 
-pub fn emergency_brake<C: Crypto>() -> Command<C> {
+pub fn emergency_brake<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+{
     let app = App::new("emergency-brake")
         .about("Send emergency brake cmd to chain")
         .arg(
@@ -101,7 +118,7 @@ pub fn emergency_brake<C: Crypto>() -> Command<C> {
         .handler(|ctx, m| {
             let switch = m.value_of("switch").unwrap() == "on";
             let tx_hash = ctx.rt.block_on(ctx.emergency_brake(switch))?;
-            println!("tx_hash: {}", hex(&tx_hash));
+            println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
 }

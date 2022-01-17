@@ -16,7 +16,7 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::crypto::{ ArrayLike, Crypto };
+use crate::crypto::{ArrayLike, Crypto};
 
 use serde::{Deserialize, Serialize};
 
@@ -34,12 +34,11 @@ pub trait AccountBehaviour {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Account<C: Crypto> {
     address: C::Address,
     public_key: C::PublicKey,
-    secret_key: C::SecretKey,
+    secret_key: C::SecretKey, // TODO: wrap in Secret
 }
 
 impl<C: Crypto> AccountBehaviour for Account<C> {

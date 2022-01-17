@@ -11,11 +11,13 @@ use crate::{
         },
         common::NodeInfo,
         controller::SystemConfig,
-        evm::{Log, Receipt},
+        evm::{
+            Log, Receipt, ByteCode,
+        },
     },
     crypto::Crypto,
     utils::{display_time, hex},
-    wallet::Account,
+    // wallet::Account,
 };
 
 pub trait Display {
@@ -31,15 +33,15 @@ impl<T: Display> Display for &T {
     }
 }
 
-impl<C: Crypto> Display for Account<C> {
-    fn to_json(&self) -> Json {
-        json!({
-            "account_addr": hex(&self.addr.as_slice()),
-            "public_key": hex(&self.keypair.0.as_slice()),
-            "private_key": hex(&self.keypair.1.as_slice()),
-        })
-    }
-}
+// impl<C: Crypto> Display for Account<C> {
+//     fn to_json(&self) -> Json {
+//         json!({
+//             "account_addr": hex(&self.addr.as_slice()),
+//             "public_key": hex(&self.keypair.0.as_slice()),
+//             "private_key": hex(&self.keypair.1.as_slice()),
+//         })
+//     }
+// }
 
 impl Display for CompactBlock {
     fn to_json(&self) -> Json {
@@ -232,5 +234,11 @@ impl Display for Receipt {
             "logs_bloom": hex(&self.logs_bloom),
             "error_msg": self.error_message,
         })
+    }
+}
+
+impl Display for ByteCode {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.byte_code))
     }
 }

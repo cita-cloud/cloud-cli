@@ -11,8 +11,7 @@ use crate::proto::{
     },
     common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
     controller::{
-        rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
+        rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig, TransactionIndex,
     },
     evm::{
         rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
@@ -21,10 +20,10 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use anyhow::Result;
+use crate::crypto::{ArrayLike, Crypto};
 use anyhow::anyhow;
 use anyhow::Context;
-use crate::crypto::{Crypto, ArrayLike};
+use anyhow::Result;
 
 use tonic::transport::Channel;
 
@@ -57,18 +56,16 @@ pub trait ControllerBehaviour<C: Crypto> {
 #[tonic::async_trait]
 impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
-        let resp = self
-            .clone()
-            .send_raw_transaction(raw)
-            .await?
-            .into_inner();
+        let resp = self.clone().send_raw_transaction(raw).await?.into_inner();
 
         C::Hash::try_from_slice(&resp.hash)
             .context("controller returns an invalid transaction hash, maybe we are using a wrong signing algorithm?")
     }
 
     async fn get_system_config(&self) -> Result<SystemConfig> {
-        let resp = ControllerClient::get_system_config(&mut self.clone(), Empty{}).await?.into_inner();
+        let resp = ControllerClient::get_system_config(&mut self.clone(), Empty {})
+            .await?
+            .into_inner();
 
         Ok(resp)
     }
@@ -94,14 +91,20 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
 
     async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock> {
         let block_number = BlockNumber { block_number };
-        let resp = ControllerClient::get_block_by_number(&mut self.clone(), block_number).await?.into_inner();
+        let resp = ControllerClient::get_block_by_number(&mut self.clone(), block_number)
+            .await?
+            .into_inner();
 
         Ok(resp)
     }
 
     async fn get_block_by_hash(&self, hash: C::Hash) -> Result<CompactBlock> {
-        let hash = Hash{ hash: hash.to_vec() };
-        let resp = ControllerClient::get_block_by_hash(&mut self.clone(), hash).await?.into_inner();
+        let hash = Hash {
+            hash: hash.to_vec(),
+        };
+        let resp = ControllerClient::get_block_by_hash(&mut self.clone(), hash)
+            .await?
+            .into_inner();
 
         Ok(resp)
     }
@@ -109,7 +112,9 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     async fn get_tx(&self, tx_hash: C::Hash) -> Result<RawTransaction> {
         let resp = self
             .clone()
-            .get_transaction(Hash { hash: tx_hash.to_vec() })
+            .get_transaction(Hash {
+                hash: tx_hash.to_vec(),
+            })
             .await?
             .into_inner();
 
@@ -119,7 +124,9 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     async fn get_tx_index(&self, tx_hash: C::Hash) -> Result<u64> {
         let resp = self
             .clone()
-            .get_transaction_index(Hash { hash: tx_hash.to_vec() })
+            .get_transaction_index(Hash {
+                hash: tx_hash.to_vec(),
+            })
             .await?
             .into_inner();
 
@@ -129,7 +136,9 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64> {
         let resp = self
             .clone()
-            .get_transaction_block_number(Hash { hash: tx_hash.to_vec() })
+            .get_transaction_block_number(Hash {
+                hash: tx_hash.to_vec(),
+            })
             .await?
             .into_inner();
 
@@ -137,27 +146,30 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     }
 
     async fn get_peer_count(&self) -> Result<u64> {
-        let resp = ControllerClient::get_peer_count(&mut self.clone(), Empty{})
+        let resp = ControllerClient::get_peer_count(&mut self.clone(), Empty {})
             .await?
             .into_inner();
-        
+
         Ok(resp.peer_count)
     }
 
     async fn get_peers_info(&self) -> Result<Vec<NodeInfo>> {
-        let resp = ControllerClient::get_peers_info(&mut self.clone(), Empty{})
+        let resp = ControllerClient::get_peers_info(&mut self.clone(), Empty {})
             .await?
             .into_inner();
-        
+
         Ok(resp.nodes)
     }
 
     async fn add_node(&self, multiaddr: String) -> Result<u32> {
-        let node_info = NodeNetInfo { multi_address: multiaddr, ..Default::default() };
+        let node_info = NodeNetInfo {
+            multi_address: multiaddr,
+            ..Default::default()
+        };
         let resp = ControllerClient::add_node(&mut self.clone(), node_info)
             .await?
             .into_inner();
-        
+
         Ok(resp.code)
     }
 }
@@ -190,10 +202,7 @@ where
 
         // build raw tx
         let raw_tx = {
-            let witness = Witness {
-                sender,
-                signature,
-            };
+            let witness = Witness { sender, signature };
 
             let unverified_tx = UnverifiedTransaction {
                 transaction: Some(tx),
@@ -227,10 +236,7 @@ where
 
         // build raw utxo
         let raw_utxo = {
-            let witness = Witness {
-                sender,
-                signature,
-            };
+            let witness = Witness { sender, signature };
 
             let unverified_utxo = UnverifiedUtxoTransaction {
                 transaction: Some(utxo),
@@ -252,23 +258,6 @@ pub trait RawTransactionSenderBehaviour<C: Crypto> {
     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash>;
     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>;
 }
-    
-// #[tonic::async_trait]
-// impl<C, T> RawTransactionSenderBehaviour<C> for T
-// where
-//     C: Crypto,
-//     T: ControllerBehaviour<C> + SignerBehaviour<C> + Send + Sync,
-// {
-//     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
-//         let raw = self.sign_raw_tx(raw_tx);
-//         self.send_raw(raw).await.context("failed to send raw")
-//     }
-
-//     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
-//         let raw = self.sign_raw_utxo(raw_utxo);
-//         self.send_raw(raw).await.context("failed to send raw")
-//     }
-// }
 
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]
@@ -280,140 +269,12 @@ pub enum UtxoType {
     EmergencyBrake = 1005,
 }
 
-// pub trait TransactionPreparerBehaviour<C: Crypto> {
-//     fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudNormalTransaction;
-// }
-
-// pub trait UtxoTransactionPreparerBehaviour<C: Crypto> {
-//     fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction;
-// }
-
-// impl<C: Crypto> UtxoTransactionPreparerBehaviour<C> for SystemConfig {
-//     fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
-//         let lock_id = utxo_type as u64;
-//         let pre_tx_hash = match utxo_type {
-//             UtxoType::Admin => &self.admin_pre_hash,
-//             UtxoType::BlockInterval => &self.block_interval_pre_hash,
-//             UtxoType::Validators => &self.validators_pre_hash,
-//             UtxoType::EmergencyBrake => &self.emergency_brake_pre_hash,
-//         }.clone();
-
-//         CloudUtxoTransaction {
-//             version: self.version,
-//             pre_tx_hash,
-//             output,
-//             lock_id,
-//         }
-//     }
-// }
-
-// pub struct TransactionDetail {
-//     pub nonce: u64,
-//     pub quota: u64,
-//     pub valid_until_block: u64,
-// }
-
-// pub struct DetailTransactionPreparer<'a, 'b> {
-//     pub detail: &'a TransactionDetail,
-//     pub system_config: &'b SystemConfig,
-// }
-
-// impl<'a, 'b, C: Crypto> TransactionPreparerBehaviour<C> for DetailTransactionPreparer<'a, 'b> {
-//     fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudNormalTransaction {
-//         CloudNormalTransaction {
-//             version: self.system_config.version,
-//             to: to.to_vec(),
-//             data,
-//             value,
-//             nonce: self.detail.nonce.to_string(),
-//             quota: self.detail.quota,
-//             valid_until_block: self.detail.valid_until_block,
-//             chain_id: self.system_config.chain_id.clone(),
-//         }
-//     }
-// }
-
-// impl<'a, 'b, C: Crypto> UtxoTransactionPreparerBehaviour<C> for DetailTransactionPreparer<'a, 'b> {
-//     fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
-//         <SystemConfig as UtxoTransactionPreparerBehaviour<C>>::prepare_raw_utxo(self.system_config, output, utxo_type)
-//     }
-// }
-
-// pub struct DefaultTransactionPreparer<'a> {
-//     pub current_block_number: u64,
-//     pub system_config: &'a SystemConfig,
-// }
-
-// impl<'a, C: Crypto> TransactionPreparerBehaviour<C> for DefaultTransactionPreparer<'a> {
-//     fn prepare_raw_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> CloudNormalTransaction {
-//         let nonce = rand::random::<u64>().to_string();
-//         CloudNormalTransaction {
-//             version: self.system_config.version,
-//             to: to.to_vec(),
-//             data,
-//             value,
-//             nonce,
-//             quota: 3_000_000,
-//             valid_until_block: self.current_block_number + 95,
-//             chain_id: self.system_config.chain_id.clone(),
-//         }
-//     }
-// }
-
-// impl<'a, C: Crypto> UtxoTransactionPreparerBehaviour<C> for DefaultTransactionPreparer<'a> {
-//     fn prepare_raw_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> CloudUtxoTransaction {
-//         <SystemConfig as UtxoTransactionPreparerBehaviour<C>>::prepare_raw_utxo(self.system_config, output, utxo_type)
-//     }
-// }
-
 #[tonic::async_trait]
 pub trait NormalTransactionSenderBehaviour<C: Crypto> {
-    async fn send_tx(
-        &self,
-        to: C::Address,
-        data: Vec<u8>,
-        value: Vec<u8>,
-    ) -> Result<C::Hash>;
+    async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>;
 }
-
-// #[tonic::async_trait]
-// impl<C, T> TransactionSenderBehaviour<C> for T
-// where
-//     C: Crypto,
-//     T: RawTransactionSenderBehaviour<C> + TransactionPreparerBehaviour<C> + Send + Sync + 'static
-// {
-//     async fn send_tx(
-//         &self,
-//         to: C::Address,
-//         data: Vec<u8>,
-//         value: Vec<u8>,
-//     ) -> Result<C::Hash> {
-//         let raw_tx = self.prepare_raw_tx(to, data, value);
-//         self.send_raw_tx(raw_tx).await
-//     }
-// }
 
 #[tonic::async_trait]
 pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
-    async fn send_utxo(
-        &self,
-        output: Vec<u8>,
-        utxo_type: UtxoType,
-    ) -> Result<C::Hash>;
+    async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash>;
 }
-
-// #[tonic::async_trait]
-// impl<C, T> UtxoTransactionSenderBehaviour<C> for T
-// where
-//     C: Crypto,
-//     T: RawTransactionSenderBehaviour<C> + UtxoTransactionPreparerBehaviour<C> + Send + Sync + 'static
-// {
-//     async fn send_utxo(
-//         &self,
-//         output: Vec<u8>,
-//         utxo_type: UtxoType,
-//     ) -> Result<C::Hash> {
-//         let raw_utxo = self.prepare_raw_utxo(output, utxo_type);
-//         self.send_raw_utxo(raw_utxo).await
-//     }
-// }
