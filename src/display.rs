@@ -12,7 +12,7 @@ use crate::{
         common::NodeInfo,
         controller::SystemConfig,
         evm::{
-            Log, Receipt, ByteCode,
+            Log, Receipt, ByteCode, Balance, Nonce, ByteAbi,
         },
     },
     crypto::Crypto,
@@ -240,5 +240,24 @@ impl Display for Receipt {
 impl Display for ByteCode {
     fn to_json(&self) -> Json {
         json!(hex(&self.byte_code))
+    }
+}
+
+impl Display for Balance {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.value))
+    }
+}
+
+impl Display for Nonce {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.nonce))
+    }
+}
+
+impl Display for ByteAbi {
+    fn to_json(&self) -> Json {
+        // ByteAbi and bytes_abi..
+        json!(hex(&self.bytes_abi))
     }
 }

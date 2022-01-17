@@ -28,10 +28,6 @@ use crate::proto::{
 
 use crate::display::Display;
 
-    // async fn get_code(&self, addr: C::Address) -> Result<ByteCode>;
-    // async fn get_balance(&self, addr: C::Address) -> Result<Balance>;
-    // async fn get_tx_count(&self, addr: C::Address) -> Result<Nonce>;
-    // async fn get_abi(&self, addr: C::Address) -> Result<ByteAbi>;
 
 pub fn get_receipt<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
 where
@@ -75,6 +71,70 @@ where
 
             let byte_code = ctx.rt.block_on(ctx.get_code(addr))?;
             println!("{}", byte_code.display());
+            Ok(())
+        })
+}
+
+pub fn get_balance<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+{
+    let app = App::new("get-balance")
+        .about("Get balance by account address")
+        .arg(
+            Arg::new("addr")
+                .required(true)
+                .validator(parse_addr::<C>)
+        );
+
+    Command::new(app)
+        .handler(|ctx, m| {
+            let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
+
+            let balance = ctx.rt.block_on(ctx.get_balance(addr))?;
+            println!("{}", balance.display());
+            Ok(())
+        })
+}
+
+pub fn get_tx_count<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+{
+    let app = App::new("get-tx-count")
+        .about("Get the transaction count of the address")
+        .arg(Arg::new("addr").required(true).validator(parse_addr::<C>));
+
+    Command::new(app)
+        .handler(|ctx, m| {
+            let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
+
+            let count = ctx.rt.block_on(ctx.get_tx_count(addr))?;
+            println!("{}", count.display());
+            Ok(())
+        })
+}
+
+pub fn get_abi<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+{
+    let app = App::new("get-abi").about("Get the specific contract ABI").arg(
+        Arg::new("addr")
+            .required(true)
+            .takes_value(true)
+            .validator(parse_addr::<C>),
+    );
+
+    Command::new(app)
+        .handler(|ctx, m| {
+            let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
+
+            let byte_abi = ctx.rt.block_on(ctx.get_abi(addr))?;
+            println!("{}", byte_abi.display());
             Ok(())
         })
 }
