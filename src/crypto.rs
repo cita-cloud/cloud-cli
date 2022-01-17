@@ -1,23 +1,21 @@
-#[cfg(feature = "crypto_sm")]
 mod sm;
-use serde::Serialize;
 use serde::Deserialize;
-#[cfg(feature = "crypto_sm")]
+use serde::Serialize;
 pub use sm::{generate_keypair, hash_data, pk2address, sign_message};
 
-#[cfg(feature = "crypto_eth")]
 mod eth;
 #[cfg(feature = "crypto_eth")]
 pub use eth::{generate_keypair, hash_data, pk2address, sign_message};
 
-use anyhow::Result;
 use anyhow::Context;
+use anyhow::Result;
+
+pub use eth::EthCrypto;
 
 // I tried this, but it's not easy to constrain the Error type of TryFrom
 // since type bound on generic param's associated type is unstable.
 //
 // pub trait ArrayLike: AsRef<[u8]> + for<'a> TryFrom<&'a [u8]> { }
-
 
 // TODO: better name + add Copy?
 /// assert_eq!(ArrayLike::try_from_slice(arr.as_slice()), Ok(arr));
@@ -36,10 +34,15 @@ impl<const N: usize> ArrayLike for [u8; N] {
     }
 
     fn try_from_slice(slice: &[u8]) -> Result<Self> {
-        slice.try_into().with_context(|| format!("length mismatched, expected: `{}`, got: `{}`", N, slice.len()))
+        slice.try_into().with_context(|| {
+            format!(
+                "length mismatched, expected: `{}`, got: `{}`",
+                N,
+                slice.len()
+            )
+        })
     }
 }
-
 
 pub trait Crypto {
     type Hash: ArrayLike;
@@ -50,7 +53,12 @@ pub trait Crypto {
 
     type Signature: ArrayLike;
 
-    fn generate_keypair() -> (Self::PublicKey, Self::SecretKey);
+    fn generate_secret_key() -> Self::SecretKey;
+    fn generate_keypair() -> (Self::PublicKey, Self::SecretKey) {
+        let sk = Self::generate_secret_key();
+        let pk = Self::sk2pk(&sk);
+        (pk, sk)
+    }
 
     fn hash(msg: &[u8]) -> Self::Hash;
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
