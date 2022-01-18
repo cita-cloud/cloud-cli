@@ -22,47 +22,60 @@ use serde::{Deserialize, Serialize};
 
 use super::account::Account;
 use super::account::AccountBehaviour;
+use anyhow::Result;
+use anyhow::Context;
 
 // TODO: use async?
 pub trait WalletBehaviour<C: Crypto> {
     type Account: AccountBehaviour<SigningAlgorithm = C>;
 
-    fn generate_account(&self, id: &str) -> Self::Account;
-    fn import_account(&self, id: &str, sk: C::SecretKey);
-    fn export_account(&self, id: &str) -> Option<&Self::Account>;
-    fn delete_account(&self, id: &str) -> Option<Self::Account>;
+    fn import_account(&self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()>;
+    fn unlock_account(&self, id: &str, pw: Option<&str>) -> Result<Self::Account>;
+    fn delete_account(&self, id: &str) -> Result<Self::Account>;
 
-    fn current_account(&self) -> &Self::Account;
-    // TODO: better API
-    fn list_account(&self) -> Vec<(&str, &Self::Account)>;
+    fn list_account_id(&self) -> Vec<String>;
 }
 
-pub struct Wallet {}
+
+struct LockedAccount<C: Crypto> {
+    address: C::Address,
+    encrypted_sk: Vec<u8>,
+}
+
+impl<C: Crypto> LockedAccount<C> {
+    fn unlock(&self, pw: Option<&str>) -> Result<Account<C>> {
+        todo!()
+    }
+}
+
+enum MaybeLockedAccount<C: Crypto> {
+    Locked(LockedAccount<C>),
+    Unlocked(Account<C>),
+}
+
+impl<C: Crypto> From<LockedAccount<C>> for MaybeLockedAccount<C> {
+    fn from(locked: LockedAccount<C>) -> Self {
+        Self::Locked(locked)
+    }
+}
+
+impl<C: Crypto> From<Account<C>> for MaybeLockedAccount<C> {
+    fn from(unlocked: Account<C>) -> Self {
+        Self::Unlocked(unlocked)
+    }
+}
+
+pub struct Wallet {
+
+
+}
 
 impl<C: Crypto> WalletBehaviour<C> for Wallet {
     type Account = Account<C>;
 
-    fn generate_account(&self, id: &str) -> Self::Account {
-        todo!()
-    }
+    fn import_account(&self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()>;
+    fn unlock_account(&self, id: &str, pw: Option<&str>) -> Result<Self::Account>;
+    fn delete_account(&self, id: &str) -> Result<Self::Account>;
 
-    fn import_account(&self, id: &str, sk: C::SecretKey) {
-        todo!()
-    }
-
-    fn export_account(&self, id: &str) -> Option<&Self::Account> {
-        todo!()
-    }
-
-    fn delete_account(&self, id: &str) -> Option<Self::Account> {
-        todo!()
-    }
-
-    fn current_account(&self) -> &Self::Account {
-        todo!()
-    }
-
-    fn list_account(&self) -> Vec<(&str, &Self::Account)> {
-        todo!()
-    }
+    fn list_account_id(&self) -> Vec<String>;
 }
