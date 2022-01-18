@@ -23,6 +23,14 @@ use serde::{Deserialize, Serialize};
 pub trait AccountBehaviour {
     type SigningAlgorithm: Crypto;
 
+    // TODO: consider this Self: Sized
+    fn generate() -> Self
+        where Self: Sized
+    {
+        let sk = Self::SigningAlgorithm::generate_secret_key();
+        Self::from_secret_key(sk)
+    }
+
     fn from_secret_key(sk: <Self::SigningAlgorithm as Crypto>::SecretKey) -> Self;
 
     fn address(&self) -> &<Self::SigningAlgorithm as Crypto>::Address;
@@ -43,6 +51,17 @@ pub struct Account<C: Crypto> {
 
 impl<C: Crypto> AccountBehaviour for Account<C> {
     type SigningAlgorithm = C;
+
+    fn generate() -> Self {
+        let (public_key, secret_key) = C::generate_keypair();
+        let address = C::pk2addr(&public_key);
+
+        Self {
+            address,
+            public_key,
+            secret_key,
+        }
+    }
 
     fn from_secret_key(sk: C::SecretKey) -> Self {
         let public_key = C::sk2pk(&sk);

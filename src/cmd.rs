@@ -1,11 +1,11 @@
 mod admin;
-// mod controller;
-// mod executor;
-// #[cfg(feature = "evm")]
+mod controller;
+// // mod executor;
+// // #[cfg(feature = "evm")]
 mod evm;
 // mod wallet;
 
-use clap::{App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use std::collections::HashMap;
 use crate::sdk::context::Context;
 use crate::crypto::Crypto;
@@ -28,57 +28,55 @@ pub type CommandHandler<Ac, Co, Ex, Ev, Wa> = fn(&mut Context<Ac, Co, Ex, Ev, Wa
 
 
 /// Command
-pub struct Command<Ac, Co, Ex, Ev, Wa>
+#[derive(Clone)]
+pub struct Command<'help, Ac, Co, Ex, Ev, Wa>
 {
-    app: App<'static>,
+    app: App<'help>,
     handler: Option<CommandHandler<Ac, Co, Ex, Ev, Wa>>,
 
     subcmds: HashMap<String, Self>,
 }
 
 
-impl<Ac, Co, Ex, Ev, Wa> Command<Ac, Co, Ex, Ev, Wa>
-// where
-//     C: Crypto,
-//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
-//     Co: ControllerBehaviour<C> + Send + Sync,
-//     Ex: ExecutorBehaviour<C> + Send + Sync,
-//     Ev: EvmBehaviour<C> + Send + Sync,
-//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+impl<'help, Ac, Co, Ex, Ev, Wa> Command<'help, Ac, Co, Ex, Ev, Wa>
 {
-    /// Accept an clap App without subcommands.
-    /// Subcommands should be passed by using [`Command::subcommand`] or [`Command::subcommands`].
-    /// 
-    /// # Panics
-    /// 
-    /// Panic if the clap app has subcommands.
-    /// 
-    /// [`Command::subcommand`]: Command::subcommand
-    /// [`Command::subcommands`]: Command::subcommands
-    pub fn new(app_without_subcmds: App<'static>) -> Self {
-        assert!(!app_without_subcmds.has_subcommands(), "subcommands should be passed by using Command::subcommands");
+    /// Create a new command.
+    pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
-            app: app_without_subcmds,
+            app: App::new(name),
             handler: None,
             subcmds: HashMap::new(),
         }
     }
 
-    /// Get name of the underlaying clap App.
-    pub fn get_name(&self) -> &str {
-        self.app.get_name()
+    /// (Re)Sets this command's app name.
+    pub fn name(mut self, name: &str) -> Self {
+        self.app = self.app.name(name);
+        self
     }
 
-    /// Get matches from the underlaying clap App.
-    pub fn get_matches(&self) -> ArgMatches {
-        self.app.get_matches()
+    pub fn alias<S: Into<&'help str>>(mut self, name: S) -> Self {
+        self.app = self.app.alias(name);
+        self
     }
-    
-    // TODO: get matches from
 
+    pub fn aliases(mut self, names: &[&'help str]) -> Self {
+        self.app = self.app.aliases(names);
+        self
+    }
 
-    /// Command handler is for handling leaf command(that has no subcommands) or modifying context for subcommands.
-    /// It should not handle any subcommands. Subcommand has its own handler, which will be called after.
+    pub fn about<O: Into<Option<&'help str>>>(mut self, about: O) -> Self {
+        self.app = self.app.about(about);
+        self
+    }
+
+    pub fn arg<A: Into<Arg<'help>>>(mut self, a: A) -> Self {
+        self.app = self.app.arg(a);
+        self
+    }
+
+    /// Command handler is for handling a leaf command(that has no subcommands) or modifying the Context/ArgMatches for subcommands.
+    /// After processed by the handler, Context and subcommand's ArgMatches will be handled by the subcommand(if any).
     /// 
     /// Default to no-op.
     pub fn handler(mut self, handler: CommandHandler<Ac, Co, Ex, Ev, Wa>) -> Self {
@@ -89,6 +87,7 @@ impl<Ac, Co, Ex, Ev, Wa> Command<Ac, Co, Ex, Ev, Wa>
     /// Add subcommand for this Command.
     pub fn subcommand(mut self, subcmd: Self) -> Self {
         let subcmd_name = subcmd.get_name().to_owned();
+
         self.app = self.app.subcommand(subcmd.app.clone());
         self.subcmds.insert(subcmd_name, subcmd);
 
@@ -120,5 +119,23 @@ impl<Ac, Co, Ex, Ev, Wa> Command<Ac, Co, Ex, Ev, Wa>
         }
         Ok(())
     }
+
+    /// Get name of the underlaying clap App.
+    pub fn get_name(&self) -> &str {
+        self.app.get_name()
+    }
+
+    /// Get matches from the underlaying clap App.
+    pub fn get_matches(self) -> ArgMatches {
+        self.app.get_matches()
+    }
+    
+    // TODO: get matches from
+
+    pub fn get_all_aliases(&self) -> impl Iterator<Item = &str> + '_ {
+        self.app.get_all_aliases()
+    }
+
+
 }
 

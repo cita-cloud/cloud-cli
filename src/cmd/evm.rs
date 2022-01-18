@@ -1,7 +1,9 @@
 use clap::App;
 use clap::Arg;
 
-use crate::utils::{parse_addr, parse_hash};
+use crate::crypto::ArrayLike;
+use crate::sdk::evm::EvmBehaviourExt;
+use crate::utils::{parse_addr, parse_hash, parse_data};
 
 use prost::Message;
 use super::*;
@@ -27,22 +29,21 @@ use crate::proto::{
 };
 
 use crate::display::Display;
+use crate::utils::hex;
 
 
-pub fn get_receipt<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+pub fn get_receipt<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
-    let app = App::new("get-receipt")
+    Command::new("get-receipt")
         .about("Get receipt by tx_hash")
         .arg(
             Arg::new("tx_hash")
                 .required(true)
                 .validator(parse_hash::<C>)
-        );
-
-    Command::new(app)
+        )
         .handler(|ctx, m| {
             let tx_hash = parse_hash::<C>(m.value_of("tx_hash").unwrap())?;
 
@@ -52,20 +53,18 @@ where
         })
 }
 
-pub fn get_code<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+pub fn get_code<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
-    let app = App::new("get-code")
+    Command::new("get-code")
         .about("Get code by contract address")
         .arg(
             Arg::new("addr")
                 .required(true)
                 .validator(parse_addr::<C>)
-        );
-
-    Command::new(app)
+        )
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -75,20 +74,18 @@ where
         })
 }
 
-pub fn get_balance<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+pub fn get_balance<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
-    let app = App::new("get-balance")
+    Command::new("get-balance")
         .about("Get balance by account address")
         .arg(
             Arg::new("addr")
                 .required(true)
                 .validator(parse_addr::<C>)
-        );
-
-    Command::new(app)
+        )
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -98,16 +95,14 @@ where
         })
 }
 
-pub fn get_tx_count<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+pub fn get_tx_count<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
-    let app = App::new("get-tx-count")
+    Command::new("get-tx-count")
         .about("Get the transaction count of the address")
-        .arg(Arg::new("addr").required(true).validator(parse_addr::<C>));
-
-    Command::new(app)
+        .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -117,19 +112,19 @@ where
         })
 }
 
-pub fn get_abi<C, Ac, Co, Ex, Ev, Wa>() -> Command<Ac, Co, Ex, Ev, Wa>
+pub fn get_abi<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
-    let app = App::new("get-abi").about("Get the specific contract ABI").arg(
-        Arg::new("addr")
-            .required(true)
-            .takes_value(true)
-            .validator(parse_addr::<C>),
-    );
-
-    Command::new(app)
+    Command::new("get-abi")
+        .about("Get the specific contract ABI")
+        .arg(
+            Arg::new("addr")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_addr::<C>),
+        )
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -138,3 +133,35 @@ where
             Ok(())
         })
 }
+
+pub fn store_abi<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviourExt<C>
+{
+    Command::new("store-abi")
+        .about("Store contract ABI")
+        .arg(
+            Arg::new("addr")
+                .short('a')
+                .long("addr")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_addr::<C>),
+        )
+        .arg(
+            Arg::new("abi")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_data),
+        )
+        .handler(|ctx, m| {
+            let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
+            let abi = parse_data(m.value_of("abi").unwrap())?;
+
+            let tx_hash = ctx.rt.block_on(ctx.store_abi(addr, &abi))?;
+            println!("{}", hex(tx_hash.as_slice()));
+            Ok(())
+        })
+}
+

@@ -50,6 +50,9 @@ impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
         let req = CallRequest {
             from: from.to_vec(),
             to: to.to_vec(),
+            // This is `executor_evm` specific calling convention.
+            // `executor_chaincode` uses args[0] for payload.
+            // But since no one uses chaincode, we may just use the evm's convention.
             method: payload,
             args: vec![],
         };
