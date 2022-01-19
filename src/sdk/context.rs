@@ -194,7 +194,7 @@ where
         <Wa as WalletBehaviour<C>>::import_account(&mut self.wallet, id, account, pw).await
     }
 
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<&Self::Account> {
+    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
         <Wa as WalletBehaviour<C>>::unlock_account(&mut self.wallet, id, pw).await
     }
 
@@ -252,6 +252,7 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
+    // Use send_raw_tx if you want more control over the tx content
     async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
         let raw_tx = CloudNormalTransaction {
             version: self.system_config.version,
@@ -278,6 +279,7 @@ where
     Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
+    // Use send_raw_utxo if you want more control over the utxo content
     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {
         let raw_utxo = {
             let lock_id = utxo_type as u64;

@@ -26,6 +26,7 @@ use super::account::AccountBehaviour;
 use anyhow::Result;
 use anyhow::Context;
 use anyhow::bail;
+use anyhow::anyhow;
 use anyhow::ensure;
 use std::{path::Path, io};
 use std::path::PathBuf;
@@ -43,7 +44,7 @@ pub trait WalletBehaviour<C: Crypto> {
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
     async fn import_account(&mut self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()>;
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<&Self::Account>;
+    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
     async fn delete_account(&mut self, id: &str) -> Result<()>;
 
     async fn use_account(&mut self, id: &str) -> Result<&Self::Account>;
@@ -108,11 +109,7 @@ pub struct LockedAccount<C: Crypto> {
 }
 
 impl<C: Crypto> LockedAccount<C> {
-    fn unlock(self, pw: Option<&str>) -> Result<Account<C>> {
-        let pw = match pw {
-            Some(pw) => pw,
-            None => bail!("No password provided for a locked account"),
-        };
+    fn unlock(&self, pw: &str) -> Result<Account<C>> {
         let decrypted = C::decrypt(self.encrypted_sk.as_slice(), pw.as_bytes());
         let sk = C::SecretKey::try_from_slice(&decrypted)?;
 
@@ -135,6 +132,20 @@ impl<C: Crypto> Account<C> {
 pub enum MaybeLockedAccount<C: Crypto> {
     Locked(LockedAccount<C>),
     Unlocked(Account<C>),
+}
+
+impl<C: Crypto> MaybeLockedAccount<C> {
+    fn unlock(&mut self, pw: Option<&str>) -> Result<()> {
+        match (&self, pw) {
+            (Self::Locked(locked), Some(pw)) => {
+                *self = Self::Unlocked(locked.unlock(pw)?);
+            }
+            (Self::Unlocked(_), _) => (),
+            _ => bail!("no passsword provided for a locked account"),
+        }
+
+        Ok(())
+    }
 }
 
 impl<C: Crypto> From<LockedAccount<C>> for MaybeLockedAccount<C> {
@@ -286,9 +297,11 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
         self.save_account(id, account).await.context("cannot save generated account")
     }
 
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<&Self::Account> {
-        
-        todo!()
+    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
+        let account = self.account_map.get_mut(id).ok_or(anyhow!("no such an account"))?;
+        account.unlock(pw)?;
+
+        Ok(())
     }
 
     async fn delete_account(&mut self, id: &str) -> Result<()> {
