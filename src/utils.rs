@@ -10,6 +10,11 @@ pub fn parse_addr<C: Crypto>(s: &str) -> Result<C::Address> {
     C::Address::try_from_slice(&input)
 }
 
+pub fn parse_sk<C: Crypto>(s: &str) -> Result<C::SecretKey> {
+    let input = parse_data(s)?;
+    C::SecretKey::try_from_slice(&input)
+}
+
 pub fn parse_hash<C: Crypto>(s: &str) -> Result<C::Hash> {
     let input = parse_data(s)?;
     C::Hash::try_from_slice(&input)

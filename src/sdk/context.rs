@@ -173,6 +173,7 @@ where
     }
 }
 
+#[tonic::async_trait]
 impl<C, Ac, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
 where
     C: Crypto,
@@ -184,29 +185,37 @@ where
 {
     type Account = Ac;
 
-    fn generate_account(&self, id: &str) -> Self::Account {
-        <Wa as WalletBehaviour<C>>::generate_account(&self.wallet, id)
+    async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
+        <Wa as WalletBehaviour<C>>::generate_account(&mut self.wallet, id, pw).await
     }
 
-    fn import_account(&self, id: &str, sk: C::SecretKey) {
-        <Wa as WalletBehaviour<C>>::import_account(&self.wallet, id, sk)
+    async fn import_account(&mut self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()> {
+
+        <Wa as WalletBehaviour<C>>::import_account(&mut self.wallet, id, account, pw).await
     }
 
-    fn export_account(&self, id: &str) -> Option<&Self::Account> {
-        <Wa as WalletBehaviour<C>>::export_account(&self.wallet, id)
+    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<&Self::Account> {
+        <Wa as WalletBehaviour<C>>::unlock_account(&mut self.wallet, id, pw).await
     }
 
-    fn delete_account(&self, id: &str) -> Option<Self::Account> {
-        <Wa as WalletBehaviour<C>>::delete_account(&self.wallet, id)
+    async fn delete_account(&mut self, id: &str) -> Result<()> {
+        <Wa as WalletBehaviour<C>>::delete_account(&mut self.wallet, id).await
     }
 
-    fn current_account(&self) -> &Self::Account {
-        <Wa as WalletBehaviour<C>>::current_account(&self.wallet)
+    async fn use_account(&mut self, id: &str) -> Result<&Self::Account> {
+        <Wa as WalletBehaviour<C>>::use_account(&mut self.wallet, id).await
     }
 
-    // TODO: better API
-    fn list_account(&self) -> Vec<(&str, &Self::Account)> {
-        <Wa as WalletBehaviour<C>>::list_account(&self.wallet)
+    async fn current_account(&self) -> Result<&Self::Account> {
+        <Wa as WalletBehaviour<C>>::current_account(&self.wallet).await
+    }
+
+    async fn list_account(&self) -> Vec<(&str, Self::Account)> {
+        <Wa as WalletBehaviour<C>>::list_account(&self.wallet).await
+    }
+
+    async fn set_default_account(&mut self, id: &str) -> Result<()> {
+        <Wa as WalletBehaviour<C>>::set_default_account(&mut self.wallet, id).await
     }
 }
 
@@ -221,14 +230,14 @@ where
     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
 {
     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
-        let account = self.current_account();
-        let raw = account.sign_raw_tx(raw_tx);
+        let account = self.current_account().await?;
+        let raw = account.sign_raw_tx(raw_tx)?;
         self.send_raw(raw).await.context("failed to send raw")
     }
 
     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
-        let account = self.current_account();
-        let raw = account.sign_raw_utxo(raw_utxo);
+        let account = self.current_account().await?;
+        let raw = account.sign_raw_utxo(raw_utxo)?;
         self.send_raw(raw).await.context("failed to send raw")
     }
 }

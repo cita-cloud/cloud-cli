@@ -175,8 +175,8 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
 }
 
 pub trait SignerBehaviour<C: Crypto> {
-    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction;
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction;
+    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> Result<RawTransaction>;
+    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> Result<RawTransaction>;
 }
 
 impl<C, A> SignerBehaviour<C> for A
@@ -184,7 +184,7 @@ where
     C: Crypto,
     A: AccountBehaviour<SigningAlgorithm = C>,
 {
-    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
+    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> Result<RawTransaction> {
         // calc tx hash
         let tx_hash = {
             // build tx bytes
@@ -197,8 +197,8 @@ where
         };
 
         // sign tx hash
-        let sender = self.address().to_vec();
-        let signature = self.sign(tx_hash.as_slice()).to_vec();
+        let sender = self.address()?.to_vec();
+        let signature = self.sign(tx_hash.as_slice())?.to_vec();
 
         // build raw tx
         let raw_tx = {
@@ -215,10 +215,10 @@ where
             }
         };
 
-        raw_tx
+        Ok(raw_tx)
     }
 
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
+    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> Result<RawTransaction> {
         // calc utxo hash
         let utxo_hash = {
             // build utxo bytes
@@ -231,8 +231,8 @@ where
         };
 
         // sign utxo hash
-        let sender = self.address().to_vec();
-        let signature = self.sign(utxo_hash.as_slice()).to_vec();
+        let sender = self.address()?.to_vec();
+        let signature = self.sign(utxo_hash.as_slice())?.to_vec();
 
         // build raw utxo
         let raw_utxo = {
@@ -249,7 +249,7 @@ where
             }
         };
 
-        raw_utxo
+        Ok(raw_utxo)
     }
 }
 

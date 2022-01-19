@@ -115,12 +115,20 @@ impl Crypto for EthCrypto {
     type SecretKey = SecretKey;
     type Signature = Signature;
 
-    fn generate_secret_key() -> Self::SecretKey {
-        secp256k1_generate_secret_key()
-    }
-
     fn hash(msg: &[u8]) -> Self::Hash {
         keccak_hash(msg)
+    }
+
+    fn encrypt(plaintext: &[u8], pw: &[u8]) -> Vec<u8> {
+        aes(plaintext, pw)
+    }
+
+    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Vec<u8> {
+        aes(ciphertext, pw)
+    }
+
+    fn generate_secret_key() -> Self::SecretKey {
+        secp256k1_generate_secret_key()
     }
 
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature {

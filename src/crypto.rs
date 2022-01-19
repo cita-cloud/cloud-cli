@@ -19,7 +19,7 @@ pub use eth::EthCrypto;
 
 // TODO: better name + add Copy?
 /// assert_eq!(ArrayLike::try_from_slice(arr.as_slice()), Ok(arr));
-pub trait ArrayLike: Sized + Send + Sync + 'static {
+pub trait ArrayLike: PartialEq + Eq + Sized + Send + Sync + 'static {
     fn as_slice(&self) -> &[u8];
     fn try_from_slice(slice: &[u8]) -> Result<Self>;
 
@@ -53,6 +53,11 @@ pub trait Crypto {
 
     type Signature: ArrayLike;
 
+    fn hash(msg: &[u8]) -> Self::Hash;
+
+    fn encrypt(plaintext: &[u8], pw: &[u8]) -> Vec<u8>;
+    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Vec<u8>;
+
     fn generate_secret_key() -> Self::SecretKey;
     fn generate_keypair() -> (Self::PublicKey, Self::SecretKey) {
         let sk = Self::generate_secret_key();
@@ -60,7 +65,6 @@ pub trait Crypto {
         (pk, sk)
     }
 
-    fn hash(msg: &[u8]) -> Self::Hash;
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
 
     fn pk2addr(pk: &Self::PublicKey) -> Self::Address;
