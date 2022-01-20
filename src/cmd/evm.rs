@@ -32,10 +32,10 @@ use crate::display::Display;
 use crate::utils::hex;
 
 
-pub fn get_receipt<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn get_receipt<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
     Command::new("get-receipt")
         .about("Get receipt by tx_hash")
@@ -53,10 +53,10 @@ where
         })
 }
 
-pub fn get_code<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn get_code<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
     Command::new("get-code")
         .about("Get code by contract address")
@@ -74,10 +74,10 @@ where
         })
 }
 
-pub fn get_balance<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn get_balance<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
     Command::new("get-balance")
         .about("Get balance by account address")
@@ -95,10 +95,10 @@ where
         })
 }
 
-pub fn get_tx_count<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn get_tx_count<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
     Command::new("get-tx-count")
         .about("Get the transaction count of the address")
@@ -112,10 +112,10 @@ where
         })
 }
 
-pub fn get_abi<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn get_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
 {
     Command::new("get-abi")
         .about("Get the specific contract ABI")
@@ -134,10 +134,10 @@ where
         })
 }
 
-pub fn store_abi<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn store_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: EvmBehaviourExt<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviourExt<C>
 {
     Command::new("store-abi")
         .about("Store contract ABI")

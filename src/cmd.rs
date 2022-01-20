@@ -24,21 +24,21 @@ use crate::sdk::{
 };
 
 /// Command handler that associated with a command.
-pub type CommandHandler<Ac, Co, Ex, Ev, Wa> = fn(&mut Context<Ac, Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
+pub type CommandHandler<Co, Ex, Ev, Wa> = fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
 
 
 /// Command
 #[derive(Clone)]
-pub struct Command<'help, Ac, Co, Ex, Ev, Wa>
+pub struct Command<'help, Co, Ex, Ev, Wa>
 {
     app: App<'help>,
-    handler: Option<CommandHandler<Ac, Co, Ex, Ev, Wa>>,
+    handler: Option<CommandHandler<Co, Ex, Ev, Wa>>,
 
     subcmds: HashMap<String, Self>,
 }
 
 
-impl<'help, Ac, Co, Ex, Ev, Wa> Command<'help, Ac, Co, Ex, Ev, Wa>
+impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
 {
     /// Create a new command.
     pub fn new<S: Into<String>>(name: S) -> Self {
@@ -79,7 +79,7 @@ impl<'help, Ac, Co, Ex, Ev, Wa> Command<'help, Ac, Co, Ex, Ev, Wa>
     /// After processed by the handler, Context and subcommand's ArgMatches will be handled by the subcommand(if any).
     /// 
     /// Default to no-op.
-    pub fn handler(mut self, handler: CommandHandler<Ac, Co, Ex, Ev, Wa>) -> Self {
+    pub fn handler(mut self, handler: CommandHandler<Co, Ex, Ev, Wa>) -> Self {
         self.handler.replace(handler);
         self
     }
@@ -106,7 +106,7 @@ impl<'help, Ac, Co, Ex, Ev, Wa> Command<'help, Ac, Co, Ex, Ev, Wa>
     }
 
     /// Execute this command with context and args.
-    pub fn exec(&self, context: &mut Context<Ac, Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
+    pub fn exec(&self, context: &mut Context<Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
         if let Some(handler) = self.handler {
             (handler)(context, &mut m).with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }

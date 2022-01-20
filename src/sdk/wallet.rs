@@ -34,91 +34,123 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use crate::utils::*;
 
+use serde::de::DeserializeOwned;
+
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 
+pub trait LockableAccount {
+    type Locked: UnlockableAccount<Unlocked = Self>;
+
+    fn lock(self, pw: &str) -> Self::Locked;
+}
+
+pub trait UnlockableAccount: Sized {
+    type Unlocked: LockableAccount<Locked = Self>;
+
+    fn unlock(self, pw: &str) -> Result<Self::Unlocked, Self>;
+}
+
+pub enum MaybeLockedAccount<L, U>
+// where
+//     L: UnlockableAccount<Unlocked = U>,
+//     U: LockableAccount<Locked = L>,
+{
+    Locked(L),
+    Unlocked(U),
+}
+
+impl<L, U> MaybeLockedAccount<L, U>
+where
+    L: UnlockableAccount<Unlocked = U>,
+    U: LockableAccount<Locked = L>,
+{
+    pub fn unlock(self, pw: &str) -> Result<Self, Self> {
+        match self {
+            Self::Locked(locked) => locked.unlock(pw).map(Self::Unlocked).map_err(Self::Locked),
+            unlocked => Ok(unlocked),
+        }
+    }
+}
+
+// We cannot impl both From<L> and From<U> because potential L == U
+impl<L, U> MaybeLockedAccount<L, U>
+{
+    pub fn from_locked(locked: L) -> Self {
+        Self::Locked(locked)
+    }
+
+    pub fn from_unlocked(unlocked: U) -> Self {
+        Self::Unlocked(unlocked)
+    }
+}
+
+// impl<L, U> From<L> for MaybeLockedAccount<L, U> {
+//     fn from(locked: L) -> Self {
+//         Self::Locked(locked)
+//     }
+// }
+
+// impl<L, U> From<U> for MaybeLockedAccount<L, U> {
+//     fn from(unlocked: U) -> Self {
+//         Self::Unlocked(locked)
+//     }
+// }
+
+
+
 #[tonic::async_trait]
 pub trait WalletBehaviour<C: Crypto> {
-    type Account: AccountBehaviour<SigningAlgorithm = C>;
+    type Locked: UnlockableAccount<Unlocked = Self::Unlocked> + Send + Sync + 'static;
+    type Unlocked: LockableAccount<Locked = Self::Locked> + AccountBehaviour<SigningAlgorithm = C> + Send + Sync + 'static;
+
+    // We don't return a Result<&Self::Unlocked> for some api that takes &mut self.
+    // Because a & obtained from &mut is still exclusive.
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
-    async fn import_account(&mut self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()>;
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
+    async fn import_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<Self::Locked, Self::Unlocked>) -> Result<()>;
+    async fn unlock_account(&mut self, id: &str, pw: &str) -> Result<()>;
     async fn delete_account(&mut self, id: &str) -> Result<()>;
 
-    async fn use_account(&mut self, id: &str) -> Result<&Self::Account>;
-    async fn current_account(&self) -> Result<&Self::Account>;
-
+    async fn get_account(&self, id: &str) -> Result<&Self::Unlocked>;
     // Return a Vec since GAT is unstable
-    async fn list_account(&self) -> Vec<(&str, Self::Account)>;
+    async fn list_account(&self) -> Vec<(&str, &MaybeLockedAccount<Self::Locked, Self::Unlocked>)>;
 
+    async fn current_account(&self) -> Result<(&str, &Self::Unlocked)>;
+    async fn set_current_account(&mut self, id: &str) -> Result<()>;
+
+    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>>;
     async fn set_default_account(&mut self, id: &str) -> Result<()>;
 }
 
-// TODO: remove these helper, use serialize_with for fields
 
-// helper struct
 #[derive(Serialize, Deserialize)]
-struct Locked {
-    address: String,
-    encrypted_sk: String,
-}
-
-impl<C: Crypto> TryFrom<Locked> for LockedAccount<C> {
-    type Error = anyhow::Error;
-
-    fn try_from(locked: Locked) -> Result<Self, Self::Error> {
-        let address = parse_addr::<C>(&locked.address).context("invalid address")?;
-        let encrypted_sk = parse_data(&locked.encrypted_sk).context("invalid encrypted sk")?;
-
-        Ok(LockedAccount {
-            address,
-            encrypted_sk,
-        })
-    }
-}
-
-// helper struct
-#[derive(Serialize, Deserialize)]
-struct Unlocked {
-    address: String,
-    unencrypted_sk: String,
-}
-
-impl<C: Crypto> TryFrom<Unlocked> for Account<C> {
-    type Error = anyhow::Error;
-
-    fn try_from(unlocked: Unlocked) -> Result<Self, Self::Error> {
-        let address = parse_addr::<C>(&unlocked.address).context("invalid address")?;
-        let sk = parse_sk::<C>(&unlocked.unencrypted_sk).context("invalid unencrypted sk format")?;
-
-        let account = Account::from_secret_key(sk).context("invalid unencrypted sk")?;
-        ensure!(
-            account.address().unwrap() == &address,
-            "account address mismatched with the recorded account address"
-        );
-        Ok(account)
-    }
-}
-
-
 pub struct LockedAccount<C: Crypto> {
     address: C::Address,
     encrypted_sk: Vec<u8>,
 }
 
-impl<C: Crypto> LockedAccount<C> {
-    fn unlock(&self, pw: &str) -> Result<Account<C>> {
-        let decrypted = C::decrypt(self.encrypted_sk.as_slice(), pw.as_bytes());
-        let sk = C::SecretKey::try_from_slice(&decrypted)?;
+impl<C: Crypto> UnlockableAccount for LockedAccount<C>
+{
+    type Unlocked = Account<C>;
 
-        Account::from_secret_key(sk).context("invalid secret key")
+    fn unlock(self, pw: &str) -> Result<Self::Unlocked, Self> {
+        let sk = C::decrypt(self.encrypted_sk.as_slice(), pw.as_bytes())
+            .and_then(|decrypted| {
+                C::SecretKey::try_from_slice(&decrypted).ok()
+            })
+            .ok_or(self)?;
+
+        Ok(Account::from_secret_key(sk))
     }
 }
 
-impl<C: Crypto> Account<C> {
-    fn lock(self, pw: &str) -> LockedAccount<C> {
+impl<C: Crypto> LockableAccount for Account<C>
+{
+    type Locked = LockedAccount<C>;
+
+    fn lock(self, pw: &str) -> Self::Locked {
         let encrypted_sk = C::encrypt(self.secret_key.as_slice(), pw.as_bytes());
 
         LockedAccount {
@@ -129,77 +161,49 @@ impl<C: Crypto> Account<C> {
 }
 
 
-pub enum MaybeLockedAccount<C: Crypto> {
-    Locked(LockedAccount<C>),
-    Unlocked(Account<C>),
-}
-
-impl<C: Crypto> MaybeLockedAccount<C> {
-    fn unlock(&mut self, pw: Option<&str>) -> Result<()> {
-        match (&self, pw) {
-            (Self::Locked(locked), Some(pw)) => {
-                *self = Self::Unlocked(locked.unlock(pw)?);
-            }
-            (Self::Unlocked(_), _) => (),
-            _ => bail!("no passsword provided for a locked account"),
-        }
-
-        Ok(())
-    }
-}
-
-impl<C: Crypto> From<LockedAccount<C>> for MaybeLockedAccount<C> {
-    fn from(locked: LockedAccount<C>) -> Self {
-        Self::Locked(locked)
-    }
-}
-
-impl<C: Crypto> From<Account<C>> for MaybeLockedAccount<C> {
-    fn from(unlocked: Account<C>) -> Self {
-        Self::Unlocked(unlocked)
-    }
-}
-
-impl<C: Crypto> AccountBehaviour for MaybeLockedAccount<C> {
-    type SigningAlgorithm = C;
-
-    fn from_secret_key(sk: C::SecretKey) -> Result<Self> {
-        let unlocked = Account::<C>::from_secret_key(sk).context("cannot create account from secret key")?;
-        Ok(Self::Unlocked(unlocked))
-    }
-
-    fn address(&self) -> Result<&C::Address> {
-        match self {
-            Self::Locked(..) => bail!("Account locked, need to be unlocked first"),
-            Self::Unlocked(account) => Ok(account.address().unwrap()),
-        }
-    }
-
-    fn public_key(&self) -> Result<&C::PublicKey> {
-        match self {
-            Self::Locked(..) => bail!("Account locked, need to be unlocked first"),
-            Self::Unlocked(account) => Ok(account.public_key().unwrap()),
-        }
-    }
-
-    fn expose_secret_key(&self) -> Result<&C::SecretKey> {
-        match self {
-            Self::Locked(..) => bail!("Account locked, need to be unlocked first"),
-            Self::Unlocked(account) => Ok(account.expose_secret_key().unwrap()),
-        }
-    }
-
-    fn sign(&self, msg: &[u8]) -> Result<C::Signature> {
-        match self {
-            Self::Locked(..) => bail!("Account locked, need to be unlocked first"),
-            Self::Unlocked(account) => Ok(account.sign(msg).unwrap()),
-        }
-    }
-}
-
+// helper struct for serde
 #[derive(Serialize, Deserialize)]
-struct WalletConfig {
-    default_account: String,
+struct Locked {
+    address: String,
+    encrypted_sk: String,
+}
+
+impl<C: Crypto> TryFrom<Locked> for LockedAccount<C> {
+    type Error = anyhow::Error;
+
+    fn try_from(locked: Locked) -> Result<Self, Self::Error> {
+        let address = parse_addr::<C>(&locked.address)?;
+        let encrypted_sk = parse_data(&locked.encrypted_sk)?;
+
+        Ok(LockedAccount {
+            address,
+            encrypted_sk
+        })
+    }
+}
+
+impl<C: Crypto> TryFrom<Unlocked> for Account<C> {
+    type Error = anyhow::Error;
+
+    fn try_from(unlocked: Unlocked) -> Result<Self, Self::Error> {
+        let address = parse_addr::<C>(&unlocked.address)?;
+        let sk = parse_sk::<C>(&unlocked.address)?;
+
+        let account = Account::from_secret_key(sk);
+        ensure!(
+            account.address() == &address,
+            "account address mismatched with the recorded account address",
+        );
+
+        Ok(account)
+    }
+}
+
+// helper struct for serde
+#[derive(Serialize, Deserialize)]
+struct Unlocked {
+    address: String,
+    unencrypted_sk: String,
 }
 
 
@@ -207,7 +211,7 @@ pub struct Wallet<C: Crypto> {
     wallet_dir: PathBuf,
 
     current_account_id: String,
-    account_map: HashMap<String, MaybeLockedAccount<C>>,
+    account_map: HashMap<String, MaybeLockedAccount<LockedAccount<C>, Account<C>>>,
 }
 
 impl<C: Crypto> Wallet<C> {
@@ -215,7 +219,7 @@ impl<C: Crypto> Wallet<C> {
         todo!()
     }
 
-    async fn save_account(&mut self, id: &str, may_locked: MaybeLockedAccount<C>) -> Result<()> {
+    async fn save_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<LockedAccount<C>, Account<C>>) -> Result<()> {
         // TODO: validate id
         let accounts_dir = self.wallet_dir.join("accounts");
         fs::create_dir_all(&accounts_dir).await.context("cannot create directory for accounts")?;
@@ -231,30 +235,31 @@ impl<C: Crypto> Wallet<C> {
         };
         
         // TODO: use serialize_with in filed
-        let content = match &may_locked {
+        let content = match &maybe_locked {
+            MaybeLockedAccount::Locked(locked) => {
+                let address = hex(locked.address.as_slice());
+                let encrypted_sk = hex(locked.encrypted_sk.as_slice());
+                let locked = Locked {
+                    address,
+                    encrypted_sk,
+                };
+                toml::to_string_pretty(&locked).unwrap()
+            }
             MaybeLockedAccount::Unlocked(unlocked) => {
-                let address = hex(unlocked.address().unwrap().as_slice());
-                let unencrypted_sk = hex(unlocked.expose_secret_key().unwrap().as_slice());
+                let address = hex(unlocked.address().as_slice());
+                let unencrypted_sk = hex(unlocked.expose_secret_key().as_slice());
                 let unlocked = Unlocked {
                     address,
                     unencrypted_sk,
                 };
                 toml::to_string_pretty(&unlocked).unwrap()
             }
-            MaybeLockedAccount::Locked(locked) => {
-                let address = hex(locked.address.as_slice());
-                let encrypted_sk = hex(locked.encrypted_sk.as_slice());
-                let locked =Locked {
-                    address,
-                    encrypted_sk,
-                };
-                toml::to_string_pretty(&locked).unwrap()
-            }
         };
 
         account_file.write_all(content.as_bytes()).await.context("cannot write account content")?;
 
-        self.account_map.insert(id.into(), may_locked);
+        self.account_map.insert(id.into(), maybe_locked);
+
         Ok(())
     }
 
@@ -266,10 +271,10 @@ impl<C: Crypto> Wallet<C> {
 
         if let Ok(unlocked) = toml::from_str::<Unlocked>(&content) {
             let account = Account::try_from(unlocked).context("invalid unlocked account")?;
-            self.account_map.insert(id.into(), account.into());
+            self.account_map.insert(id.into(), MaybeLockedAccount::from_unlocked(account));
         } else if let Ok(locked) = toml::from_str::<Locked>(&content) {
             let account = LockedAccount::try_from(locked).context("invalid locked account")?;
-            self.account_map.insert(id.into(), account.into());
+            self.account_map.insert(id.into(), MaybeLockedAccount::from_locked(account));
         } else {
             bail!("cannot load account from file, invalid format")
         }
@@ -282,50 +287,70 @@ impl<C: Crypto> Wallet<C> {
 
 #[tonic::async_trait]
 impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
-    type Account = MaybeLockedAccount<C>;
+    type Locked = LockedAccount<C>;
+    type Unlocked = Account<C>;
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
-        let account = Account::generate().context("cannot generate account")?;
-        let may_locked = match pw {
-            Some(pw) => account.lock(pw).into(),
-            None => account.into()
+        let account = Account::generate();
+        let maybe_locked = match pw {
+            Some(pw) => MaybeLockedAccount::from_locked(account.lock(pw)),
+            None => MaybeLockedAccount::from_unlocked(account),
         };
-        self.import_account(id, may_locked, pw).await
+        self.import_account(id, maybe_locked).await
     }
 
-    async fn import_account(&mut self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()> {
-        self.save_account(id, account).await.context("cannot save generated account")
+    async fn import_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<Self::Locked, Self::Unlocked>) -> Result<()> {
+        self.save_account(id, maybe_locked).await.context("cannot save imported account")
     }
 
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
-        let account = self.account_map.get_mut(id).ok_or(anyhow!("no such an account"))?;
-        account.unlock(pw)?;
+    async fn unlock_account(&mut self, id: &str, pw: &str) -> Result<()> {
+        let (id, account) = self.account_map.remove_entry(id).ok_or(anyhow!("account not found"))?;
+        match account.unlock(pw) {
+            Ok(account) => {
+                self.account_map.insert(id, account);
+            }
+            Err(account) => {
+                self.account_map.insert(id, account);
+                bail!("failed to unlock account");
+            }
+        };
 
         Ok(())
     }
 
     async fn delete_account(&mut self, id: &str) -> Result<()> {
-
         todo!()
     }
 
-    async fn use_account(&mut self, id: &str) -> Result<&Self::Account> {
-
-        todo!()
+    async fn get_account(&self, id: &str) -> Result<&Self::Unlocked> {
+        match self.account_map.get(id) {
+            Some(MaybeLockedAccount::Unlocked(unlocked)) => Ok(unlocked),
+            Some(MaybeLockedAccount::Locked(..)) => bail!("account locked, please unlock it first"),
+            None => bail!("account not found"),
+        }
     }
 
-    async fn current_account(&self) -> Result<&Self::Account> {
-
-        todo!()
+    async fn list_account(&self) -> Vec<(&str, &MaybeLockedAccount<Self::Locked, Self::Unlocked>)> {
+        self.account_map.iter().map(|(k, v)| (k.as_str(), v)).collect()
     }
 
-    // Return a Vec since GAT is unstable
-    async fn list_account(&self) -> Vec<(&str, Self::Account)> {
+    async fn current_account(&self) -> Result<(&str, &Self::Unlocked)> {
+        let id = self.current_account_id.as_str();
+        let account = self.get_account(id).await?;
+        Ok((id, account))
+    }
 
+    async fn set_current_account(&mut self, id: &str) -> Result<()> {
+        self.current_account_id = id.into();
+        Ok(())
+    }
+
+    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>> {
         todo!()
     }
 
     async fn set_default_account(&mut self, id: &str) -> Result<()> {
         todo!()
     }
+
 }

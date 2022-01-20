@@ -31,16 +31,11 @@ use super::{
 use anyhow::Context as _;
 use anyhow::Result;
 
-use super::wallet::Wallet;
+use super::wallet::{
+    Wallet, MaybeLockedAccount,
+};
 
-pub struct Context<Ac, Co, Ex, Ev, Wa>
-// where
-//     C: Crypto,
-//     Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
-//     Co: ControllerBehaviour<C> + Send + Sync,
-//     Ex: ExecutorBehaviour<C> + Send + Sync,
-//     Ev: EvmBehaviour<C> + Send + Sync,
-//     Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+pub struct Context<Co, Ex, Ev, Wa>
 {
     pub current_block_number: u64,
     pub system_config: SystemConfig,
@@ -53,9 +48,6 @@ pub struct Context<Ac, Co, Ex, Ev, Wa>
     pub evm: Ev,
 
     pub rt: tokio::runtime::Handle,
-
-    // TODO: re-consider this field. Did I do it right?
-    _phantom: std::marker::PhantomData<Ac>,
 }
 
 // I miss [Delegation](https://github.com/contactomorph/rfcs/blob/delegation/text/0000-delegation-of-implementation.md)
@@ -65,14 +57,13 @@ pub struct Context<Ac, Co, Ex, Ev, Wa>
 // re-export functionality for Context
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
         <Co as ControllerBehaviour<C>>::send_raw(&self.controller, raw).await
@@ -123,14 +114,13 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     async fn call(
         &self,
@@ -143,14 +133,13 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt> {
         <Ev as EvmBehaviour<C>>::get_receipt(&self.evm, hash).await
@@ -174,27 +163,26 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
-    type Account = Ac;
+    type Locked = Wa::Locked;
+    type Unlocked = Wa::Unlocked;
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
         <Wa as WalletBehaviour<C>>::generate_account(&mut self.wallet, id, pw).await
     }
 
-    async fn import_account(&mut self, id: &str, account: Self::Account, pw: Option<&str>) -> Result<()> {
-
-        <Wa as WalletBehaviour<C>>::import_account(&mut self.wallet, id, account, pw).await
+    async fn import_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<Self::Locked, Self::Unlocked>) -> Result<()> {
+        <Wa as WalletBehaviour<C>>::import_account(&mut self.wallet, id, maybe_locked).await
     }
 
-    async fn unlock_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
+    async fn unlock_account(&mut self, id: &str, pw: &str) -> Result<()> {
         <Wa as WalletBehaviour<C>>::unlock_account(&mut self.wallet, id, pw).await
     }
 
@@ -202,16 +190,24 @@ where
         <Wa as WalletBehaviour<C>>::delete_account(&mut self.wallet, id).await
     }
 
-    async fn use_account(&mut self, id: &str) -> Result<&Self::Account> {
-        <Wa as WalletBehaviour<C>>::use_account(&mut self.wallet, id).await
+    async fn get_account(&self, id: &str) -> Result<&Self::Unlocked> {
+        <Wa as WalletBehaviour<C>>::get_account(&self.wallet, id).await
     }
 
-    async fn current_account(&self) -> Result<&Self::Account> {
+    async fn list_account(&self) -> Vec<(&str, &MaybeLockedAccount<Self::Locked, Self::Unlocked>)> {
+        <Wa as WalletBehaviour<C>>::list_account(&self.wallet).await
+    }
+
+    async fn current_account(&self) -> Result<(&str, &Self::Unlocked)> {
         <Wa as WalletBehaviour<C>>::current_account(&self.wallet).await
     }
 
-    async fn list_account(&self) -> Vec<(&str, Self::Account)> {
-        <Wa as WalletBehaviour<C>>::list_account(&self.wallet).await
+    async fn set_current_account(&mut self, id: &str) -> Result<()> {
+        <Wa as WalletBehaviour<C>>::set_current_account(&mut self.wallet, id).await
+    }
+
+    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>> {
+        <Wa as WalletBehaviour<C>>::default_account(&self.wallet).await
     }
 
     async fn set_default_account(&mut self, id: &str) -> Result<()> {
@@ -220,37 +216,35 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
-        let account = self.current_account().await?;
+        let account = self.current_account().await?.1;
         let raw = account.sign_raw_tx(raw_tx)?;
         self.send_raw(raw).await.context("failed to send raw")
     }
 
     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
-        let account = self.current_account().await?;
+        let account = self.current_account().await?.1;
         let raw = account.sign_raw_utxo(raw_utxo)?;
         self.send_raw(raw).await.context("failed to send raw")
     }
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     // Use send_raw_tx if you want more control over the tx content
     async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
@@ -270,14 +264,13 @@ where
 }
 
 #[tonic::async_trait]
-impl<C, Ac, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<Ac, Co, Ex, Ev, Wa>
+impl<C, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Ac: AccountBehaviour<SigningAlgorithm = C> + Send + Sync,
     Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C, Account = Ac> + Send + Sync,
+    Wa: WalletBehaviour<C> + Send + Sync,
 {
     // Use send_raw_utxo if you want more control over the utxo content
     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {

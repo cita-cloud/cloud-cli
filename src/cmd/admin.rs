@@ -30,10 +30,10 @@ use crate::crypto::{ArrayLike, Crypto};
 use crate::utils::hex;
 
 
-pub fn update_admin<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn update_admin<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
 {
     Command::new("update-admin")
         .about("Update admin of the chain")
@@ -51,10 +51,10 @@ where
         })
 }
 
-pub fn update_validators<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn update_validators<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
 {
     Command::new("update-validators")
         .about("Update validators of the chain")
@@ -77,10 +77,10 @@ where
         })
 }
 
-pub fn set_block_interval<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa> 
+pub fn set_block_interval<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
-    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
 {
     Command::new("set-block-interval")
         .about("Set block interval")
@@ -98,10 +98,10 @@ where
         })
 }
 
-pub fn emergency_brake<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa>
+pub fn emergency_brake<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Ac, Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
 {
     Command::new("emergency-brake")
         .about("Send emergency brake cmd to chain")

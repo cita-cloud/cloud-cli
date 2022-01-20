@@ -44,7 +44,7 @@ impl<const N: usize> ArrayLike for [u8; N] {
     }
 }
 
-pub trait Crypto {
+pub trait Crypto: 'static {
     type Hash: ArrayLike;
     type Address: ArrayLike;
 
@@ -56,7 +56,7 @@ pub trait Crypto {
     fn hash(msg: &[u8]) -> Self::Hash;
 
     fn encrypt(plaintext: &[u8], pw: &[u8]) -> Vec<u8>;
-    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Vec<u8>;
+    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>>;
 
     fn generate_secret_key() -> Self::SecretKey;
     fn generate_keypair() -> (Self::PublicKey, Self::SecretKey) {

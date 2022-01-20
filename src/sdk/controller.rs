@@ -197,8 +197,8 @@ where
         };
 
         // sign tx hash
-        let sender = self.address()?.to_vec();
-        let signature = self.sign(tx_hash.as_slice())?.to_vec();
+        let sender = self.address().to_vec();
+        let signature = self.sign(tx_hash.as_slice()).to_vec();
 
         // build raw tx
         let raw_tx = {
@@ -231,8 +231,8 @@ where
         };
 
         // sign utxo hash
-        let sender = self.address()?.to_vec();
-        let signature = self.sign(utxo_hash.as_slice())?.to_vec();
+        let sender = self.address().to_vec();
+        let signature = self.sign(utxo_hash.as_slice()).to_vec();
 
         // build raw utxo
         let raw_utxo = {

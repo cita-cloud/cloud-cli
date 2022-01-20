@@ -24,22 +24,20 @@ use anyhow::Result;
 pub trait AccountBehaviour: Sized {
     type SigningAlgorithm: Crypto;
 
-    // TODO: consider this Self: Sized
-    fn generate() -> Result<Self>
-        // where Self: Sized
+    fn generate() -> Self
     {
         let sk = Self::SigningAlgorithm::generate_secret_key();
         Self::from_secret_key(sk)
     }
 
-    fn from_secret_key(sk: <Self::SigningAlgorithm as Crypto>::SecretKey) -> Result<Self>;
+    fn from_secret_key(sk: <Self::SigningAlgorithm as Crypto>::SecretKey) -> Self;
 
-    fn address(&self) -> Result<&<Self::SigningAlgorithm as Crypto>::Address>;
-    fn public_key(&self) -> Result<&<Self::SigningAlgorithm as Crypto>::PublicKey>;
-    fn expose_secret_key(&self) -> Result<&<Self::SigningAlgorithm as Crypto>::SecretKey>;
+    fn address(&self) -> &<Self::SigningAlgorithm as Crypto>::Address;
+    fn public_key(&self) -> &<Self::SigningAlgorithm as Crypto>::PublicKey;
+    fn expose_secret_key(&self) -> &<Self::SigningAlgorithm as Crypto>::SecretKey;
 
-    fn sign(&self, msg: &[u8]) -> Result<<Self::SigningAlgorithm as Crypto>::Signature> {
-        Ok(<Self::SigningAlgorithm as Crypto>::sign(msg, self.expose_secret_key()?))
+    fn sign(&self, msg: &[u8]) -> <Self::SigningAlgorithm as Crypto>::Signature {
+        <Self::SigningAlgorithm as Crypto>::sign(msg, self.expose_secret_key())
     }
 }
 
@@ -53,36 +51,37 @@ pub struct Account<C: Crypto> {
 impl<C: Crypto> AccountBehaviour for Account<C> {
     type SigningAlgorithm = C;
 
-    fn generate() -> Result<Self> {
+    fn generate() -> Self {
         let (public_key, secret_key) = C::generate_keypair();
         let address = C::pk2addr(&public_key);
 
-        Ok(Self {
+        Self {
             address,
             public_key,
             secret_key,
-        })
+        }
     }
 
-    fn from_secret_key(sk: C::SecretKey) -> Result<Self> {
+    fn from_secret_key(sk: C::SecretKey) -> Self {
         let public_key = C::sk2pk(&sk);
         let address = C::pk2addr(&public_key);
-        Ok(Self {
+        Self {
             address,
             public_key,
             secret_key: sk,
-        })
+        }
     }
 
-    fn address(&self) -> Result<&C::Address> {
-        Ok(&self.address)
+    fn address(&self) -> &C::Address {
+        &self.address
     }
 
-    fn public_key(&self) -> Result<&C::PublicKey> {
-        Ok(&self.public_key)
+    fn public_key(&self) -> &C::PublicKey {
+        &self.public_key
     }
 
-    fn expose_secret_key(&self) -> Result<&C::SecretKey> {
-        Ok(&self.secret_key)
+    fn expose_secret_key(&self) -> &C::SecretKey {
+        &self.secret_key
     }
+
 }

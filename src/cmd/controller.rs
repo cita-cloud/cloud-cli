@@ -41,10 +41,10 @@ use crate::display::Display;
 
     // async fn add_node(&self, multiaddr: String) -> Result<u32>;
 
-pub fn get_system_config<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa> 
+pub fn get_system_config<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
-    Context<Ac, Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
 {
     Command::new("get-system-config")
         .about("Get system config")
@@ -55,10 +55,10 @@ where
         })
 }
 
-pub fn get_block_number<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa> 
+pub fn get_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
-    Context<Ac, Co, Ex, Ev, Wa>: ControllerBehaviour<C> + Send + Sync
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C> + Send + Sync
 {
     Command::new("get-block-number")
         .about("Get block number")
@@ -77,10 +77,10 @@ where
         })
 }
 
-pub fn get_block<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Ac, Co, Ex, Ev, Wa> 
+pub fn get_block<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
-    Context<Ac, Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
 {
     Command::new("get-block")
         .about("Get block by block number(height) or hash(0x)")

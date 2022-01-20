@@ -123,8 +123,8 @@ impl Crypto for EthCrypto {
         aes(plaintext, pw)
     }
 
-    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Vec<u8> {
-        aes(ciphertext, pw)
+    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>> {
+        Some(aes(ciphertext, pw))
     }
 
     fn generate_secret_key() -> Self::SecretKey {
