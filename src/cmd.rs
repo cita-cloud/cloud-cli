@@ -4,6 +4,7 @@ mod controller;
 // // #[cfg(feature = "evm")]
 mod evm;
 // mod wallet;
+mod account;
 
 use clap::{App, Arg, ArgMatches};
 use std::collections::HashMap;

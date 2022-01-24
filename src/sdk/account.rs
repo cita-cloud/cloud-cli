@@ -41,7 +41,7 @@ pub trait AccountBehaviour: Sized {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Account<C: Crypto> {
     pub(crate) address: C::Address,
     pub(crate) public_key: C::PublicKey,

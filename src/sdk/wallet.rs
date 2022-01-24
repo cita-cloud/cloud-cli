@@ -17,6 +17,7 @@ use crate::proto::{
 };
 
 use crate::crypto::{ArrayLike, Crypto};
+use crate::config::Config;
 
 use serde::{Deserialize, Serialize};
 use serde::Serializer;
@@ -40,6 +41,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 
+// TODO: should I use one single trait for locakable account?
 pub trait LockableAccount {
     type Locked: UnlockableAccount<Unlocked = Self>;
 
@@ -161,6 +163,8 @@ impl<C: Crypto> LockableAccount for Account<C>
 }
 
 
+// TODO: use rustbreak/sled or something or just keep it?
+
 // helper struct for serde
 #[derive(Serialize, Deserialize)]
 struct Locked {
@@ -187,7 +191,7 @@ impl<C: Crypto> TryFrom<Unlocked> for Account<C> {
 
     fn try_from(unlocked: Unlocked) -> Result<Self, Self::Error> {
         let address = parse_addr::<C>(&unlocked.address)?;
-        let sk = parse_sk::<C>(&unlocked.address)?;
+        let sk = parse_sk::<C>(&unlocked.unencrypted_sk)?;
 
         let account = Account::from_secret_key(sk);
         ensure!(
@@ -206,17 +210,46 @@ struct Unlocked {
     unencrypted_sk: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct WalletConfig {
+    default_account: String,
+}
+
 
 pub struct Wallet<C: Crypto> {
     wallet_dir: PathBuf,
 
-    current_account_id: String,
+    current_account_id: Option<String>,
     account_map: HashMap<String, MaybeLockedAccount<LockedAccount<C>, Account<C>>>,
 }
 
 impl<C: Crypto> Wallet<C> {
-    pub fn open(wallet_dir: impl AsRef<Path>) -> Self {
-        todo!()
+
+    pub async fn open(wallet_dir: impl AsRef<Path>) -> Result<Self> {
+        let wallet_dir = wallet_dir.as_ref().to_path_buf();
+        let accounts_dir = wallet_dir.join("accounts");
+
+        fs::create_dir_all(&accounts_dir).await.context("failed to create accounts dir")?;
+
+        let mut this = Self {
+            wallet_dir,
+            current_account_id: None,
+            account_map: HashMap::new(),
+        };
+
+        let mut it = fs::read_dir(accounts_dir).await.context("cannot read accounts dir")?;
+        while let Ok(Some(ent)) = it.next_entry().await {
+            let path = ent.path();
+            let is_file = ent.file_type().await?.is_file();
+            let is_toml = path.extension().map(|ext| ext == "toml").unwrap_or(false);
+
+            if is_file && is_toml {
+                let id = path.file_stem().context("cannot read account id from account file name")?;
+                this.load_account(&id.to_string_lossy()).await?;
+            }
+        }
+
+        Ok(this)
     }
 
     async fn save_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<LockedAccount<C>, Account<C>>) -> Result<()> {
@@ -225,7 +258,7 @@ impl<C: Crypto> Wallet<C> {
         fs::create_dir_all(&accounts_dir).await.context("cannot create directory for accounts")?;
 
         let mut account_file = {
-            let account_file = accounts_dir.join(id);
+            let account_file = accounts_dir.join(format!("{}.toml", id));
             fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -234,7 +267,7 @@ impl<C: Crypto> Wallet<C> {
                 .context("cannot create account file")?
         };
         
-        // TODO: use serialize_with in filed
+        // TODO: use serialize_with in field
         let content = match &maybe_locked {
             MaybeLockedAccount::Locked(locked) => {
                 let address = hex(locked.address.as_slice());
@@ -265,7 +298,7 @@ impl<C: Crypto> Wallet<C> {
 
     async fn load_account(&mut self, id: &str) -> Result<()> {
         let content = {
-            let path = self.wallet_dir.join("accounts").join(id);
+            let path = self.wallet_dir.join("accounts").join(format!("{}.toml", id));
             fs::read_to_string(path).await.context("cannot read account file")?
         };
 
@@ -335,13 +368,13 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
     }
 
     async fn current_account(&self) -> Result<(&str, &Self::Unlocked)> {
-        let id = self.current_account_id.as_str();
-        let account = self.get_account(id).await?;
+        let id = self.current_account_id.as_ref().context("no current account selected")?;
+        let account = self.get_account(&id).await?;
         Ok((id, account))
     }
 
     async fn set_current_account(&mut self, id: &str) -> Result<()> {
-        self.current_account_id = id.into();
+        self.current_account_id.replace(id.into());
         Ok(())
     }
 
@@ -352,5 +385,82 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
     async fn set_default_account(&mut self, id: &str) -> Result<()> {
         todo!()
     }
+}
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crypto::EthCrypto;
+    use tempfile::tempdir;
+
+    async fn generate_and_load<C: Crypto>() -> Result<()> {
+        let wallet_dir = tempdir()?;
+        let mut w: Wallet<C> = Wallet::open(&wallet_dir).await?;
+        w.generate_account("unlocked", None).await?;
+        w.generate_account("locked", Some("pw")).await?;
+
+        assert!(w.get_account("unlocked").await.is_ok());
+        assert!(w.get_account("locked").await.is_err());
+
+        w.unlock_account("locked", "pw").await?;
+        assert!(w.get_account("locked").await.is_ok());
+
+        // restart
+        let mut w: Wallet<C> = Wallet::open(&wallet_dir).await?;
+        assert!(w.get_account("unlocked").await.is_ok());
+        assert!(w.get_account("locked").await.is_err());
+
+        w.unlock_account("locked", "pw").await?;
+        assert!(w.get_account("locked").await.is_ok());
+
+        Ok(())
+    }
+
+    async fn save_and_load<C: Crypto>() -> Result<()> {
+        let wallet_dir = tempdir()?;
+        let mut w: Wallet<C> = Wallet::open(&wallet_dir).await?;
+
+        let hex_sk = "0x05e86b1844ab3ab77adf6e2fe65c704fb3b49861626b140677a7a60f1b7b677a";
+
+        let sk = parse_sk::<C>("0x05e86b1844ab3ab77adf6e2fe65c704fb3b49861626b140677a7a60f1b7b677a")?;
+        let unlocked = Account::from_secret_key(sk);
+        let sk = parse_sk::<C>("0x05e86b1844ab3ab77adf6e2fe65c704fb3b49861626b140677a7a60f1b7b677a")?;
+        let locked = Account::from_secret_key(sk).lock("pw");
+        w.save_account("unlocked", MaybeLockedAccount::from_unlocked(unlocked)).await?;
+        w.save_account("locked", MaybeLockedAccount::from_locked(locked)).await?;
+
+        assert!(w.get_account("unlocked").await.is_ok());
+        assert!(w.get_account("locked").await.is_err());
+
+        w.unlock_account("locked", "pw").await?;
+
+        let account = w.get_account("locked").await?;
+        assert_eq!(
+            hex(account.expose_secret_key().as_slice()),
+            hex_sk,
+        );
+
+        // restart
+        let mut w: Wallet<C> = Wallet::open(&wallet_dir).await?;
+        assert!(w.get_account("unlocked").await.is_ok());
+        assert!(w.get_account("locked").await.is_err());
+
+        w.unlock_account("locked", "pw").await?;
+
+        let acc = w.get_account("locked").await?;
+        assert_eq!(
+            hex(acc.expose_secret_key().as_slice()),
+            hex_sk,
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_basic() -> Result<()> {
+        generate_and_load::<EthCrypto>().await?;
+        save_and_load::<EthCrypto>().await?;
+        Ok(())
+    }
 }

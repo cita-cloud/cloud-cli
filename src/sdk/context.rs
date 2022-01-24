@@ -47,7 +47,7 @@ pub struct Context<Co, Ex, Ev, Wa>
     pub executor: Ex,
     pub evm: Ev,
 
-    pub rt: tokio::runtime::Handle,
+    pub rt: tokio::runtime::Runtime,
 }
 
 // I miss [Delegation](https://github.com/contactomorph/rfcs/blob/delegation/text/0000-delegation-of-implementation.md)
