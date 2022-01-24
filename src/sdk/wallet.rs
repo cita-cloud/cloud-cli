@@ -121,9 +121,6 @@ pub trait WalletBehaviour<C: Crypto> {
 
     async fn current_account(&self) -> Result<(&str, &Self::Unlocked)>;
     async fn set_current_account(&mut self, id: &str) -> Result<()>;
-
-    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>>;
-    async fn set_default_account(&mut self, id: &str) -> Result<()>;
 }
 
 
@@ -210,11 +207,6 @@ struct Unlocked {
     unencrypted_sk: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct WalletConfig {
-    default_account: String,
-}
-
 
 pub struct Wallet<C: Crypto> {
     wallet_dir: PathBuf,
@@ -245,7 +237,8 @@ impl<C: Crypto> Wallet<C> {
 
             if is_file && is_toml {
                 let id = path.file_stem().context("cannot read account id from account file name")?;
-                this.load_account(&id.to_string_lossy()).await?;
+                // TODO: log error
+                let _ = this.load_account(&id.to_string_lossy()).await;
             }
         }
 
@@ -258,7 +251,7 @@ impl<C: Crypto> Wallet<C> {
         fs::create_dir_all(&accounts_dir).await.context("cannot create directory for accounts")?;
 
         let mut account_file = {
-            let account_file = accounts_dir.join(format!("{}.toml", id));
+            let account_file = accounts_dir.join(format!("{id}.toml"));
             fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -298,7 +291,7 @@ impl<C: Crypto> Wallet<C> {
 
     async fn load_account(&mut self, id: &str) -> Result<()> {
         let content = {
-            let path = self.wallet_dir.join("accounts").join(format!("{}.toml", id));
+            let path = self.wallet_dir.join("accounts").join(format!("{id}.toml"));
             fs::read_to_string(path).await.context("cannot read account file")?
         };
 
@@ -314,8 +307,6 @@ impl<C: Crypto> Wallet<C> {
 
         Ok(())
     }
-
-    // async fn delete_account()
 }
 
 #[tonic::async_trait]
@@ -376,14 +367,6 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
     async fn set_current_account(&mut self, id: &str) -> Result<()> {
         self.current_account_id.replace(id.into());
         Ok(())
-    }
-
-    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>> {
-        todo!()
-    }
-
-    async fn set_default_account(&mut self, id: &str) -> Result<()> {
-        todo!()
     }
 }
 

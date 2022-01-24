@@ -1,6 +1,8 @@
 use crate::crypto::{ArrayLike, Crypto};
+use crate::config::Config;
 
 use tonic::transport::channel::Channel;
+use tonic::transport::channel::Endpoint;
 
 use crate::proto::{
     blockchain::{
@@ -61,9 +63,7 @@ impl<C, Co, Ex, Ev, Wa> ControllerBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
         <Co as ControllerBehaviour<C>>::send_raw(&self.controller, raw).await
@@ -117,10 +117,8 @@ where
 impl<C, Co, Ex, Ev, Wa> ExecutorBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Co: ControllerBehaviour<C> + Send + Sync,
     Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     async fn call(
         &self,
@@ -136,10 +134,8 @@ where
 impl<C, Co, Ex, Ev, Wa> EvmBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
     Ev: EvmBehaviour<C> + Send + Sync,
-    Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt> {
         <Ev as EvmBehaviour<C>>::get_receipt(&self.evm, hash).await
@@ -166,10 +162,8 @@ where
 impl<C, Co, Ex, Ev, Wa> WalletBehaviour<C> for Context<Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     type Locked = Wa::Locked;
     type Unlocked = Wa::Unlocked;
@@ -205,14 +199,6 @@ where
     async fn set_current_account(&mut self, id: &str) -> Result<()> {
         <Wa as WalletBehaviour<C>>::set_current_account(&mut self.wallet, id).await
     }
-
-    async fn default_account(&self) -> Result<&MaybeLockedAccount<Self::Locked, Self::Unlocked>> {
-        <Wa as WalletBehaviour<C>>::default_account(&self.wallet).await
-    }
-
-    async fn set_default_account(&mut self, id: &str) -> Result<()> {
-        <Wa as WalletBehaviour<C>>::set_default_account(&mut self.wallet, id).await
-    }
 }
 
 #[tonic::async_trait]
@@ -220,9 +206,8 @@ impl<C, Co, Ex, Ev, Wa> RawTransactionSenderBehaviour<C> for Context<Co, Ex, Ev,
 where
     C: Crypto,
     Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
         let account = self.current_account().await?.1;
@@ -242,9 +227,8 @@ impl<C, Co, Ex, Ev, Wa> NormalTransactionSenderBehaviour<C> for Context<Co, Ex, 
 where
     C: Crypto,
     Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     // Use send_raw_tx if you want more control over the tx content
     async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
@@ -268,9 +252,8 @@ impl<C, Co, Ex, Ev, Wa> UtxoTransactionSenderBehaviour<C> for Context<Co, Ex, Ev
 where
     C: Crypto,
     Co: ControllerBehaviour<C> + Send + Sync,
-    Ex: ExecutorBehaviour<C> + Send + Sync,
-    Ev: EvmBehaviour<C> + Send + Sync,
     Wa: WalletBehaviour<C> + Send + Sync,
+    Context<Co, Ex, Ev, Wa>: Send + Sync,
 {
     // Use send_raw_utxo if you want more control over the utxo content
     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {
@@ -295,4 +278,48 @@ where
 
         <Self as RawTransactionSenderBehaviour<C>>::send_raw_utxo(&self, raw_utxo).await
     }
+}
+
+
+pub fn from_config<C: Crypto>(config: &Config) -> Result<Context<ControllerClient, ExecutorClient, EvmClient, Wallet<C>>> {
+    let rt = tokio::runtime::Runtime::new()?;
+
+    let (controller, executor, evm, current_block_number, system_config, wallet) = rt.block_on(async {
+        let mut controller = {
+            let addr = format!("http://{}", config.controller_addr);
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+            ControllerClient::new(channel)
+        };
+
+        let executor = {
+            let addr = format!("http://{}", config.executor_addr);
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+            ExecutorClient::new(channel)
+        };
+
+        let evm = {
+            // use the same addr as executor
+            let addr = format!("http://{}", config.executor_addr);
+            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+            EvmClient::new(channel)
+        };
+        let current_block_number = <ControllerClient as ControllerBehaviour<C>>::get_block_number(&mut controller, false).await?;
+        let system_config = <ControllerClient as ControllerBehaviour<C>>::get_system_config(&mut controller).await?;
+
+        let wallet = Wallet::open(&config.wallet_dir).await?;
+
+        anyhow::Ok((controller, executor, evm, current_block_number, system_config, wallet))
+    })?;
+
+    let this = Context {
+        controller,
+        executor,
+        evm,
+        wallet,
+        current_block_number,
+        system_config,
+        rt,
+    };
+
+    Ok(this)
 }

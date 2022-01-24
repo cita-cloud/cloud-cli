@@ -165,3 +165,20 @@ where
         })
 }
 
+
+pub fn evm_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C> + EvmBehaviourExt<C>,
+{
+    Command::new("evm")
+        .about("EVM commands")
+        .subcommands([
+            get_receipt(),
+            get_code(),
+            get_tx_count(),
+            get_balance(),
+            get_abi(),
+            store_abi(),
+        ])
+}

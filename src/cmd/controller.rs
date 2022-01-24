@@ -58,7 +58,7 @@ where
 pub fn get_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C> + Send + Sync
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
 {
     Command::new("get-block-number")
         .about("Get block number")
@@ -111,4 +111,18 @@ where
             println!("{}", block.display());
             Ok(())
         })
+}
+
+pub fn controller_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+where
+    C: Crypto,
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+{
+    Command::new("controller")
+        .about("controller commands")
+        .subcommands([
+            get_system_config(),
+            get_block_number(),
+            get_block()
+        ])
 }

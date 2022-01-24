@@ -21,6 +21,7 @@ use crate::sdk::{
     controller::ControllerBehaviour,
     executor::ExecutorBehaviour,
     evm::EvmBehaviour,
+    evm::EvmBehaviourExt,
     wallet::WalletBehaviour,
 };
 
@@ -127,8 +128,8 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     }
 
     /// Get matches from the underlaying clap App.
-    pub fn get_matches(self) -> ArgMatches {
-        self.app.get_matches()
+    pub fn get_matches(&self) -> ArgMatches {
+        self.app.clone().get_matches()
     }
     
     // TODO: get matches from
@@ -136,7 +137,20 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     pub fn get_all_aliases(&self) -> impl Iterator<Item = &str> + '_ {
         self.app.get_all_aliases()
     }
+}
 
 
+pub fn all_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C> + ExecutorBehaviour<C> + AdminBehaviour<C> + EvmBehaviour<C> + EvmBehaviourExt<C> + WalletBehaviour<C>,
+{
+    Command::new("cldi")
+        .subcommands([
+            account::account_cmd(),
+            admin::admin_cmd(),
+            controller::controller_cmd(),
+            evm::evm_cmd(),
+        ])
 }
 

@@ -66,3 +66,16 @@ where
         })
 }
 
+
+pub fn account_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>
+{
+    Command::new("account")
+        .about("account commands")
+        .subcommands([
+            create_account(),
+        ])
+}
+

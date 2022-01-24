@@ -98,7 +98,7 @@ where
         })
 }
 
-pub fn emergency_brake<'help, C, Ac, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn emergency_brake<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
     Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
@@ -117,4 +117,19 @@ where
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
+}
+
+pub fn admin_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto + 'static,
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+{
+    Command::new("admin")
+        .about("The admin commands for chain")
+        .subcommands([
+            update_admin(),
+            update_validators(),
+            set_block_interval(),
+            emergency_brake(),
+        ])
 }
