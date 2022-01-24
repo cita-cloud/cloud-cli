@@ -7,6 +7,8 @@ mod evm;
 mod account;
 
 use clap::{App, Arg, ArgMatches};
+use clap::AppFlags;
+use clap::AppSettings;
 use std::collections::HashMap;
 use crate::sdk::context::Context;
 use crate::crypto::Crypto;
@@ -69,6 +71,12 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
 
     pub fn about<O: Into<Option<&'help str>>>(mut self, about: O) -> Self {
         self.app = self.app.about(about);
+        self
+    }
+
+    pub fn setting<F: Into<AppFlags>>(mut self, setting: F) -> Self
+    {
+        self.app = self.app.setting(setting);
         self
     }
 
@@ -146,6 +154,8 @@ where
     Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C> + ExecutorBehaviour<C> + AdminBehaviour<C> + EvmBehaviour<C> + EvmBehaviourExt<C> + WalletBehaviour<C>,
 {
     Command::new("cldi")
+        .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
+        .setting(AppSettings::SubcommandRequired)
         .subcommands([
             account::account_cmd(),
             admin::admin_cmd(),
