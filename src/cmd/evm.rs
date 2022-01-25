@@ -14,7 +14,7 @@ use crate::utils::hex;
 
 pub fn get_receipt<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-receipt")
@@ -35,7 +35,7 @@ where
 
 pub fn get_code<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-code")
@@ -52,7 +52,7 @@ where
 
 pub fn get_balance<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-balance")
@@ -69,7 +69,7 @@ where
 
 pub fn get_tx_count<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-tx-count")
@@ -86,7 +86,7 @@ where
 
 pub fn get_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-abi")
@@ -108,7 +108,7 @@ where
 
 pub fn store_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviourExt<C>,
 {
     Command::new("store-abi")
@@ -139,7 +139,7 @@ where
 
 pub fn evm_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: EvmBehaviour<C> + EvmBehaviourExt<C>,
 {
     Command::new("evm")

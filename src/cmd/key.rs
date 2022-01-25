@@ -14,7 +14,7 @@ use crate::utils::hex;
 
 pub fn generate_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
 {
     Command::new("generate")
@@ -56,7 +56,7 @@ where
 
 pub fn list_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
 {
     Command::new("list")
@@ -85,7 +85,7 @@ where
 
 pub fn export_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
 {
     Command::new("export")
@@ -130,7 +130,7 @@ where
 
 pub fn key_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
 {
     Command::new("key")

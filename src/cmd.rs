@@ -13,15 +13,18 @@ use clap::AppSettings;
 use clap::{App, Arg, ArgMatches};
 use std::collections::HashMap;
 use std::ffi::OsString;
+use tonic::transport::Endpoint;
 
 use anyhow::{anyhow, bail, ensure, Context as _, Result};
 
 use crate::sdk::{
     account::AccountBehaviour, admin::AdminBehaviour, controller::ControllerBehaviour,
     evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour, wallet::WalletBehaviour,
+    controller::ControllerClient, executor::ExecutorClient, evm::EvmClient,
+    wallet::Wallet
 };
 
-// Use Box<dyn Fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>> for handler if needed.
+// TODO: Use Box<dyn Fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>> for handler.
 
 /// Command handler that associated with a command.
 pub type CommandHandler<Co, Ex, Ev, Wa> =
@@ -190,23 +193,61 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     }
 }
 
-pub fn all_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
-        + ExecutorBehaviour<C>
-        + AdminBehaviour<C>
-        + EvmBehaviour<C>
-        + EvmBehaviourExt<C>
-        + WalletBehaviour<C>,
+pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
 {
     Command::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
         .setting(AppSettings::SubcommandRequired)
+        .arg(
+            Arg::new("controller-addr")
+                .help("controller address")
+                .short('r')
+                .takes_value(true)
+                // TODO: add validator
+        )
+        .arg(
+            Arg::new("executor-addr")
+                .help("executor address")
+                .short('e')
+                .takes_value(true)
+                // TODO: add validator
+        )
+        .handler(|ctx, m| {
+            let rt = ctx.rt.handle().clone();
+            rt.block_on(async {
+                if let Some(controller_addr) = m.value_of("controller-addr") {
+                    let controller = {
+                        let addr = format!("http://{controller_addr}");
+                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
+                        ControllerClient::new(channel)
+                    };
+                    ctx.controller = controller;
+                }
+
+                if let Some(executor_addr) = m.value_of("executor-addr") {
+                    let executor = {
+                        let addr = format!("http://{executor_addr}");
+                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
+                        ExecutorClient::new(channel)
+                    };
+
+                    let evm = {
+                        let addr = format!("http://{executor_addr}");
+                        let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+                        EvmClient::new(channel)
+                    };
+
+                    ctx.executor = executor;
+                    ctx.evm = evm;
+                }
+                anyhow::Ok(())
+            })
+        })
         .subcommands([
             key::key_cmd(),
             admin::admin_cmd(),
-            rpc::rpc_cmd(),
+            // TODO: figure out why I have to specify `C` for this cmd
+            rpc::rpc_cmd::<C, _, _, _, _>(),
             evm::evm_cmd(),
         ])
 }

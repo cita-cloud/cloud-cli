@@ -12,7 +12,7 @@ use crate::utils::hex;
 
 pub fn update_admin<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("update-admin")
@@ -33,7 +33,7 @@ where
 
 pub fn update_validators<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("update-validators")
@@ -80,7 +80,7 @@ where
 
 pub fn emergency_brake<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("emergency-brake")
@@ -101,7 +101,7 @@ where
 
 pub fn admin_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
-    C: Crypto + 'static,
+    C: Crypto,
     Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("admin")
