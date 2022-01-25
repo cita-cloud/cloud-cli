@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 /// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
 /// This crypto impl must be compatible with `kms_eth` to work with it.
-
 use tiny_keccak::{Hasher, Keccak};
 
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::SecretKey as RawSecretKey;
+use secp256k1::Message;
 use secp256k1::PublicKey as RawPublicKey;
 use secp256k1::Secp256k1;
-use secp256k1::Message;
+use secp256k1::SecretKey as RawSecretKey;
 
 use ctr::cipher::{NewCipher, StreamCipher};
 
 use super::Crypto;
-
 
 pub const HASH_BYTES_LEN: usize = 32;
 pub type Hash = [u8; HASH_BYTES_LEN];
@@ -42,12 +39,11 @@ pub const SECRET_KEY_BYTES_LEN: usize = 32;
 pub type SecretKey = [u8; SECRET_KEY_BYTES_LEN];
 
 pub const SIGNATURE_BYTES_LEN: usize = 65;
-pub type Signature= [u8; SIGNATURE_BYTES_LEN];
+pub type Signature = [u8; SIGNATURE_BYTES_LEN];
 
 lazy_static::lazy_static! {
     pub static ref SECP256K1: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
-
 
 fn keccak_hash(input: &[u8]) -> Hash {
     let mut hasher = Keccak::v256();
@@ -86,27 +82,28 @@ fn secp256k1_sk2pk(sk: &SecretKey) -> PublicKey {
 }
 
 fn secp256k1_pk2addr(pk: &PublicKey) -> Address {
-    keccak_hash(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].try_into().unwrap()
+    keccak_hash(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..]
+        .try_into()
+        .unwrap()
 }
 
 fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
     let hashed_msg = keccak_hash(msg);
     let raw_sk = RawSecretKey::from_slice(sk).unwrap();
-    let raw_sig = SECP256K1.sign_ecdsa_recoverable(&Message::from_slice(&hashed_msg).unwrap(), &raw_sk);
+    let raw_sig =
+        SECP256K1.sign_ecdsa_recoverable(&Message::from_slice(&hashed_msg).unwrap(), &raw_sk);
     let (recovery_id, sig) = raw_sig.serialize_compact();
 
     // [<sig><recovery_id>]
     let mut output = [0u8; SIGNATURE_BYTES_LEN];
     output[..SIGNATURE_BYTES_LEN - 1].copy_from_slice(&sig);
     output[SIGNATURE_BYTES_LEN - 1] = recovery_id.to_i32() as u8;
-    
+
     output
 }
 
-
 #[derive(Debug)]
 pub struct EthCrypto;
-
 
 impl Crypto for EthCrypto {
     type Hash = Hash;
@@ -143,4 +140,3 @@ impl Crypto for EthCrypto {
         secp256k1_sk2pk(sk)
     }
 }
-

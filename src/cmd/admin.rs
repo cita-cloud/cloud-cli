@@ -3,37 +3,17 @@ use clap::Arg;
 
 use crate::utils::{parse_addr, parse_data};
 
-use prost::Message;
 use super::*;
 use crate::sdk::context::Context;
-
-
-use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
-};
+use prost::Message;
 
 use crate::crypto::{ArrayLike, Crypto};
 use crate::utils::hex;
 
-
 pub fn update_admin<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("update-admin")
         .about("Update admin of the chain")
@@ -41,7 +21,7 @@ where
             Arg::new("admin")
                 .help("the address of the new admin")
                 .required(true)
-                .validator(parse_addr::<C>)
+                .validator(parse_addr::<C>),
         )
         .handler(|ctx, m| {
             let admin = parse_addr::<C>(m.value_of("admin").unwrap())?;
@@ -54,7 +34,7 @@ where
 pub fn update_validators<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("update-validators")
         .about("Update validators of the chain")
@@ -77,10 +57,10 @@ where
         })
 }
 
-pub fn set_block_interval<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn set_block_interval<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("set-block-interval")
         .about("Set block interval")
@@ -101,7 +81,7 @@ where
 pub fn emergency_brake<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("emergency-brake")
         .about("Send emergency brake cmd to chain")
@@ -122,7 +102,7 @@ where
 pub fn admin_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: AdminBehaviour<C>,
 {
     Command::new("admin")
         .about("The admin commands for chain")

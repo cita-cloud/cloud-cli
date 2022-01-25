@@ -13,11 +13,6 @@ use crate::proto::{
     controller::{
         rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig, TransactionIndex,
     },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
 use crate::crypto::{ArrayLike, Crypto};

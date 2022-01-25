@@ -1,17 +1,17 @@
 // mod cli;
 // mod client;
 mod crypto;
-mod sdk;
 mod display;
 mod proto;
+mod sdk;
 mod utils;
 // mod wallet;
 mod cmd;
 mod config;
 mod interactive;
 
-use config::Config;
 use cmd::all_cmd;
+use config::Config;
 use crypto::EthCrypto;
 
 use anyhow::Result;

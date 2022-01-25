@@ -2,20 +2,13 @@ use super::context::Context;
 use prost::Message;
 // use crate::wallet::Account;
 
-use crate::{proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
+use crate::{
+    crypto::EthCrypto,
+    proto::{
+        common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
+        evm::{rpc_service_client::RpcServiceClient, Balance, ByteAbi, ByteCode, Nonce, Receipt},
     },
-    common::{Empty, Address, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{rpc_service_client::RpcServiceClient, Balance, ByteAbi, ByteCode, Nonce, Receipt},
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
-}, crypto::EthCrypto};
+};
 
 use super::controller::ControllerBehaviour;
 use super::controller::NormalTransactionSenderBehaviour;
@@ -45,7 +38,6 @@ const AMEND_KV_H256: &str = "0x03";
 const AMEND_BALANCE: &str = "0x05";
 
 pub type EvmClient = crate::proto::evm::rpc_service_client::RpcServiceClient<Channel>;
-
 
 #[tonic::async_trait]
 pub trait EvmBehaviour<C: Crypto> {
@@ -135,12 +127,11 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::parse_data;
     use crate::crypto::EthCrypto;
+    use crate::utils::parse_data;
 
     #[test]
     fn test_constant() -> Result<()> {

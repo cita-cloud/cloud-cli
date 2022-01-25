@@ -1,6 +1,6 @@
 use anyhow::anyhow;
-use anyhow::Result;
 use anyhow::Context;
+use anyhow::Result;
 
 use crate::crypto::ArrayLike;
 use crate::crypto::Crypto;

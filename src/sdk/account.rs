@@ -1,31 +1,9 @@
-use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
-};
-
 use crate::crypto::{ArrayLike, Crypto};
-
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 pub trait AccountBehaviour: Sized {
     type SigningAlgorithm: Crypto;
 
-    fn generate() -> Self
-    {
+    fn generate() -> Self {
         let sk = Self::SigningAlgorithm::generate_secret_key();
         Self::from_secret_key(sk)
     }
@@ -83,5 +61,4 @@ impl<C: Crypto> AccountBehaviour for Account<C> {
     fn expose_secret_key(&self) -> &C::SecretKey {
         &self.secret_key
     }
-
 }

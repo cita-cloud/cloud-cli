@@ -6,45 +6,37 @@ mod evm;
 // mod wallet;
 mod key;
 
-use std::ffi::OsString;
-use clap::{App, Arg, ArgMatches};
+use crate::crypto::Crypto;
+use crate::sdk::context::Context;
 use clap::AppFlags;
 use clap::AppSettings;
+use clap::{App, Arg, ArgMatches};
 use std::collections::HashMap;
-use crate::sdk::context::Context;
-use crate::crypto::Crypto;
+use std::ffi::OsString;
 
-use anyhow::{
-    anyhow, bail, ensure, Context as _, Result
-};
+use anyhow::{anyhow, bail, ensure, Context as _, Result};
 
 use crate::sdk::{
-    admin::AdminBehaviour,
-    account::AccountBehaviour,
-    controller::ControllerBehaviour,
-    executor::ExecutorBehaviour,
-    evm::EvmBehaviour,
-    evm::EvmBehaviourExt,
-    wallet::WalletBehaviour,
+    account::AccountBehaviour, admin::AdminBehaviour, controller::ControllerBehaviour,
+    evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour, wallet::WalletBehaviour,
 };
 
-/// Command handler that associated with a command.
-pub type CommandHandler<Co, Ex, Ev, Wa> = fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
+// Use Box<dyn Fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>> for handler if needed.
 
+/// Command handler that associated with a command.
+pub type CommandHandler<Co, Ex, Ev, Wa> =
+    fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
 
 /// Command
 #[derive(Clone)]
-pub struct Command<'help, Co, Ex, Ev, Wa>
-{
+pub struct Command<'help, Co, Ex, Ev, Wa> {
     app: App<'help>,
     handler: Option<CommandHandler<Co, Ex, Ev, Wa>>,
 
     subcmds: HashMap<String, Self>,
 }
 
-
-impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
-{
+impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     /// Create a new command.
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -75,8 +67,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
         self
     }
 
-    pub fn setting<F: Into<AppFlags>>(mut self, setting: F) -> Self
-    {
+    pub fn setting<F: Into<AppFlags>>(mut self, setting: F) -> Self {
         self.app = self.app.setting(setting);
         self
     }
@@ -88,7 +79,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
 
     /// Command handler is for handling a leaf command(that has no subcommands) or modifying the Context/ArgMatches for subcommands.
     /// After processed by the handler, Context and subcommand's ArgMatches will be handled by the subcommand(if any).
-    /// 
+    ///
     /// Default to no-op.
     pub fn handler(mut self, handler: CommandHandler<Co, Ex, Ev, Wa>) -> Self {
         self.handler.replace(handler);
@@ -106,14 +97,16 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     }
 
     /// Same as [`subcommand`], but accept multiple subcommands.
-    /// 
+    ///
     /// [`Command::subcommand`]: Command::subcommand
     pub fn subcommands<I>(self, subcmds: I) -> Self
     where
-        I: IntoIterator<Item = Self>
+        I: IntoIterator<Item = Self>,
     {
         // just a fancy loop!
-        subcmds.into_iter().fold(self, |this, subcmd| this.subcommand(subcmd))
+        subcmds
+            .into_iter()
+            .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
     pub fn exec(&self, context: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
@@ -127,9 +120,14 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     }
 
     /// Execute this command with context and args.
-    pub fn exec_with(&self, context: &mut Context<Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
+    pub fn exec_with(
+        &self,
+        context: &mut Context<Co, Ex, Ev, Wa>,
+        mut m: ArgMatches,
+    ) -> Result<()> {
         if let Some(handler) = self.handler {
-            (handler)(context, &mut m).with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
+            (handler)(context, &mut m)
+                .with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }
         if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
             if let Some(handler) = self.subcmds.get(subcmd_name) {
@@ -144,7 +142,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     pub fn exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
     where
         I: IntoIterator<Item = T>,
-        T: Into<OsString> + Clone, 
+        T: Into<OsString> + Clone,
     {
         let m = self.app.clone().get_matches_from(iter);
         self.exec_with(context, m)
@@ -153,7 +151,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     pub fn try_exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
     where
         I: IntoIterator<Item = T>,
-        T: Into<OsString> + Clone, 
+        T: Into<OsString> + Clone,
     {
         let m = self.app.clone().try_get_matches_from(iter)?;
         self.exec_with(context, m)
@@ -168,8 +166,11 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
         self.subcmds.get(subcmd)
     }
 
-    pub fn rename_subcommand(&mut self, old: &str, new: &str) -> Result<()>{
-        let old_app = self.app.find_subcommand_mut(old).ok_or(anyhow!("subcommand no found"))?;
+    pub fn rename_subcommand(&mut self, old: &str, new: &str) -> Result<()> {
+        let old_app = self
+            .app
+            .find_subcommand_mut(old)
+            .ok_or(anyhow!("subcommand no found"))?;
         *old_app = old_app.clone().name(new);
         let old_subcmd = self.subcmds.remove(old).expect("subcommand no found");
         self.subcmds.insert(new.into(), old_subcmd.name(new));
@@ -181,7 +182,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     pub fn get_matches(&self) -> ArgMatches {
         self.app.clone().get_matches()
     }
-    
+
     // TODO: get matches from
 
     pub fn get_all_aliases(&self) -> impl Iterator<Item = &str> + '_ {
@@ -189,11 +190,15 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
     }
 }
 
-
 pub fn all_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C> + ExecutorBehaviour<C> + AdminBehaviour<C> + EvmBehaviour<C> + EvmBehaviourExt<C> + WalletBehaviour<C>,
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+        + ExecutorBehaviour<C>
+        + AdminBehaviour<C>
+        + EvmBehaviour<C>
+        + EvmBehaviourExt<C>
+        + WalletBehaviour<C>,
 {
     Command::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
@@ -205,4 +210,3 @@ where
             evm::evm_cmd(),
         ])
 }
-

@@ -3,46 +3,26 @@ use clap::Arg;
 
 use crate::crypto::ArrayLike;
 use crate::sdk::evm::EvmBehaviourExt;
-use crate::utils::{parse_addr, parse_hash, parse_data};
+use crate::utils::{parse_addr, parse_data, parse_hash};
 
-use prost::Message;
 use super::*;
 use crate::sdk::context::Context;
-
-
-use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
-};
+use prost::Message;
 
 use crate::display::Display;
 use crate::utils::hex;
 
-
 pub fn get_receipt<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-receipt")
         .about("Get receipt by tx_hash")
         .arg(
             Arg::new("tx_hash")
                 .required(true)
-                .validator(parse_hash::<C>)
+                .validator(parse_hash::<C>),
         )
         .handler(|ctx, m| {
             let tx_hash = parse_hash::<C>(m.value_of("tx_hash").unwrap())?;
@@ -56,15 +36,11 @@ where
 pub fn get_code<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-code")
         .about("Get code by contract address")
-        .arg(
-            Arg::new("addr")
-                .required(true)
-                .validator(parse_addr::<C>)
-        )
+        .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -77,15 +53,11 @@ where
 pub fn get_balance<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-balance")
         .about("Get balance by account address")
-        .arg(
-            Arg::new("addr")
-                .required(true)
-                .validator(parse_addr::<C>)
-        )
+        .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
@@ -98,7 +70,7 @@ where
 pub fn get_tx_count<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-tx-count")
         .about("Get the transaction count of the address")
@@ -115,7 +87,7 @@ where
 pub fn get_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
 {
     Command::new("get-abi")
         .about("Get the specific contract ABI")
@@ -137,7 +109,7 @@ where
 pub fn store_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto + 'static,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviourExt<C>
+    Context<Co, Ex, Ev, Wa>: EvmBehaviourExt<C>,
 {
     Command::new("store-abi")
         .about("Store contract ABI")
@@ -164,7 +136,6 @@ where
             Ok(())
         })
 }
-
 
 pub fn evm_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where

@@ -3,48 +3,29 @@ use clap::Arg;
 
 use crate::utils::{parse_addr, parse_hash};
 
-use prost::Message;
 use super::*;
 use crate::sdk::context::Context;
-
-
-use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
-};
+use prost::Message;
 
 use crate::display::Display;
 
-    // async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash>;
+// async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash>;
 
-    // async fn get_block_hash(&self, block_number: u64) -> Result<C::Hash>;
+// async fn get_block_hash(&self, block_number: u64) -> Result<C::Hash>;
 
-    // async fn get_tx(&self, tx_hash: C::Hash) -> Result<RawTransaction>;
-    // async fn get_tx_index(&self, tx_hash: C::Hash) -> Result<u64>;
-    // async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64>;
+// async fn get_tx(&self, tx_hash: C::Hash) -> Result<RawTransaction>;
+// async fn get_tx_index(&self, tx_hash: C::Hash) -> Result<u64>;
+// async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64>;
 
-    // async fn get_peer_count(&self) -> Result<u64>;
-    // async fn get_peers_info(&self) -> Result<Vec<NodeInfo>>;
+// async fn get_peer_count(&self) -> Result<u64>;
+// async fn get_peers_info(&self) -> Result<Vec<NodeInfo>>;
 
-    // async fn add_node(&self, multiaddr: String) -> Result<u32>;
+// async fn add_node(&self, multiaddr: String) -> Result<u32>;
 
-pub fn get_system_config<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn get_system_config<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>,
 {
     Command::new("get-system-config")
         .about("Get system config")
@@ -55,10 +36,10 @@ where
         })
 }
 
-pub fn get_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn get_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>,
 {
     Command::new("get-block-number")
         .about("Get block number")
@@ -77,10 +58,10 @@ where
         })
 }
 
-pub fn get_block<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn get_block<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>,
 {
     Command::new("get-block")
         .about("Get block by block number(height) or hash(0x)")
@@ -113,17 +94,13 @@ where
         })
 }
 
-pub fn rpc_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn rpc_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
+    Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>,
 {
     Command::new("rpc")
         .about("rpc commands")
         .setting(AppSettings::SubcommandRequired)
-        .subcommands([
-            get_system_config(),
-            get_block_number(),
-            get_block()
-        ])
+        .subcommands([get_system_config(), get_block_number(), get_block()])
 }

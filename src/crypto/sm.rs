@@ -15,6 +15,8 @@
 // This file is from kms_sm, and I made some modifications.
 #![allow(unused)]
 
+use super::Crypto;
+
 use rand::RngCore;
 
 const HASH_BYTES_LEN: usize = 32;
@@ -86,3 +88,9 @@ pub fn decrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
 
     cipher.decrypt(&data, &iv)
 }
+
+pub struct Sm;
+
+// impl Crypto for Sm {
+
+// }
