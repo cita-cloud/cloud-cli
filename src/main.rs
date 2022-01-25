@@ -14,7 +14,9 @@ use config::Config;
 use cmd::all_cmd;
 use crypto::EthCrypto;
 
-fn main() {
+use anyhow::Result;
+
+fn main() -> Result<()> {
     let config = Config {
         controller_addr: "localhost:50005".into(),
         executor_addr: "localhost:50002".into(),
@@ -25,6 +27,5 @@ fn main() {
     let mut ctx = sdk::context::from_config::<EthCrypto>(&config).unwrap();
     let cmd = all_cmd();
 
-    let matches = cmd.get_matches();
-    cmd.exec(&mut ctx, matches).unwrap();
+    cmd.try_exec(&mut ctx)
 }

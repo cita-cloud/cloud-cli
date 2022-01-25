@@ -173,6 +173,7 @@ where
 {
     Command::new("evm")
         .about("EVM commands")
+        .setting(AppSettings::SubcommandRequired)
         .subcommands([
             get_receipt(),
             get_code(),

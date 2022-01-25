@@ -126,6 +126,7 @@ where
 {
     Command::new("admin")
         .about("The admin commands for chain")
+        .setting(AppSettings::SubcommandRequired)
         .subcommands([
             update_admin(),
             update_validators(),

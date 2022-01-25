@@ -57,6 +57,8 @@ where
     C: Crypto,
     T: UtxoTransactionSenderBehaviour<C> + Send + Sync,
 {
+    // Those utxo output formats is defined by controller.
+
     async fn update_admin(&self, admin: C::Address) -> Result<C::Hash> {
         let output = admin.to_vec();
         self.send_utxo(output, UtxoType::Admin)

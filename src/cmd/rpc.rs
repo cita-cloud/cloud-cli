@@ -113,13 +113,14 @@ where
         })
 }
 
-pub fn controller_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
+pub fn rpc_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa> 
 where
     C: Crypto,
     Context<Co, Ex, Ev, Wa>: ControllerBehaviour<C>
 {
-    Command::new("controller")
-        .about("controller commands")
+    Command::new("rpc")
+        .about("rpc commands")
+        .setting(AppSettings::SubcommandRequired)
         .subcommands([
             get_system_config(),
             get_block_number(),

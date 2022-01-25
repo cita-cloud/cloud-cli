@@ -31,7 +31,7 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use std::{path::Path, io};
 use std::path::PathBuf;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use crate::utils::*;
 
@@ -135,13 +135,19 @@ impl<C: Crypto> UnlockableAccount for LockedAccount<C>
     type Unlocked = Account<C>;
 
     fn unlock(self, pw: &str) -> Result<Self::Unlocked, Self> {
-        let sk = C::decrypt(self.encrypted_sk.as_slice(), pw.as_bytes())
+        C::decrypt(self.encrypted_sk.as_slice(), pw.as_bytes())
             .and_then(|decrypted| {
                 C::SecretKey::try_from_slice(&decrypted).ok()
             })
-            .ok_or(self)?;
-
-        Ok(Account::from_secret_key(sk))
+            .and_then(|sk| Account::<C>::from_secret_key(sk).into())
+            .and_then(|unlocked| {
+                if unlocked.address() == &self.address {
+                    Some(unlocked)
+                } else {
+                    None
+                }
+            })
+            .ok_or(self)
     }
 }
 
@@ -212,7 +218,7 @@ pub struct Wallet<C: Crypto> {
     wallet_dir: PathBuf,
 
     current_account_id: Option<String>,
-    account_map: HashMap<String, MaybeLockedAccount<LockedAccount<C>, Account<C>>>,
+    account_map: BTreeMap<String, MaybeLockedAccount<LockedAccount<C>, Account<C>>>,
 }
 
 impl<C: Crypto> Wallet<C> {
@@ -226,7 +232,7 @@ impl<C: Crypto> Wallet<C> {
         let mut this = Self {
             wallet_dir,
             current_account_id: None,
-            account_map: HashMap::new(),
+            account_map: BTreeMap::new(),
         };
 
         let mut it = fs::read_dir(accounts_dir).await.context("cannot read accounts dir")?;
@@ -320,7 +326,7 @@ impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
             Some(pw) => MaybeLockedAccount::from_locked(account.lock(pw)),
             None => MaybeLockedAccount::from_unlocked(account),
         };
-        self.import_account(id, maybe_locked).await
+        self.save_account(id, maybe_locked).await
     }
 
     async fn import_account(&mut self, id: &str, maybe_locked: MaybeLockedAccount<Self::Locked, Self::Unlocked>) -> Result<()> {

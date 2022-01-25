@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::crypto::{ArrayLike, Crypto};
 use crate::config::Config;
 
@@ -39,18 +41,15 @@ use super::wallet::{
 
 pub struct Context<Co, Ex, Ev, Wa>
 {
-    pub current_block_number: u64,
-    pub system_config: SystemConfig,
-
-    pub wallet: Wa,
-
     /// Those gRPC client are connected lazily.
     pub controller: Co,
     pub executor: Ex,
     pub evm: Ev,
+    pub wallet: Wa,
 
     pub rt: tokio::runtime::Runtime,
 }
+
 
 // I miss [Delegation](https://github.com/contactomorph/rfcs/blob/delegation/text/0000-delegation-of-implementation.md)
 // Most of the code below is boilerplate, and ambassador doesn't work for generic trait:(
@@ -232,15 +231,20 @@ where
 {
     // Use send_raw_tx if you want more control over the tx content
     async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
+        let (current_block_number, system_config) = tokio::try_join!(
+            self.get_block_number(false),
+            self.get_system_config(),
+        ).context("failed to fetch chain status")?;
+
         let raw_tx = CloudNormalTransaction {
-            version: self.system_config.version,
+            version: system_config.version,
             to: to.to_vec(),
             data,
             value,
             nonce: rand::random::<u64>().to_string(),
             quota: 3_000_000,
-            valid_until_block: self.current_block_number + 95,
-            chain_id: self.system_config.chain_id.clone(),
+            valid_until_block: current_block_number + 95,
+            chain_id: system_config.chain_id.clone(),
         };
 
         <Self as RawTransactionSenderBehaviour<C>>::send_raw_tx(&self, raw_tx).await
@@ -257,9 +261,9 @@ where
 {
     // Use send_raw_utxo if you want more control over the utxo content
     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {
+        let system_config = self.get_system_config().await.context("failed to get system config")?;
         let raw_utxo = {
             let lock_id = utxo_type as u64;
-            let system_config = &self.system_config;
             let pre_tx_hash = match utxo_type {
                 UtxoType::Admin => &system_config.admin_pre_hash,
                 UtxoType::BlockInterval => &system_config.block_interval_pre_hash,
@@ -284,16 +288,17 @@ where
 pub fn from_config<C: Crypto>(config: &Config) -> Result<Context<ControllerClient, ExecutorClient, EvmClient, Wallet<C>>> {
     let rt = tokio::runtime::Runtime::new()?;
 
-    let (controller, executor, evm, current_block_number, system_config, wallet) = rt.block_on(async {
-        let mut controller = {
+    let (controller, executor, evm, wallet) = rt.block_on(async {
+        // Although connect_lazy isn't async, they still must be in a async context.
+        let controller = {
             let addr = format!("http://{}", config.controller_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+            let channel = Endpoint::from_shared(addr)?.connect_lazy();
             ControllerClient::new(channel)
         };
 
         let executor = {
             let addr = format!("http://{}", config.executor_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+            let channel = Endpoint::from_shared(addr)?.connect_lazy();
             ExecutorClient::new(channel)
         };
 
@@ -303,12 +308,10 @@ pub fn from_config<C: Crypto>(config: &Config) -> Result<Context<ControllerClien
             let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
             EvmClient::new(channel)
         };
-        let current_block_number = <ControllerClient as ControllerBehaviour<C>>::get_block_number(&mut controller, false).await?;
-        let system_config = <ControllerClient as ControllerBehaviour<C>>::get_system_config(&mut controller).await?;
 
         let wallet = Wallet::open(&config.wallet_dir).await?;
 
-        anyhow::Ok((controller, executor, evm, current_block_number, system_config, wallet))
+        anyhow::Ok((controller, executor, evm, wallet))
     })?;
 
     let this = Context {
@@ -316,8 +319,7 @@ pub fn from_config<C: Crypto>(config: &Config) -> Result<Context<ControllerClien
         executor,
         evm,
         wallet,
-        current_block_number,
-        system_config,
+
         rt,
     };
 

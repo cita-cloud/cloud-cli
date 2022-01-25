@@ -1,11 +1,12 @@
 mod admin;
-mod controller;
+mod rpc;
 // // mod executor;
 // // #[cfg(feature = "evm")]
 mod evm;
 // mod wallet;
-mod account;
+mod key;
 
+use std::ffi::OsString;
 use clap::{App, Arg, ArgMatches};
 use clap::AppFlags;
 use clap::AppSettings;
@@ -14,7 +15,7 @@ use crate::sdk::context::Context;
 use crate::crypto::Crypto;
 
 use anyhow::{
-    bail, ensure, Context as _, Result
+    anyhow, bail, ensure, Context as _, Result
 };
 
 use crate::sdk::{
@@ -115,14 +116,24 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
         subcmds.into_iter().fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
+    pub fn exec(&self, context: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+        let m = self.app.clone().get_matches();
+        self.exec_with(context, m)
+    }
+
+    pub fn try_exec(&self, context: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+        let m = self.app.clone().try_get_matches()?;
+        self.exec_with(context, m)
+    }
+
     /// Execute this command with context and args.
-    pub fn exec(&self, context: &mut Context<Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
+    pub fn exec_with(&self, context: &mut Context<Co, Ex, Ev, Wa>, mut m: ArgMatches) -> Result<()> {
         if let Some(handler) = self.handler {
             (handler)(context, &mut m).with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }
         if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
             if let Some(handler) = self.subcmds.get(subcmd_name) {
-                handler.exec(context, subcmd_matches.clone()).with_context(|| format!("failed to exec subcommand `{}`", subcmd_name))?;
+                handler.exec_with(context, subcmd_matches.clone())?;
             } else {
                 bail!("no subcommand handler for `{}`", subcmd_name);
             }
@@ -130,9 +141,40 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa>
         Ok(())
     }
 
+    pub fn exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<OsString> + Clone, 
+    {
+        let m = self.app.clone().get_matches_from(iter);
+        self.exec_with(context, m)
+    }
+
+    pub fn try_exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<OsString> + Clone, 
+    {
+        let m = self.app.clone().try_get_matches_from(iter)?;
+        self.exec_with(context, m)
+    }
+
     /// Get name of the underlaying clap App.
     pub fn get_name(&self) -> &str {
         self.app.get_name()
+    }
+
+    pub fn get_subcommand(&self, subcmd: &str) -> Option<&Self> {
+        self.subcmds.get(subcmd)
+    }
+
+    pub fn rename_subcommand(&mut self, old: &str, new: &str) -> Result<()>{
+        let old_app = self.app.find_subcommand_mut(old).ok_or(anyhow!("subcommand no found"))?;
+        *old_app = old_app.clone().name(new);
+        let old_subcmd = self.subcmds.remove(old).expect("subcommand no found");
+        self.subcmds.insert(new.into(), old_subcmd.name(new));
+
+        Ok(())
     }
 
     /// Get matches from the underlaying clap App.
@@ -157,9 +199,9 @@ where
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
         .setting(AppSettings::SubcommandRequired)
         .subcommands([
-            account::account_cmd(),
+            key::key_cmd(),
             admin::admin_cmd(),
-            controller::controller_cmd(),
+            rpc::rpc_cmd(),
             evm::evm_cmd(),
         ])
 }
