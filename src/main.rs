@@ -13,6 +13,7 @@ mod interactive;
 use cmd::all_cmd;
 use config::Config;
 use crypto::EthCrypto;
+use crypto::SmCrypto;
 
 use anyhow::Result;
 
@@ -24,7 +25,7 @@ fn main() -> Result<()> {
         wallet_dir: "d:/cld/cloud-cli/tmp-wallet".into(),
     };
 
-    let mut ctx = sdk::context::from_config::<EthCrypto>(&config).unwrap();
+    let mut ctx = sdk::context::from_config::<SmCrypto>(&config).unwrap();
     let mut cmd = all_cmd();
 
     cmd.try_exec(&mut ctx)

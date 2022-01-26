@@ -1,16 +1,12 @@
 mod sm;
-use serde::Deserialize;
-use serde::Serialize;
-pub use sm::{generate_keypair, hash_data, pk2address, sign_message};
 
 mod eth;
-#[cfg(feature = "crypto_eth")]
-pub use eth::{generate_keypair, hash_data, pk2address, sign_message};
 
 use anyhow::Context;
 use anyhow::Result;
 
 pub use eth::EthCrypto;
+pub use sm::SmCrypto;
 
 // I tried this, but it's not easy to constrain the Error type of TryFrom
 // since type bound on generic param's associated type is unstable.
