@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     };
 
     let mut ctx = sdk::context::from_config::<EthCrypto>(&config).unwrap();
-    let cmd = all_cmd();
+    let mut cmd = all_cmd();
 
     cmd.try_exec(&mut ctx)
 }

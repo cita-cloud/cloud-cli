@@ -33,6 +33,7 @@ indicatif = "0.16.2"
 rayon = "1.5.1"
 tentacle-multiaddr = "0.3.1"
 toml = "0.5"
+rustyline = "9.1"
 shell-words = "1.0"
 
 # crypto_sm

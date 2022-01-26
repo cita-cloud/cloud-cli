@@ -24,6 +24,8 @@ use crate::sdk::{
     wallet::Wallet
 };
 
+use crate::interactive::interactive;
+
 // TODO: Use Box<dyn Fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>> for handler.
 
 /// Command handler that associated with a command.
@@ -31,10 +33,11 @@ pub type CommandHandler<Co, Ex, Ev, Wa> =
     fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
 
 /// Command
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct Command<'help, Co, Ex, Ev, Wa> {
     app: App<'help>,
     handler: Option<CommandHandler<Co, Ex, Ev, Wa>>,
+    enable_interactive: bool,
 
     subcmds: HashMap<String, Self>,
 }
@@ -45,6 +48,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         Self {
             app: App::new(name),
             handler: None,
+            enable_interactive: false,
             subcmds: HashMap::new(),
         }
     }
@@ -112,52 +116,62 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
             .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
-    pub fn exec(&self, context: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
-        let m = self.app.clone().get_matches();
-        self.exec_with(context, m)
+    pub fn interactive(mut self, enable: bool) -> Self {
+        self.enable_interactive = enable;
+        self
     }
 
-    pub fn try_exec(&self, context: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+    pub fn exec(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+        let m = self.app.clone().get_matches();
+        self.exec_with(ctx, m)
+    }
+
+    pub fn try_exec(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
         let m = self.app.clone().try_get_matches()?;
-        self.exec_with(context, m)
+        self.exec_with(ctx, m)
     }
 
     /// Execute this command with context and args.
     pub fn exec_with(
-        &self,
-        context: &mut Context<Co, Ex, Ev, Wa>,
+        &mut self,
+        ctx: &mut Context<Co, Ex, Ev, Wa>,
         mut m: ArgMatches,
     ) -> Result<()> {
         if let Some(handler) = self.handler {
-            (handler)(context, &mut m)
+            (handler)(ctx, &mut m)
                 .with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
         }
         if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
-            if let Some(handler) = self.subcmds.get(subcmd_name) {
-                handler.exec_with(context, subcmd_matches.clone())?;
+            if let Some(handler) = self.subcmds.get_mut(subcmd_name) {
+                handler.exec_with(ctx, subcmd_matches.clone())?;
             } else {
                 bail!("no subcommand handler for `{}`", subcmd_name);
             }
+        } else if self.enable_interactive {
+            // avoid recursion
+            self.enable_interactive = false;
+            interactive::<Co, Ex, Ev, Wa>(self, ctx)?;
         }
+
         Ok(())
     }
 
-    pub fn exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
+    pub fn exec_from<I, T>(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         let m = self.app.clone().get_matches_from(iter);
-        self.exec_with(context, m)
+        self.exec_with(ctx, m)
     }
 
-    pub fn try_exec_from<I, T>(&self, context: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
+    pub fn try_exec_from<I, T>(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         let m = self.app.clone().try_get_matches_from(iter)?;
-        self.exec_with(context, m)
+        self.exec_with(ctx, m)
     }
 
     /// Get name of the underlaying clap App.
@@ -197,7 +211,6 @@ pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorC
 {
     Command::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
-        .setting(AppSettings::SubcommandRequired)
         .arg(
             Arg::new("controller-addr")
                 .help("controller address")
@@ -212,6 +225,7 @@ pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorC
                 .takes_value(true)
                 // TODO: add validator
         )
+        .interactive(true)
         .handler(|ctx, m| {
             let rt = ctx.rt.handle().clone();
             rt.block_on(async {
