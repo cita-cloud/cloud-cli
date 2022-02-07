@@ -126,11 +126,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         self.exec_with(ctx, m)
     }
 
-    pub fn try_exec(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
-        let m = self.app.clone().try_get_matches()?;
-        self.exec_with(ctx, m)
-    }
-
     /// Execute this command with context and args.
     pub fn exec_with(
         &mut self,
@@ -157,15 +152,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     }
 
     pub fn exec_from<I, T>(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<OsString> + Clone,
-    {
-        let m = self.app.clone().get_matches_from(iter);
-        self.exec_with(ctx, m)
-    }
-
-    pub fn try_exec_from<I, T>(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,

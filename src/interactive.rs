@@ -22,7 +22,7 @@ pub fn interactive<Co, Ex, Ev, Wa>(cmd: &mut Command<Co, Ex, Ev, Wa>, ctx: &mut 
                     }
                 };
                 let input = std::iter::once(cmd.get_name().into()).chain(args);
-                if let Err(e) = cmd.try_exec_from(ctx, input) {
+                if let Err(e) = cmd.exec_from(ctx, input) {
                     println!("{:?}", e);
                 }
             }

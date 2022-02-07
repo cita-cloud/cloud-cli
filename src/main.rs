@@ -28,5 +28,10 @@ fn main() -> Result<()> {
     let mut ctx = sdk::context::from_config::<SmCrypto>(&config).unwrap();
     let mut cmd = all_cmd();
 
-    cmd.try_exec(&mut ctx)
+    cmd.exec(&mut ctx).map_err(|e| {
+        if let Some(e) = e.downcast_ref::<clap::Error>() {
+            e.exit();
+        }
+        e
+    })
 }
