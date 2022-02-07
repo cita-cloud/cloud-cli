@@ -12,7 +12,7 @@ use crate::proto::{
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
+    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo, TotalNodeInfo},
     controller::{BlockNumber, Flag, SystemConfig, TransactionIndex},
     evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
     executor::{CallRequest, CallResponse},
@@ -99,7 +99,7 @@ where
         <Co as ControllerBehaviour<C>>::get_peer_count(&self.controller).await
     }
 
-    async fn get_peers_info(&self) -> Result<Vec<NodeInfo>> {
+    async fn get_peers_info(&self) -> Result<TotalNodeInfo> {
         <Co as ControllerBehaviour<C>>::get_peers_info(&self.controller).await
     }
 

@@ -10,7 +10,7 @@ use crate::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
             UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
-        common::NodeInfo,
+        common::{NodeInfo, TotalNodeInfo},
         controller::SystemConfig,
         evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
     },
@@ -191,6 +191,15 @@ impl Display for NodeInfo {
             };
         }
         Json::from(info_pair)
+    }
+}
+
+impl Display for TotalNodeInfo {
+    fn to_json(&self) -> Json {
+        let nodes: Vec<Json> = self.nodes.iter().map(Display::to_json).collect();
+        json!({
+            "nodes": nodes
+        })
     }
 }
 

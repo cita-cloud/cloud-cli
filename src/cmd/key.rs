@@ -77,7 +77,7 @@ where
                         println!("id: `{id}`\naddress: {addr}\npubkey: {pk}");
                     }
                 }
-                println!("");
+                println!();
             }
             Ok(())
         })

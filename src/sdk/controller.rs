@@ -9,7 +9,7 @@ use crate::proto::{
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
+    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo, TotalNodeInfo},
     controller::{
         rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig, TransactionIndex,
     },
@@ -43,7 +43,7 @@ pub trait ControllerBehaviour<C: Crypto> {
     async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64>;
 
     async fn get_peer_count(&self) -> Result<u64>;
-    async fn get_peers_info(&self) -> Result<Vec<NodeInfo>>;
+    async fn get_peers_info(&self) -> Result<TotalNodeInfo>;
 
     async fn add_node(&self, multiaddr: String) -> Result<u32>;
 }
@@ -148,12 +148,12 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
         Ok(resp.peer_count)
     }
 
-    async fn get_peers_info(&self) -> Result<Vec<NodeInfo>> {
+    async fn get_peers_info(&self) -> Result<TotalNodeInfo> {
         let resp = ControllerClient::get_peers_info(&mut self.clone(), Empty {})
             .await?
             .into_inner();
 
-        Ok(resp.nodes)
+        Ok(resp)
     }
 
     async fn add_node(&self, multiaddr: String) -> Result<u32> {
