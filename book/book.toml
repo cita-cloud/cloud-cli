@@ -1,0 +1,6 @@
+[book]
+authors = ["Zhishi"]
+language = "zh-CN"
+multilingual = false
+src = "src"
+title = "cloud-cli Documentation"
