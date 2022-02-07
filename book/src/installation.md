@@ -10,13 +10,13 @@ TODO
 ### 1.安装Rust
 如果你没有Rust环境，可以执行以下命令，通过rustup安装。
 不建议通过其它方式（如apt-get）安装Rust
-```
+```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 ### 2.克隆项目到本地
 
-```
+```bash
 git clone https://github.com/cita-cloud/cloud-cli
 cd cloud-cli
 ```
@@ -25,7 +25,7 @@ cd cloud-cli
 
 ### 3.编译并安装cloud-cli
 
-```
+```bash
 cargo install --path .
 ```
 
