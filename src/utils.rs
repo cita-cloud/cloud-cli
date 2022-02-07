@@ -35,7 +35,7 @@ pub fn display_time(timestamp: u64) -> String {
         "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]",
     )
     .unwrap();
-    time::OffsetDateTime::from_unix_timestamp(timestamp as i64)
+    time::OffsetDateTime::from_unix_timestamp((timestamp / 1000) as i64)
         .expect("invalid timestamp")
         .to_offset(local_offset)
         .format(&format)
