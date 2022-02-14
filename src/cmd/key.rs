@@ -15,7 +15,7 @@ use crate::utils::hex;
 pub fn generate_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
+    Wa: WalletBehaviour<C>,
 {
     Command::new("generate")
         .aliases(&["gen", "g"])
@@ -39,12 +39,14 @@ where
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
             let account = ctx.rt.handle().clone().block_on(async {
-                ctx.generate_account(id, pw).await?;
+                let wallet = &mut ctx.wallet;
+
+                wallet.generate_account(id, pw).await?;
                 if let Some(pw) = pw {
                     // TODO: maybe auto unlock generated account?
-                    ctx.unlock_account(id, pw).await?;
+                    wallet.unlock_account(id, pw).await?;
                 }
-                ctx.get_account(id).await
+                wallet.get_account(id).await
             })?;
 
             let addr = hex(account.address().as_slice());
@@ -57,13 +59,13 @@ where
 pub fn list_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
+    Wa: WalletBehaviour<C>,
 {
     Command::new("list")
         .aliases(&["ls", "l"])
         .about("list keys")
         .handler(|ctx, _m| {
-            let id_and_accounts = ctx.rt.block_on(ctx.list_account());
+            let id_and_accounts = ctx.rt.block_on(ctx.wallet.list_account());
 
             for (id, account) in id_and_accounts {
                 // TODO: impl crate::display::Display
@@ -86,7 +88,7 @@ where
 pub fn export_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
+    Wa: WalletBehaviour<C>,
 {
     Command::new("export")
         .about("export key")
@@ -107,14 +109,17 @@ where
         )
         .handler(|ctx, m| {
             let id = m.value_of("id").unwrap();
+            let pw = m.value_of("password");
             ctx.rt.handle().clone().block_on(async {
-                if let Some(pw) = m.value_of("password") {
-                    ctx.unlock_account(id, pw)
+                let wallet = &mut ctx.wallet;
+
+                if let Some(pw) = pw {
+                    wallet.unlock_account(id, pw)
                         .await
                         .context("failed to export account, please check your password")?;
                 }
 
-                let account = ctx.get_account(id).await.context("failed to get key")?;
+                let account = wallet.get_account(id).await.context("failed to get key")?;
 
                 let addr = hex(account.address().as_slice());
                 let pk = hex(account.public_key().as_slice());
@@ -131,7 +136,7 @@ where
 pub fn key_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: WalletBehaviour<C>,
+    Wa: WalletBehaviour<C>,
 {
     Command::new("key")
         .about("key commands")

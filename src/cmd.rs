@@ -5,6 +5,7 @@ mod rpc;
 mod evm;
 // mod wallet;
 mod key;
+mod cldi;
 
 use crate::crypto::Crypto;
 use crate::sdk::context::Context;

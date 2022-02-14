@@ -15,7 +15,7 @@ use crate::utils::hex;
 pub fn get_receipt<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
     Command::new("get-receipt")
         .about("Get receipt by tx_hash")
@@ -27,7 +27,7 @@ where
         .handler(|ctx, m| {
             let tx_hash = parse_hash::<C>(m.value_of("tx_hash").unwrap())?;
 
-            let receipt = ctx.rt.block_on(ctx.get_receipt(tx_hash))?;
+            let receipt = ctx.rt.block_on(ctx.evm.get_receipt(tx_hash))?;
             println!("{}", receipt.display());
             Ok(())
         })
@@ -36,7 +36,7 @@ where
 pub fn get_code<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
     Command::new("get-code")
         .about("Get code by contract address")
@@ -44,7 +44,7 @@ where
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let byte_code = ctx.rt.block_on(ctx.get_code(addr))?;
+            let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))?;
             println!("{}", byte_code.display());
             Ok(())
         })
@@ -53,7 +53,7 @@ where
 pub fn get_balance<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
     Command::new("get-balance")
         .about("Get balance by account address")
@@ -61,7 +61,7 @@ where
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let balance = ctx.rt.block_on(ctx.get_balance(addr))?;
+            let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))?;
             println!("{}", balance.display());
             Ok(())
         })
@@ -70,7 +70,7 @@ where
 pub fn get_tx_count<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
     Command::new("get-tx-count")
         .about("Get the transaction count of the address")
@@ -78,18 +78,18 @@ where
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let count = ctx.rt.block_on(ctx.get_tx_count(addr))?;
+            let count = ctx.rt.block_on(ctx.evm.get_tx_count(addr))?;
             println!("{}", count.display());
             Ok(())
         })
 }
 
-pub fn get_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn get_contract_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
-    Command::new("get-abi")
+    Command::new("get-contract-abi")
         .about("Get the specific contract ABI")
         .arg(
             Arg::new("addr")
@@ -100,18 +100,19 @@ where
         .handler(|ctx, m| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let byte_abi = ctx.rt.block_on(ctx.get_abi(addr))?;
+            let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))?;
             println!("{}", byte_abi.display());
             Ok(())
         })
 }
 
-pub fn store_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn store_contract_abi<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviourExt<C>,
+    Co: EvmBehaviourExt<C>,
+    Wa: WalletBehaviour<C>,
 {
-    Command::new("store-abi")
+    Command::new("store-contract-abi")
         .about("Store contract ABI")
         .arg(
             Arg::new("addr")
@@ -128,10 +129,13 @@ where
                 .validator(parse_data),
         )
         .handler(|ctx, m| {
-            let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
+            let contract_addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
             let abi = parse_data(m.value_of("abi").unwrap())?;
 
-            let tx_hash = ctx.rt.block_on(ctx.store_abi(addr, &abi))?;
+            let tx_hash = ctx.rt.block_on(async {
+                let signer = ctx.wallet.current_account().await?.1;
+                ctx.controller.store_contract_abi(signer, contract_addr, &abi).await
+            })?;
             println!("{}", hex(tx_hash.as_slice()));
             Ok(())
         })
@@ -140,7 +144,9 @@ where
 pub fn evm_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
-    Context<Co, Ex, Ev, Wa>: EvmBehaviour<C> + EvmBehaviourExt<C>,
+    Co: EvmBehaviourExt<C>,
+    Ev: EvmBehaviour<C>,
+    Wa: WalletBehaviour<C>,
 {
     Command::new("evm")
         .about("EVM commands")
@@ -150,7 +156,7 @@ where
             get_code(),
             get_tx_count(),
             get_balance(),
-            get_abi(),
-            store_abi(),
+            get_contract_abi(),
+            store_contract_abi(),
         ])
 }

@@ -320,7 +320,7 @@ where
         self.send_raw_tx(signer, raw_tx).await
     }
 
-    async fn send_utxo<S>(&self, account: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> 
+    async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> 
     where
         S: SignerBehaviour<C> + Send + Sync,
     {
@@ -346,7 +346,7 @@ where
             }
         };
 
-        self.send_raw_utxo(account, raw_utxo).await
+        self.send_raw_utxo(signer, raw_utxo).await
     }
 }
 
