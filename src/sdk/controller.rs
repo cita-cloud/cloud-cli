@@ -248,11 +248,6 @@ where
     }
 }
 
-#[tonic::async_trait]
-pub trait RawTransactionSenderBehaviour<C: Crypto> {
-    async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash>;
-    async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>;
-}
 
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]
@@ -265,11 +260,118 @@ pub enum UtxoType {
 }
 
 #[tonic::async_trait]
-pub trait NormalTransactionSenderBehaviour<C: Crypto> {
-    async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>;
+pub trait TransactionSenderBehaviour<C: Crypto> {
+    async fn send_raw_tx<S>(&self, signer: &S, raw_tx: CloudNormalTransaction) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync;
+    async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync;
+
+    async fn send_tx<S>(&self, signer: &S, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync;
+    async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync;
 }
 
 #[tonic::async_trait]
-pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
-    async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash>;
+impl<C, T> TransactionSenderBehaviour<C> for T
+where
+    C: Crypto,
+    T: ControllerBehaviour<C> + Send + Sync,
+{
+    async fn send_raw_tx<S>(&self, signer: &S, raw_tx: CloudNormalTransaction) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync,
+    {
+        let raw = signer.sign_raw_tx(raw_tx)?;
+        self.send_raw(raw).await.context("failed to send raw")
+    }
+
+    async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> 
+    where
+        S: SignerBehaviour<C> + Send + Sync,
+    {
+        let raw = signer.sign_raw_utxo(raw_utxo)?;
+        self.send_raw(raw).await.context("failed to send raw")
+    }
+
+    async fn send_tx<S>(&self, signer: &S, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync,
+    {
+        let (current_block_number, system_config) =
+            tokio::try_join!(self.get_block_number(false), self.get_system_config())
+                .context("failed to fetch chain status")?;
+
+        let raw_tx = CloudNormalTransaction {
+            version: system_config.version,
+            to: to.to_vec(),
+            data,
+            value,
+            nonce: rand::random::<u64>().to_string(),
+            quota: 3_000_000,
+            valid_until_block: current_block_number + 95,
+            chain_id: system_config.chain_id.clone(),
+        };
+
+        self.send_raw_tx(signer, raw_tx).await
+    }
+
+    async fn send_utxo<S>(&self, account: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> 
+    where
+        S: SignerBehaviour<C> + Send + Sync,
+    {
+        let system_config = self
+            .get_system_config()
+            .await
+            .context("failed to get system config")?;
+        let raw_utxo = {
+            let lock_id = utxo_type as u64;
+            let pre_tx_hash = match utxo_type {
+                UtxoType::Admin => &system_config.admin_pre_hash,
+                UtxoType::BlockInterval => &system_config.block_interval_pre_hash,
+                UtxoType::Validators => &system_config.validators_pre_hash,
+                UtxoType::EmergencyBrake => &system_config.emergency_brake_pre_hash,
+            }
+            .clone();
+
+            CloudUtxoTransaction {
+                version: system_config.version,
+                pre_tx_hash,
+                output,
+                lock_id,
+            }
+        };
+
+        self.send_raw_utxo(account, raw_utxo).await
+    }
 }
+
+// #[tonic::async_trait]
+// pub trait RawTransactionSenderBehaviour<C: Crypto> {
+//     async fn send_raw_tx<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, raw_tx: CloudNormalTransaction) -> Result<C::Hash>;
+//     async fn send_raw_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>;
+// }
+
+// // It's actually the implementation details of the current controller service.
+// #[repr(u64)]
+// #[derive(Debug, Clone, Copy)]
+// pub enum UtxoType {
+//     Admin = 1002,
+//     BlockInterval = 1003,
+//     Validators = 1004,
+//     EmergencyBrake = 1005,
+// }
+
+// #[tonic::async_trait]
+// pub trait NormalTransactionSenderBehaviour<C: Crypto> {
+//     async fn send_tx<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>;
+// }
+
+// #[tonic::async_trait]
+// pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
+//     async fn send_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash>;
+// }

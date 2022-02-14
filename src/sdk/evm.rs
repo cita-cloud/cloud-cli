@@ -11,7 +11,9 @@ use crate::{
 };
 
 use super::controller::ControllerBehaviour;
-use super::controller::NormalTransactionSenderBehaviour;
+use super::controller::TransactionSenderBehaviour;
+use super::controller::SignerBehaviour;
+
 use crate::crypto::ArrayLike;
 use crate::crypto::Crypto;
 use crate::utils::parse_addr;
@@ -108,20 +110,25 @@ impl<C: Crypto> EvmBehaviour<C> for EvmClient {
 // TODO: better name and should I add the EvmBehaviour<C> trait bound?
 #[tonic::async_trait]
 pub trait EvmBehaviourExt<C: Crypto> {
-    async fn store_abi(&self, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>;
+    async fn store_contract_abi<S>(&self, signer: &S, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync;
 }
 
 #[tonic::async_trait]
 impl<C, T> EvmBehaviourExt<C> for T
 where
     C: Crypto,
-    T: NormalTransactionSenderBehaviour<C> + Send + Sync + 'static,
+    T: TransactionSenderBehaviour<C> + Send + Sync,
 {
     // The binary protocol is the implementation details of the current EVM service.
-    async fn store_abi(&self, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash> {
-        let abi_to = parse_addr::<C>(ABI_ADDRESS)?;
+    async fn store_contract_abi<S>(&self, signer: &S, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>
+    where
+        S: SignerBehaviour<C> + Send + Sync,
+    {
+        let abi_addr = parse_addr::<C>(ABI_ADDRESS)?;
         let data = [contract_addr.as_slice(), abi].concat();
-        let tx_hash = self.send_tx(abi_to, data, vec![0; 32]).await?;
+        let tx_hash = self.send_tx(signer, abi_addr, data, vec![0; 32]).await?;
 
         Ok(tx_hash)
     }

@@ -90,7 +90,7 @@ pub trait WalletBehaviour<C: Crypto> {
         + 'static;
 
     // We don't return a Result<&Self::Unlocked> for some api that takes &mut self.
-    // Because a & obtained from &mut is still exclusive.
+    // Because a shared ref & obtained from an exclusive &mut is still exclusive.
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
     async fn import_account(
@@ -102,7 +102,7 @@ pub trait WalletBehaviour<C: Crypto> {
     async fn delete_account(&mut self, id: &str) -> Result<()>;
 
     async fn get_account(&self, id: &str) -> Result<&Self::Unlocked>;
-    // Return a Vec since GAT is unstable
+    // Return a Vec since return a Iter<'_> requires GAT which is unstable
     async fn list_account(&self) -> Vec<(&str, &MaybeLockedAccount<Self::Locked, Self::Unlocked>)>;
 
     async fn current_account(&self) -> Result<(&str, &Self::Unlocked)>;
