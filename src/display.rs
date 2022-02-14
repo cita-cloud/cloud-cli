@@ -194,6 +194,9 @@ impl Display for NodeInfo {
                 Protocol::Dns4(host) => {
                     info_pair.insert(String::from("host"), Json::from(host));
                 }
+                Protocol::Ip4(host) => {
+                    info_pair.insert(String::from("host"), Json::from(host.to_string()));
+                }
                 Protocol::Tcp(port) => {
                     info_pair.insert(String::from("port"), Json::from(port));
                 }
