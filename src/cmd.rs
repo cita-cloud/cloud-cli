@@ -37,7 +37,6 @@ pub type CommandHandler<Co, Ex, Ev, Wa> =
 pub struct Command<'help, Co, Ex, Ev, Wa> {
     app: App<'help>,
     handler: Option<CommandHandler<Co, Ex, Ev, Wa>>,
-    enable_interactive: bool,
 
     subcmds: HashMap<String, Self>,
 }
@@ -48,7 +47,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         Self {
             app: App::new(name),
             handler: None,
-            enable_interactive: false,
             subcmds: HashMap::new(),
         }
     }
@@ -116,11 +114,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
             .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
-    pub fn interactive(mut self, enable: bool) -> Self {
-        self.enable_interactive = enable;
-        self
-    }
-
     pub fn exec(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
         let m = self.app.clone().get_matches();
         self.exec_with(ctx, m)
@@ -142,10 +135,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
             } else {
                 bail!("no subcommand handler for `{}`", subcmd_name);
             }
-        } else if self.enable_interactive {
-            // avoid recursion
-            self.enable_interactive = false;
-            interactive::<Co, Ex, Ev, Wa>(self, ctx)?;
         }
 
         Ok(())
@@ -211,7 +200,6 @@ pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorC
                 .takes_value(true)
                 // TODO: add validator
         )
-        .interactive(true)
         .handler(|ctx, m| {
             let rt = ctx.rt.handle().clone();
             rt.block_on(async {
@@ -244,10 +232,10 @@ pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorC
             })
         })
         .subcommands([
-            key::key_cmd(),
-            admin::admin_cmd(),
-            // TODO: figure out why I have to specify `C` for this cmd
-            rpc::rpc_cmd::<C, _, _, _, _>(),
-            evm::evm_cmd(),
+            // key::key_cmd(),
+            // admin::admin_cmd(),
+            // // TODO: figure out why I have to specify `C` for this cmd
+            // rpc::rpc_cmd::<C, _, _, _, _>(),
+            // evm::evm_cmd(),
         ])
 }

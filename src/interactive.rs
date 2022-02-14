@@ -2,10 +2,32 @@ use anyhow::Result;
 use rustyline::error::ReadlineError;
 // use rustyline::KeyEvent;
 // use rustyline::Cmd;
-use crate::sdk::context::Context;
-use crate::cmd::Command;
+use crate::{
+    sdk::{ self, context::Context },
+    cmd::Command,
+    config::Config,
+    cmd::all_cmd,
+    crypto::{ EthCrypto, SmCrypto },
+};
 
-pub fn interactive<Co, Ex, Ev, Wa>(cmd: &mut Command<Co, Ex, Ev, Wa>, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+
+enum MultiCryptoContext {
+    Sm,
+    Eth,
+}
+
+
+pub fn interactive() -> Result<()> {
+    let config = Config {
+        controller_addr: "localhost:50005".into(),
+        executor_addr: "localhost:50002".into(),
+        default_account: None,
+        wallet_dir: "d:/cld/cloud-cli/tmp-wallet".into(),
+    };
+
+    let mut ctx = sdk::context::from_config::<SmCrypto>(&config).unwrap();
+    let mut cmd = all_cmd();
+
     let mut rl = rustyline::Editor::<()>::new();
     // rl.bind_sequence(KeyEvent::ctrl('d'), Cmd::EndOfFile);
     loop {
@@ -22,7 +44,7 @@ pub fn interactive<Co, Ex, Ev, Wa>(cmd: &mut Command<Co, Ex, Ev, Wa>, ctx: &mut 
                     }
                 };
                 let input = std::iter::once(cmd.get_name().into()).chain(args);
-                if let Err(e) = cmd.exec_from(ctx, input) {
+                if let Err(e) = cmd.exec_from(&mut ctx, input) {
                     println!("{:?}", e);
                 }
             }
