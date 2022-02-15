@@ -20,16 +20,32 @@ use crate::sdk::{
 };
 
 
-pub fn get<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn get_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
     Co: ControllerBehaviour<C>,
+    Ev: EvmBehaviour<C>,
 {
     Command::new("get")
         .about("Get chain info")
+        .subcommands([
+            evm::get_contract_abi().name("abi"),
+            evm::get_balance().name("balance").alias("ba"),
+            rpc::get_block().name("block").alias("b"),
+            evm::get_code().name("code"),
+            // TODO: get index
+            rpc::get_tx().name("tx"),
+            rpc::get_peer_count().name("peer-count").alias("pc"),
+            rpc::get_peers_info().name("peers-info").alias("pi"),
+            evm::get_tx_count().name("nonce"),
+            evm::get_receipt().name("receipt").alias("r"),
+            rpc::get_system_config().name("system-config").alias("sc"),
+            rpc::get_block_hash().name("block-hash").alias("bh"),
+            rpc::get_block_number().name("block-number").alias("bn"),
+        ])
 }
 
-pub fn cldi<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
+pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
 {
     Command::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
@@ -47,7 +63,7 @@ pub fn cldi<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClie
                 .takes_value(true)
                 // TODO: add validator
         )
-        .handler(|ctx, m| {
+        .handler(|cmd, m, ctx| {
             let rt = ctx.rt.handle().clone();
             rt.block_on(async {
                 if let Some(controller_addr) = m.value_of("controller-addr") {
@@ -76,12 +92,18 @@ pub fn cldi<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClie
                     ctx.evm = evm;
                 }
                 anyhow::Ok(())
-            })
+            })?;
+
+            cmd.dispatch_subcmd(m, ctx)
         })
         .subcommands([
             admin::admin_cmd(),
             key::key_cmd(),
-            // rpc::rpc_cmd::<C, _, _, _, _>(),
-            // evm::evm_cmd(),
+            // TODO: figure out why it cannot infer C.
+            self::get_cmd::<C, _, _, _, _>(),
+            evm::store_contract_abi(),
+            rpc::add_node::<C, _, _, _, _>(),
+            rpc::send(),
+            rpc::call::<C, _, _, _, _>(),
         ])
 }

@@ -35,7 +35,7 @@ where
                 .help("The password to encrypt the key")
                 .takes_value(true), // TODO: add validator
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
             let account = ctx.rt.handle().clone().block_on(async {
@@ -64,7 +64,7 @@ where
     Command::new("list")
         .aliases(&["ls", "l"])
         .about("list keys")
-        .handler(|ctx, _m| {
+        .handler(|_cmd, _m, ctx| {
             let id_and_accounts = ctx.rt.block_on(ctx.wallet.list_account());
 
             for (id, account) in id_and_accounts {
@@ -107,7 +107,7 @@ where
                 .help("The password to decrypt the key")
                 .takes_value(true), // TODO: add validator
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
             ctx.rt.handle().clone().block_on(async {
@@ -133,6 +133,47 @@ where
         })
 }
 
+pub fn use_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Wa: WalletBehaviour<C>,
+{
+    Command::new("use-key")
+        .about("select a key as default")
+        .arg(
+            Arg::new("id")
+                .help("The ID of the key")
+                .required(true)
+                .takes_value(true), // TODO: add validator
+        )
+        .arg(
+            Arg::new("password")
+                .short('p')
+                .long("passowrd")
+                .help("The password to unlock the key if neccessary")
+                .takes_value(true), // TODO: add validator
+        )
+        .handler(|_cmd, m, ctx| {
+            let id = m.value_of("id").unwrap();
+            let pw = m.value_of("password");
+            ctx.rt.block_on(async {
+                let wallet = &mut ctx.wallet;
+
+                if let Some(pw) = pw {
+                    wallet.unlock_account(id, pw)
+                        .await
+                        .context("failed to export account, please check your password")?;
+                }
+
+                wallet.set_current_account(id).await?;
+
+                anyhow::Ok(())
+            })?;
+
+            Ok(())
+        })
+}
+
 pub fn key_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
     C: Crypto,
@@ -141,5 +182,10 @@ where
     Command::new("key")
         .about("key commands")
         .setting(AppSettings::SubcommandRequired)
-        .subcommands([generate_key(), list_key(), export_key()])
+        .subcommands([
+            generate_key(),
+            list_key(),
+            export_key(),
+            use_key().name("use"),
+        ])
 }

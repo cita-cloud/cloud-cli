@@ -6,7 +6,6 @@ use crate::{
     sdk::{ self, context::Context },
     cmd::Command,
     config::Config,
-    cmd::all_cmd,
     crypto::{ EthCrypto, SmCrypto },
 };
 

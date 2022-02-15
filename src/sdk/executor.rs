@@ -35,7 +35,7 @@ pub trait ExecutorBehaviour<C: Crypto> {
         &self,
         from: C::Address,
         to: C::Address,
-        payload: Vec<u8>,
+        data: Vec<u8>,
     ) -> Result<CallResponse>;
 }
 
@@ -45,7 +45,7 @@ impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
         &self,
         from: C::Address,
         to: C::Address,
-        payload: Vec<u8>,
+        data: Vec<u8>,
     ) -> Result<CallResponse> {
         let req = CallRequest {
             from: from.to_vec(),
@@ -53,7 +53,7 @@ impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
             // This is `executor_evm` specific calling convention.
             // `executor_chaincode` uses args[0] for payload.
             // But since no one uses chaincode, we may just use the evm's convention.
-            method: payload,
+            method: data,
             args: vec![],
         };
 

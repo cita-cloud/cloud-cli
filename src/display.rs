@@ -13,6 +13,7 @@ use crate::{
         common::{NodeInfo, TotalNodeInfo},
         controller::SystemConfig,
         evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
+        executor::CallResponse,
     },
     utils::{display_time, hex},
     // wallet::Account,
@@ -25,9 +26,25 @@ pub trait Display {
     }
 }
 
+impl Display for Json {
+    fn to_json(&self) -> Json {
+        self.clone()
+    }
+
+    fn display(&self) -> String {
+        serde_json::to_string_pretty(&self).unwrap()
+    }
+}
+
 impl<T: Display> Display for &T {
     fn to_json(&self) -> Json {
         (**self).to_json()
+    }
+}
+
+impl Display for CallResponse {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.value))
     }
 }
 

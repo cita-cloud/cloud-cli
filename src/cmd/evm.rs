@@ -3,6 +3,7 @@ use clap::Arg;
 
 use crate::crypto::ArrayLike;
 use crate::sdk::evm::EvmBehaviourExt;
+use crate::sdk::executor::ExecutorBehaviour;
 use crate::utils::{parse_addr, parse_data, parse_hash};
 
 use super::*;
@@ -24,7 +25,7 @@ where
                 .required(true)
                 .validator(parse_hash::<C>),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash::<C>(m.value_of("tx_hash").unwrap())?;
 
             let receipt = ctx.rt.block_on(ctx.evm.get_receipt(tx_hash))?;
@@ -41,7 +42,7 @@ where
     Command::new("get-code")
         .about("Get code by contract address")
         .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
             let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))?;
@@ -58,7 +59,7 @@ where
     Command::new("get-balance")
         .about("Get balance by account address")
         .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
             let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))?;
@@ -75,7 +76,7 @@ where
     Command::new("get-tx-count")
         .about("Get the transaction count of the address")
         .arg(Arg::new("addr").required(true).validator(parse_addr::<C>))
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
             let count = ctx.rt.block_on(ctx.evm.get_tx_count(addr))?;
@@ -97,7 +98,7 @@ where
                 .takes_value(true)
                 .validator(parse_addr::<C>),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
             let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))?;
@@ -128,7 +129,7 @@ where
                 .takes_value(true)
                 .validator(parse_data),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let contract_addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
             let abi = parse_data(m.value_of("abi").unwrap())?;
 

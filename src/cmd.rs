@@ -7,6 +7,8 @@ mod evm;
 mod key;
 mod cldi;
 
+pub use cldi::cldi_cmd;
+
 use crate::crypto::Crypto;
 use crate::sdk::context::Context;
 use clap::AppFlags;
@@ -25,19 +27,18 @@ use crate::sdk::{
     wallet::Wallet
 };
 
-use crate::interactive::interactive;
-
-// TODO: Use Box<dyn Fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>> for handler.
 
 /// Command handler that associated with a command.
-pub type CommandHandler<Co, Ex, Ev, Wa> =
-    fn(&mut Context<Co, Ex, Ev, Wa>, &mut ArgMatches) -> Result<()>;
+pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
+    // TODO: Is it neccessary to use a &mut Command?
+    // No &mut for ArgMatches bc there is no much thing we can do with it.
+    fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
 
 /// Command
-// #[derive(Clone)]
+#[derive(Clone)]
 pub struct Command<'help, Co, Ex, Ev, Wa> {
     app: App<'help>,
-    handler: Option<CommandHandler<Co, Ex, Ev, Wa>>,
+    handler: CommandHandler<'help, Co, Ex, Ev, Wa>,
 
     subcmds: HashMap<String, Self>,
 }
@@ -47,7 +48,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             app: App::new(name),
-            handler: None,
+            handler: Self::dispatch_subcmd,
             subcmds: HashMap::new(),
         }
     }
@@ -83,12 +84,8 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         self
     }
 
-    /// Command handler is for handling a leaf command(that has no subcommands) or modifying the Context/ArgMatches for subcommands.
-    /// After processed by the handler, Context and subcommand's ArgMatches will be handled by the subcommand(if any).
-    ///
-    /// Default to no-op.
-    pub fn handler(mut self, handler: CommandHandler<Co, Ex, Ev, Wa>) -> Self {
-        self.handler.replace(handler);
+    pub fn handler(mut self, handler: CommandHandler<'help, Co, Ex, Ev, Wa>) -> Self {
+        self.handler = handler;
         self
     }
 
@@ -115,39 +112,44 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
             .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
-    pub fn exec(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+    pub fn exec(&self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
         let m = self.app.clone().get_matches();
-        self.exec_with(ctx, m)
+        self.exec_with(&m, ctx)
     }
 
     /// Execute this command with context and args.
     pub fn exec_with(
-        &mut self,
+        &self,
+        m: &ArgMatches,
         ctx: &mut Context<Co, Ex, Ev, Wa>,
-        mut m: ArgMatches,
     ) -> Result<()> {
-        if let Some(handler) = self.handler {
-            (handler)(ctx, &mut m)
-                .with_context(|| format!("failed to exec command `{}`", self.get_name()))?;
-        }
-        if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
-            if let Some(handler) = self.subcmds.get_mut(subcmd_name) {
-                handler.exec_with(ctx, subcmd_matches.clone())?;
-            } else {
-                bail!("no subcommand handler for `{}`", subcmd_name);
-            }
-        }
-
-        Ok(())
+        (self.handler)(self, m, ctx)
+            .with_context(|| format!("failed to exec command `{}`", self.get_name()))
     }
 
-    pub fn exec_from<I, T>(&mut self, ctx: &mut Context<Co, Ex, Ev, Wa>, iter: I) -> Result<()>
+    pub fn exec_from<I, T>(&self, iter: I, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         let m = self.app.clone().try_get_matches_from(iter)?;
-        self.exec_with(ctx, m)
+        self.exec_with(&m, ctx)
+    }
+
+    pub fn dispatch_subcmd(
+        &self,
+        m: &ArgMatches,
+        ctx: &mut Context<Co, Ex, Ev, Wa>,
+    ) -> Result<()> {
+        if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
+            if let Some(subcmd) = self.subcmds.get(subcmd_name) {
+                subcmd.exec_with(subcmd_matches, ctx)?;
+            } else {
+                // TODO: this may be an unreachable branch.
+                bail!("no subcommand handler for `{}`", subcmd_name);
+            }
+        }
+        Ok(())
     }
 
     /// Get name of the underlaying clap App.
@@ -183,60 +185,60 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     }
 }
 
-pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
-{
-    Command::new("cldi")
-        .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
-        .arg(
-            Arg::new("controller-addr")
-                .help("controller address")
-                .short('r')
-                .takes_value(true)
-                // TODO: add validator
-        )
-        .arg(
-            Arg::new("executor-addr")
-                .help("executor address")
-                .short('e')
-                .takes_value(true)
-                // TODO: add validator
-        )
-        .handler(|ctx, m| {
-            let rt = ctx.rt.handle().clone();
-            rt.block_on(async {
-                if let Some(controller_addr) = m.value_of("controller-addr") {
-                    let controller = {
-                        let addr = format!("http://{controller_addr}");
-                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
-                        ControllerClient::new(channel)
-                    };
-                    ctx.controller = controller;
-                }
+// pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
+// {
+//     Command::new("cldi")
+//         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
+//         .arg(
+//             Arg::new("controller-addr")
+//                 .help("controller address")
+//                 .short('r')
+//                 .takes_value(true)
+//                 // TODO: add validator
+//         )
+//         .arg(
+//             Arg::new("executor-addr")
+//                 .help("executor address")
+//                 .short('e')
+//                 .takes_value(true)
+//                 // TODO: add validator
+//         )
+//         .handler(|cmd, ctx, m| {
+//             let rt = ctx.rt.handle().clone();
+//             rt.block_on(async {
+//                 if let Some(controller_addr) = m.value_of("controller-addr") {
+//                     let controller = {
+//                         let addr = format!("http://{controller_addr}");
+//                         let channel = Endpoint::from_shared(addr)?.connect_lazy();
+//                         ControllerClient::new(channel)
+//                     };
+//                     ctx.controller = controller;
+//                 }
 
-                if let Some(executor_addr) = m.value_of("executor-addr") {
-                    let executor = {
-                        let addr = format!("http://{executor_addr}");
-                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
-                        ExecutorClient::new(channel)
-                    };
+//                 if let Some(executor_addr) = m.value_of("executor-addr") {
+//                     let executor = {
+//                         let addr = format!("http://{executor_addr}");
+//                         let channel = Endpoint::from_shared(addr)?.connect_lazy();
+//                         ExecutorClient::new(channel)
+//                     };
 
-                    let evm = {
-                        let addr = format!("http://{executor_addr}");
-                        let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
-                        EvmClient::new(channel)
-                    };
+//                     let evm = {
+//                         let addr = format!("http://{executor_addr}");
+//                         let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+//                         EvmClient::new(channel)
+//                     };
 
-                    ctx.executor = executor;
-                    ctx.evm = evm;
-                }
-                anyhow::Ok(())
-            })
-        })
-        .subcommands([
-            // key::key_cmd(),
-            // admin::admin_cmd(),
-            // // TODO: figure out why I have to specify `C` for this cmd
-            // rpc::rpc_cmd::<C, _, _, _, _>(),
-            // evm::evm_cmd(),
-        ])
-}
+//                     ctx.executor = executor;
+//                     ctx.evm = evm;
+//                 }
+//                 anyhow::Ok(())
+//             })
+//         })
+//         .subcommands([
+//             // key::key_cmd(),
+//             // admin::admin_cmd(),
+//             // // TODO: figure out why I have to specify `C` for this cmd
+//             // rpc::rpc_cmd::<C, _, _, _, _>(),
+//             // evm::evm_cmd(),
+//         ])
+// }

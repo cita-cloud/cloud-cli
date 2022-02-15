@@ -24,7 +24,7 @@ where
                 .required(true)
                 .validator(parse_addr::<C>),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let new_admin_addr = parse_addr::<C>(m.value_of("admin").unwrap())?;
             let tx_hash = ctx.rt.block_on(async {
                 let old_admin_signer = ctx.wallet.current_account().await?.1;
@@ -50,7 +50,7 @@ where
                 .multiple_values(true)
                 .validator(parse_addr::<C>)
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let validators = m
                 .values_of("validators")
                 .unwrap()
@@ -79,7 +79,7 @@ where
                 .required(true)
                 .validator(str::parse::<u32>),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let block_interval = m.value_of("block_interval").unwrap().parse::<u32>()?;
             let tx_hash = ctx.rt.block_on(async {
                 let admin_signer = ctx.wallet.current_account().await?.1;
@@ -104,7 +104,7 @@ where
                 .required(true)
                 .possible_values(&["on", "off"]),
         )
-        .handler(|ctx, m| {
+        .handler(|_cmd, m, ctx| {
             let switch = m.value_of("switch").unwrap() == "on";
             let tx_hash = ctx.rt.block_on(async {
                 let admin_signer = ctx.wallet.current_account().await?.1;
