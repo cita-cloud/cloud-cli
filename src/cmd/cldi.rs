@@ -83,6 +83,7 @@ pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, Executor
                     };
 
                     let evm = {
+                        // the same addr
                         let addr = format!("http://{executor_addr}");
                         let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
                         EvmClient::new(channel)

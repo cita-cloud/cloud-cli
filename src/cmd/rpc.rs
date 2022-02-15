@@ -25,6 +25,7 @@ where
             Arg::new("from")
                 .short('f')
                 .long("from")
+                .required(true)
                 .takes_value(true)
                 .validator(parse_addr::<C>),
         )
@@ -43,7 +44,7 @@ where
                 .validator(parse_data),
         )
         .handler(|_cmd, m, ctx| {
-            let from = parse_addr::<C>(m.value_of("from").unwrap_or_default())?;
+            let from = parse_addr::<C>(m.value_of("from").unwrap())?;
             let to = parse_addr::<C>(m.value_of("to").unwrap())?;
             let data = parse_data(m.value_of("data").unwrap_or_default())?;
 
