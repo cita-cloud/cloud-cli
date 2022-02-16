@@ -28,7 +28,7 @@ where
         .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash::<C>(m.value_of("tx_hash").unwrap())?;
 
-            let receipt = ctx.rt.block_on(ctx.evm.get_receipt(tx_hash))?;
+            let receipt = ctx.rt.block_on(ctx.evm.get_receipt(tx_hash))??;
             println!("{}", receipt.display());
             Ok(())
         })
@@ -45,7 +45,7 @@ where
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))?;
+            let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))??;
             println!("{}", byte_code.display());
             Ok(())
         })
@@ -62,7 +62,7 @@ where
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))?;
+            let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))??;
             println!("{}", balance.display());
             Ok(())
         })
@@ -79,7 +79,7 @@ where
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let count = ctx.rt.block_on(ctx.evm.get_tx_count(addr))?;
+            let count = ctx.rt.block_on(ctx.evm.get_tx_count(addr))??;
             println!("{}", count.display());
             Ok(())
         })
@@ -101,7 +101,7 @@ where
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr::<C>(m.value_of("addr").unwrap())?;
 
-            let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))?;
+            let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))??;
             println!("{}", byte_abi.display());
             Ok(())
         })
@@ -136,7 +136,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 let signer = ctx.wallet.current_account().await?.1;
                 ctx.controller.store_contract_abi(signer, contract_addr, &abi).await
-            })?;
+            })??;
             println!("{}", hex(tx_hash.as_slice()));
             Ok(())
         })

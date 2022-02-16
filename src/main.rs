@@ -30,7 +30,7 @@ fn main() -> Result<()> {
         wallet_dir: "d:/cld/cloud-cli/tmp-wallet".into(),
     };
 
-    let mut ctx = sdk::context::from_config::<SmCrypto>(&config).unwrap();
+    let mut ctx = sdk::context::from_config::<SmCrypto>(config).unwrap();
 
     let cldi = cmd::cldi_cmd();
     let m = cldi.get_matches();

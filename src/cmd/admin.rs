@@ -29,7 +29,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 let old_admin_signer = ctx.wallet.current_account().await?.1;
                 ctx.controller.update_admin(old_admin_signer, new_admin_addr).await
-            })?;
+            })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
@@ -59,7 +59,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 let admin_signer = ctx.wallet.current_account().await?.1;
                 ctx.controller.update_validators(admin_signer, &validators).await
-            })?;
+            })??;
             println!("tx_hash: {}", hex(&tx_hash.as_slice()));
             Ok(())
         })
@@ -84,7 +84,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 let admin_signer = ctx.wallet.current_account().await?.1;
                 ctx.controller.set_block_interval(admin_signer, block_interval).await
-            })?;
+            })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
@@ -109,7 +109,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 let admin_signer = ctx.wallet.current_account().await?.1;
                 ctx.controller.emergency_brake(admin_signer, switch).await
-            })?;
+            })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })

@@ -13,6 +13,7 @@ use crate::sdk::wallet::WalletBehaviour;
 use crate::display::Display;
 use crate::crypto::ArrayLike;
 
+// TODO: get version
 
 pub fn call<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
@@ -48,7 +49,7 @@ where
             let to = parse_addr::<C>(m.value_of("to").unwrap())?;
             let data = parse_data(m.value_of("data").unwrap_or_default())?;
 
-            let resp = ctx.rt.block_on(ctx.executor.call(from, to, data))?;
+            let resp = ctx.rt.block_on(ctx.executor.call(from, to, data))??;
             println!("{}", resp.display());
             Ok(())
         })
@@ -95,11 +96,25 @@ where
 
             ctx.rt.block_on(async {
                 let signer = ctx.wallet.current_account().await?.1;
-                let tx_hash = ctx.rt.block_on(ctx.controller.send_tx(signer, to, value, data))?;
+                let tx_hash = ctx.controller.send_tx(signer, to, value, data).await?;
                 println!("{}", hex(tx_hash.as_slice()));
 
                 anyhow::Ok(())
-            })?;
+            })??;
+            Ok(())
+        })
+}
+
+pub fn get_version<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+where
+    C: Crypto,
+    Co: ControllerBehaviour<C>,
+{
+    Command::new("get-version")
+        .about("Get version")
+        .handler(|_cmd, _m, ctx| {
+            let version = ctx.rt.block_on(ctx.controller.get_version())??;
+            println!("{}", version);
             Ok(())
         })
 }
@@ -112,7 +127,7 @@ where
     Command::new("get-system-config")
         .about("Get system config")
         .handler(|_cmd, _m, ctx| {
-            let system_config = ctx.rt.block_on(ctx.controller.get_system_config())?;
+            let system_config = ctx.rt.block_on(ctx.controller.get_system_config())??;
             println!("{}", system_config.display());
             Ok(())
         })
@@ -143,10 +158,10 @@ where
             let s = m.value_of("height_or_hash").unwrap();
             let block = if s.starts_with("0x") {
                 let hash = parse_hash::<C>(s)?;
-                ctx.rt.block_on(ctx.controller.get_block_by_hash(hash))?
+                ctx.rt.block_on(ctx.controller.get_block_by_hash(hash))??
             } else {
                 let height = s.parse()?;
-                ctx.rt.block_on(ctx.controller.get_block_by_number(height))?
+                ctx.rt.block_on(ctx.controller.get_block_by_number(height))??
             };
 
             println!("{}", block.display());
@@ -170,7 +185,7 @@ where
         .handler(|_cmd, m, ctx| {
             let for_pending = m.is_present("for_pending");
 
-            let block_number = ctx.rt.block_on(ctx.controller.get_block_number(for_pending))?;
+            let block_number = ctx.rt.block_on(ctx.controller.get_block_number(for_pending))??;
             println!("{}", block_number);
             Ok(())
         })
@@ -191,7 +206,7 @@ where
         )
         .handler(|_cmd, m, ctx| {
             let height = m.value_of("height").unwrap().parse()?;
-            let hash = ctx.rt.block_on(ctx.controller.get_block_hash(height))?;
+            let hash = ctx.rt.block_on(ctx.controller.get_block_hash(height))??;
             println!("{}", hex(hash.as_slice()));
 
             Ok(())
@@ -209,7 +224,7 @@ where
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("tx_hash").unwrap();
             let tx_hash = parse_hash::<C>(s)?;
-            let tx = ctx.rt.block_on(ctx.controller.get_tx(tx_hash))?;
+            let tx = ctx.rt.block_on(ctx.controller.get_tx(tx_hash))??;
             println!("{}", tx.display());
 
             Ok(())
@@ -227,7 +242,7 @@ where
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("tx_hash").unwrap();
             let tx_hash = parse_hash::<C>(s)?;
-            let tx_index = ctx.rt.block_on(ctx.controller.get_tx_index(tx_hash))?;
+            let tx_index = ctx.rt.block_on(ctx.controller.get_tx_index(tx_hash))??;
             println!("{}", tx_index);
 
             Ok(())
@@ -245,7 +260,7 @@ where
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("tx_hash").unwrap();
             let tx_hash = parse_hash::<C>(s)?;
-            let height = ctx.rt.block_on(ctx.controller.get_tx_block_number(tx_hash))?;
+            let height = ctx.rt.block_on(ctx.controller.get_tx_block_number(tx_hash))??;
             println!("{}", height);
 
             Ok(())
@@ -260,7 +275,7 @@ where
     Command::new("peer-count")
         .about("Get peer count")
         .handler(|_cmd, _m, ctx| {
-            let peer_count = ctx.rt.block_on(ctx.controller.get_peer_count())?;
+            let peer_count = ctx.rt.block_on(ctx.controller.get_peer_count())??;
             println!("{}", peer_count);
 
             Ok(())
@@ -275,7 +290,7 @@ where
     Command::new("peers-info")
         .about("Get peers info")
         .handler(|_cmd, _m, ctx| {
-            let peers_info = ctx.rt.block_on(ctx.controller.get_peers_info())?;
+            let peers_info = ctx.rt.block_on(ctx.controller.get_peers_info())??;
             println!("{}", peers_info.display());
 
             Ok(())
@@ -296,7 +311,7 @@ where
         )
         .handler(|_cmd, m, ctx| {
             let multiaddr = m.value_of("multiaddr").unwrap().into();
-            let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))?;
+            let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
             // https://github.com/cita-cloud/status_code
             if status == 0 {
                 println!("ok");
@@ -315,9 +330,10 @@ where
     Co: ControllerBehaviour<C>,
 {
     Command::new("rpc")
-        .about("rpc commands")
+        .about("RPC commands")
         .setting(AppSettings::SubcommandRequired)
         .subcommands([
+            get_version(),
             get_system_config(),
             get_block_number(),
             get_block(),

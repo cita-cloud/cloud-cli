@@ -5,6 +5,7 @@ pub mod controller;
 pub mod evm;
 pub mod executor;
 pub mod wallet;
+pub mod client;
 
 use crate::crypto::Crypto;
 use clap::{App, ArgMatches};

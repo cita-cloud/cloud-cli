@@ -18,6 +18,7 @@ use crate::proto::{
     executor::{CallRequest, CallResponse},
 };
 
+use std::future::Future;
 use super::evm::EvmClient;
 use super::executor::ExecutorClient;
 use super::{
@@ -44,7 +45,27 @@ pub struct Context<Co, Ex, Ev, Wa> {
     pub evm: Ev,
     pub wallet: Wa,
 
-    pub rt: tokio::runtime::Runtime,
+    pub config: Config,
+
+    pub rt: CancelableRuntime,
+}
+
+
+#[derive(Debug, thiserror::Error)]
+#[error("Command canceled with CTRL+C")]
+pub struct Canceled;
+
+pub struct CancelableRuntime(tokio::runtime::Runtime);
+
+impl CancelableRuntime {
+    pub fn block_on<F: Future>(&self, future: F) -> Result<F::Output, Canceled> {
+        self.0.block_on(async {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => Err(Canceled),
+                res = future => Ok(res),
+            }
+        })
+    }
 }
 
 // // I miss [Delegation](https://github.com/contactomorph/rfcs/blob/delegation/text/0000-delegation-of-implementation.md)
@@ -287,9 +308,9 @@ pub struct Context<Co, Ex, Ev, Wa> {
 // }
 
 pub fn from_config<C: Crypto>(
-    config: &Config,
+    config: Config,
 ) -> Result<Context<ControllerClient, ExecutorClient, EvmClient, Wallet<C>>> {
-    let rt = tokio::runtime::Runtime::new()?;
+    let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
 
     let (controller, executor, evm, wallet) = rt.block_on(async {
         // Although connect_lazy isn't async, they still must be in a async context.
@@ -315,13 +336,15 @@ pub fn from_config<C: Crypto>(
         let wallet = Wallet::open(&config.wallet_dir).await?;
 
         anyhow::Ok((controller, executor, evm, wallet))
-    })?;
+    })??;
 
     let this = Context {
         controller,
         executor,
         evm,
         wallet,
+
+        config,
 
         rt,
     };

@@ -9,6 +9,7 @@ use super::{
     key,
     evm,
     rpc,
+    bench,
 };
 
 use crate::crypto::Crypto;
@@ -39,6 +40,7 @@ where
             rpc::get_peers_info().name("peers-info").alias("pi"),
             evm::get_tx_count().name("nonce"),
             evm::get_receipt().name("receipt").alias("r"),
+            rpc::get_version().name("version"),
             rpc::get_system_config().name("system-config").alias("sc"),
             rpc::get_block_hash().name("block-hash").alias("bh"),
             rpc::get_block_number().name("block-number").alias("bn"),
@@ -64,8 +66,7 @@ pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, Executor
                 // TODO: add validator
         )
         .handler(|cmd, m, ctx| {
-            let rt = ctx.rt.handle().clone();
-            rt.block_on(async {
+            ctx.rt.block_on(async {
                 if let Some(controller_addr) = m.value_of("controller-addr") {
                     let controller = {
                         let addr = format!("http://{controller_addr}");
@@ -93,7 +94,7 @@ pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, Executor
                     ctx.evm = evm;
                 }
                 anyhow::Ok(())
-            })?;
+            })??;
 
             cmd.dispatch_subcmd(m, ctx)
         })
@@ -102,9 +103,12 @@ pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, Executor
             key::key_cmd(),
             // TODO: figure out why it cannot infer C.
             self::get_cmd::<C, _, _, _, _>(),
-            evm::store_contract_abi(),
-            rpc::add_node::<C, _, _, _, _>(),
+            // evm::store_contract_abi(),
+            // rpc::add_node::<C, _, _, _, _>(),
+            evm::evm_cmd(),
+            rpc::rpc_cmd::<C, _, _, _, _>(),
             rpc::send(),
             rpc::call::<C, _, _, _, _>(),
+            bench::bench_send().name("bench"),
         ])
 }

@@ -6,6 +6,7 @@ mod evm;
 // mod wallet;
 mod key;
 mod cldi;
+mod bench;
 
 pub use cldi::cldi_cmd;
 
@@ -124,7 +125,6 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         ctx: &mut Context<Co, Ex, Ev, Wa>,
     ) -> Result<()> {
         (self.handler)(self, m, ctx)
-            .with_context(|| format!("failed to exec command `{}`", self.get_name()))
     }
 
     pub fn exec_from<I, T>(&self, iter: I, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()>

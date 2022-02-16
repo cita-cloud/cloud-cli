@@ -38,7 +38,7 @@ where
         .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
-            let account = ctx.rt.handle().clone().block_on(async {
+            let account = ctx.rt.block_on(async {
                 let wallet = &mut ctx.wallet;
 
                 wallet.generate_account(id, pw).await?;
@@ -47,7 +47,7 @@ where
                     wallet.unlock_account(id, pw).await?;
                 }
                 wallet.get_account(id).await
-            })?;
+            })??;
 
             let addr = hex(account.address().as_slice());
             println!("key `{id}` generated, address: {addr}");
@@ -65,7 +65,7 @@ where
         .aliases(&["ls", "l"])
         .about("list keys")
         .handler(|_cmd, _m, ctx| {
-            let id_and_accounts = ctx.rt.block_on(ctx.wallet.list_account());
+            let id_and_accounts = ctx.rt.block_on(ctx.wallet.list_account())?;
 
             for (id, account) in id_and_accounts {
                 // TODO: impl crate::display::Display
@@ -110,7 +110,7 @@ where
         .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
-            ctx.rt.handle().clone().block_on(async {
+            ctx.rt.block_on(async {
                 let wallet = &mut ctx.wallet;
 
                 if let Some(pw) = pw {
@@ -127,7 +127,7 @@ where
                 println!("id: `{id}`\naddress: {addr}\npubkey: {pk}\nprivkey: {sk}");
 
                 anyhow::Ok(())
-            })?;
+            })??;
 
             Ok(())
         })
@@ -168,7 +168,7 @@ where
                 wallet.set_current_account(id).await?;
 
                 anyhow::Ok(())
-            })?;
+            })??;
 
             Ok(())
         })
@@ -180,7 +180,7 @@ where
     Wa: WalletBehaviour<C>,
 {
     Command::new("key")
-        .about("key commands")
+        .about("Key commands")
         .setting(AppSettings::SubcommandRequired)
         .subcommands([
             generate_key(),

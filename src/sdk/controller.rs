@@ -30,6 +30,7 @@ pub trait ControllerBehaviour<C: Crypto> {
 
     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash>;
 
+    async fn get_version(&self) -> Result<String>;
     async fn get_system_config(&self) -> Result<SystemConfig>;
 
     async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
@@ -55,6 +56,15 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
 
         C::Hash::try_from_slice(&resp.hash)
             .context("controller returns an invalid transaction hash, maybe we are using a wrong signing algorithm?")
+    }
+
+    async fn get_version(&self) -> Result<String> {
+        let version = ControllerClient::get_version(&mut self.clone(), Empty {})
+            .await?
+            .into_inner()
+            .version;
+
+        Ok(version)
     }
 
     async fn get_system_config(&self) -> Result<SystemConfig> {
@@ -170,8 +180,8 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
 }
 
 pub trait SignerBehaviour<C: Crypto> {
-    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> Result<RawTransaction>;
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> Result<RawTransaction>;
+    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction;
+    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction;
 }
 
 impl<C, A> SignerBehaviour<C> for A
@@ -179,7 +189,7 @@ where
     C: Crypto,
     A: AccountBehaviour<SigningAlgorithm = C>,
 {
-    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> Result<RawTransaction> {
+    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
         // calc tx hash
         let tx_hash = {
             // build tx bytes
@@ -210,10 +220,10 @@ where
             }
         };
 
-        Ok(raw_tx)
+        raw_tx
     }
 
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> Result<RawTransaction> {
+    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
         // calc utxo hash
         let utxo_hash = {
             // build utxo bytes
@@ -244,7 +254,7 @@ where
             }
         };
 
-        Ok(raw_utxo)
+        raw_utxo
     }
 }
 
@@ -286,7 +296,7 @@ where
     where
         S: SignerBehaviour<C> + Send + Sync,
     {
-        let raw = signer.sign_raw_tx(raw_tx)?;
+        let raw = signer.sign_raw_tx(raw_tx);
         self.send_raw(raw).await.context("failed to send raw")
     }
 
@@ -294,7 +304,7 @@ where
     where
         S: SignerBehaviour<C> + Send + Sync,
     {
-        let raw = signer.sign_raw_utxo(raw_utxo)?;
+        let raw = signer.sign_raw_utxo(raw_utxo);
         self.send_raw(raw).await.context("failed to send raw")
     }
 
