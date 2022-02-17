@@ -31,7 +31,6 @@ use crate::sdk::{
 
 /// Command handler that associated with a command.
 pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
-    // TODO: Is it neccessary to use a &mut Command?
     // No &mut for ArgMatches bc there is no much thing we can do with it.
     fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
 

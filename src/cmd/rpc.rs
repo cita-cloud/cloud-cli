@@ -10,6 +10,8 @@ use prost::Message;
 use crate::sdk::controller::TransactionSenderBehaviour;
 use crate::sdk::wallet::WalletBehaviour;
 
+use tokio::try_join;
+
 use crate::display::Display;
 use crate::crypto::ArrayLike;
 
@@ -224,48 +226,56 @@ where
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("tx_hash").unwrap();
             let tx_hash = parse_hash::<C>(s)?;
-            let tx = ctx.rt.block_on(ctx.controller.get_tx(tx_hash))??;
-            println!("{}", tx.display());
+            let c = &ctx.controller;
+            let tx_with_index = ctx.rt.block_on(async move {
+                try_join!(
+                    c.get_tx(tx_hash),
+                    c.get_tx_block_number(tx_hash.clone()),
+                    c.get_tx_index(tx_hash),
+                )
+            })??;
+
+            println!("{}", tx_with_index.display());
 
             Ok(())
         })
 }
 
-pub fn get_tx_index<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Co: ControllerBehaviour<C>,
-{
-    Command::new("get-tx-index")
-        .about("Get transaction's index by tx_hash")
-        .arg(Arg::new("tx_hash").required(true).validator(parse_hash::<C>))
-        .handler(|_cmd, m, ctx| {
-            let s = m.value_of("tx_hash").unwrap();
-            let tx_hash = parse_hash::<C>(s)?;
-            let tx_index = ctx.rt.block_on(ctx.controller.get_tx_index(tx_hash))??;
-            println!("{}", tx_index);
+// pub fn get_tx_index<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+// where
+//     C: Crypto,
+//     Co: ControllerBehaviour<C>,
+// {
+//     Command::new("get-tx-index")
+//         .about("Get transaction's index by tx_hash")
+//         .arg(Arg::new("tx_hash").required(true).validator(parse_hash::<C>))
+//         .handler(|_cmd, m, ctx| {
+//             let s = m.value_of("tx_hash").unwrap();
+//             let tx_hash = parse_hash::<C>(s)?;
+//             let tx_index = ctx.rt.block_on(ctx.controller.get_tx_index(tx_hash))??;
+//             println!("{}", tx_index);
 
-            Ok(())
-        })
-}
+//             Ok(())
+//         })
+// }
 
-pub fn get_tx_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Co: ControllerBehaviour<C>,
-{
-    Command::new("get-tx-block-height")
-        .about("Get transaction's block height by tx_hash")
-        .arg(Arg::new("tx_hash").required(true).validator(parse_hash::<C>))
-        .handler(|_cmd, m, ctx| {
-            let s = m.value_of("tx_hash").unwrap();
-            let tx_hash = parse_hash::<C>(s)?;
-            let height = ctx.rt.block_on(ctx.controller.get_tx_block_number(tx_hash))??;
-            println!("{}", height);
+// pub fn get_tx_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+// where
+//     C: Crypto,
+//     Co: ControllerBehaviour<C>,
+// {
+//     Command::new("get-tx-block-height")
+//         .about("Get transaction's block height by tx_hash")
+//         .arg(Arg::new("tx_hash").required(true).validator(parse_hash::<C>))
+//         .handler(|_cmd, m, ctx| {
+//             let s = m.value_of("tx_hash").unwrap();
+//             let tx_hash = parse_hash::<C>(s)?;
+//             let height = ctx.rt.block_on(ctx.controller.get_tx_block_number(tx_hash))??;
+//             println!("{}", height);
 
-            Ok(())
-        })
-}
+//             Ok(())
+//         })
+// }
 
 pub fn get_peer_count<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
 where
@@ -339,8 +349,6 @@ where
             get_block(),
             get_block_hash(),
             get_tx(),
-            get_tx_index(),
-            get_tx_block_number(),
             get_peer_count(),
             get_peers_info(),
             add_node(),

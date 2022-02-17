@@ -34,7 +34,6 @@ where
             evm::get_balance().name("balance").alias("ba"),
             rpc::get_block().name("block").alias("b"),
             evm::get_code().name("code"),
-            // TODO: get index
             rpc::get_tx().name("tx"),
             rpc::get_peer_count().name("peer-count").alias("pc"),
             rpc::get_peers_info().name("peers-info").alias("pi"),

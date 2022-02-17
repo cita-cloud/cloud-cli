@@ -41,6 +41,7 @@ const AMEND_BALANCE: &str = "0x05";
 
 pub type EvmClient = crate::proto::evm::rpc_service_client::RpcServiceClient<Channel>;
 
+#[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
 pub trait EvmBehaviour<C: Crypto> {
     // TODO: better address name

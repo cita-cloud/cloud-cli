@@ -10,6 +10,7 @@ use super::evm::EvmClient;
 #[tonic::async_trait]
 pub trait GrpcClientBehaviour: Sized {
     fn from_channel(ch: Channel) -> Self;
+
     async fn connect(addr: &str) -> Result<Self> {
         let addr = format!("http://{addr}");
         let ch = Endpoint::from_shared(addr)?.connect().await?;

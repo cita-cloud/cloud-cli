@@ -29,6 +29,7 @@ use tonic::transport::Channel;
 pub type ExecutorClient =
     crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
 
+#[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
 pub trait ExecutorBehaviour<C: Crypto> {
     async fn call(

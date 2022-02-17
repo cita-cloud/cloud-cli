@@ -163,18 +163,22 @@ impl Display for Witness {
     }
 }
 
-impl Display for RawTransaction {
+impl Display for (RawTransaction, u64, u64) {
     fn to_json(&self) -> Json {
-        match &self.tx {
+        match &self.0.tx {
             Some(Tx::NormalTx(tx)) => {
                 json!({
                     "type": "Normal",
+                    "height": self.1,
+                    "index": self.2,
                     "transaction": tx.to_json()
                 })
             }
             Some(Tx::UtxoTx(utxo)) => {
                 json!({
                     "type": "Utxo",
+                    "height": self.1,
+                    "index": self.2,
                     "transaction": utxo.to_json()
                 })
             }

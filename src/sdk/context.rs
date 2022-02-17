@@ -52,7 +52,7 @@ pub struct Context<Co, Ex, Ev, Wa> {
 
 
 #[derive(Debug, thiserror::Error)]
-#[error("Command canceled with CTRL+C")]
+#[error("Canceled")]
 pub struct Canceled;
 
 pub struct CancelableRuntime(tokio::runtime::Runtime);
@@ -313,7 +313,7 @@ pub fn from_config<C: Crypto>(
     let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
 
     let (controller, executor, evm, wallet) = rt.block_on(async {
-        // Although connect_lazy isn't async, they still must be in a async context.
+        // Although connect_lazy isn't async, they still must be in an async context.
         let controller = {
             let addr = format!("http://{}", config.controller_addr);
             let channel = Endpoint::from_shared(addr)?.connect_lazy();

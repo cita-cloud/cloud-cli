@@ -80,6 +80,7 @@ impl<L, U> MaybeLockedAccount<L, U> {
 //     }
 // }
 
+#[cfg_attr(test, mockall::automock(type Locked = LockedAccount<C>; type Unlocked = Account<C>;))]
 #[tonic::async_trait]
 pub trait WalletBehaviour<C: Crypto> {
     type Locked: UnlockableAccount<Unlocked = Self::Unlocked> + Send + Sync + 'static;
@@ -88,25 +89,34 @@ pub trait WalletBehaviour<C: Crypto> {
         + Send
         + Sync
         + 'static;
-
+    
+    // TODO: The comment below is outdated. For now it may be ok to return Result<&Self::Unlocked>.
+    //
     // We don't return a Result<&Self::Unlocked> for some api that takes &mut self.
     // Because a shared ref & obtained from an exclusive &mut is still exclusive.
 
-    async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()>;
-    async fn import_account(
-        &mut self,
-        id: &str,
+    // We write out the explicit lifetime here due to some limitations of `mockall::automock`.
+
+    // #[cfg(test)]
+    // async fn open<P: AsRef<Path> + 'static>(path: P) -> Result<Self> where Self: Sized;
+    // #[cfg(not(test))]
+    async fn open(path: &str) -> Result<Self> where Self: Sized;
+
+    async fn generate_account<'a, 'b, 'c>(&'a mut self, id: &'b str, pw: Option<&'c str>) -> Result<()>;
+    async fn import_account<'a, 'b>(
+        &'a mut self,
+        id: &'b str,
         maybe_locked: MaybeLockedAccount<Self::Locked, Self::Unlocked>,
     ) -> Result<()>;
-    async fn unlock_account(&mut self, id: &str, pw: &str) -> Result<()>;
-    async fn delete_account(&mut self, id: &str) -> Result<()>;
+    async fn unlock_account<'a, 'b, 'c>(&'a mut self, id: &'b str, pw: &'c str) -> Result<()>;
+    async fn delete_account<'a, 'b>(&'a mut self, id: &'b str) -> Result<()>;
 
-    async fn get_account(&self, id: &str) -> Result<&Self::Unlocked>;
-    // Return a Vec since return a Iter<'_> requires GAT which is unstable
-    async fn list_account(&self) -> Vec<(&str, &MaybeLockedAccount<Self::Locked, Self::Unlocked>)>;
+    async fn get_account<'a, 'b>(&'a self, id: &'b str) -> Result<&'a Self::Unlocked>;
+    // Return a Vec since returning a Iter<'_> requires GAT which is unstable
+    async fn list_account<'a>(&'a self) -> Vec<(&'a str, &'a MaybeLockedAccount<Self::Locked, Self::Unlocked>)>;
 
-    async fn current_account(&self) -> Result<(&str, &Self::Unlocked)>;
-    async fn set_current_account(&mut self, id: &str) -> Result<()>;
+    async fn current_account<'a>(&'a self) -> Result<(&'a str, &'a Self::Unlocked)>;
+    async fn set_current_account<'a, 'b>(&'a mut self, id: &'b str) -> Result<()>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -316,6 +326,10 @@ impl<C: Crypto> Wallet<C> {
 impl<C: Crypto> WalletBehaviour<C> for Wallet<C> {
     type Locked = LockedAccount<C>;
     type Unlocked = Account<C>;
+
+    async fn open(path: &str) -> Result<Self> {
+        Self::open(path).await
+    }
 
     async fn generate_account(&mut self, id: &str, pw: Option<&str>) -> Result<()> {
         let account = Account::generate();
