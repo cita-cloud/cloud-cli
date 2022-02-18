@@ -7,6 +7,7 @@ mod sdk;
 mod utils;
 // mod wallet;
 mod cmd;
+mod cmd_;
 mod config;
 // mod interactive;
 
@@ -14,16 +15,13 @@ use rustyline::error::ReadlineError;
 // use rustyline::KeyEvent;
 // use rustyline::Cmd;
 use crate::{
-    sdk::context::Context,
-    cmd::Command,
     config::Config,
     crypto::{ EthCrypto, SmCrypto },
 };
 
-use std::path::Path;
 
 use anyhow::Result;
-use std::fs;
+use std::{fs, io::Write};
 
 
 // FIXME
@@ -40,13 +38,22 @@ fn load_config() -> Result<Config> {
 
     let config: Config = {
         let path = data_dir.join("config.toml");
-        let s = if path.exists() {
-            fs::read_to_string(path)?
+        if path.exists() {
+            let s = fs::read_to_string(path)?;
+            toml::from_str(&s)?
         } else {
-            Default::default()
-        };
+            let mut f = fs::File::options()
+                .create_new(true)
+                .write(true)
+                .open(path)?;
+            
+            let default_config = Config::default();
+            let content = toml::to_string_pretty(&default_config)?;
 
-        toml::from_str(&s).unwrap()
+            f.write_all(content.as_bytes())?;
+            default_config
+        }
+
     };
 
     Ok(config)
@@ -89,7 +96,8 @@ fn main() -> Result<()> {
                 Err(ReadlineError::Eof) => break,
                 Err(ReadlineError::Interrupted) => println!("press CTRL+D to exit"),
                 Err(e) => {
-                    println!("readline error {}", e)
+                    println!("readline error {}", e);
+                    break;
                 }
             }
         }

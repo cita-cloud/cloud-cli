@@ -1,11 +1,6 @@
-use clap::App;
-use clap::Arg;
-
-use super::context::Context;
 use crate::utils::{parse_addr, parse_data};
 
 use crate::crypto::Crypto;
-use prost::Message;
 
 use crate::crypto::ArrayLike;
 
@@ -46,7 +41,7 @@ where
     C: Crypto,
     T: TransactionSenderBehaviour<C> + Send + Sync,
 {
-    // Those utxo output formats is defined by controller.
+    // Those utxo output formats are defined by controller.
 
     async fn update_admin<S>(&self, old_admin_signer: &S, new_admin_addr: C::Address) -> Result<C::Hash>
     where

@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Zhishi <whfuyn@outlook.com>"]
 edition = "2021"
 
@@ -15,8 +15,8 @@ crypto_sm = ["libsm", "efficient-sm2"]
 
 
 [dependencies]
-clap = "3.0.0-rc.7"
-clap_generate = "3.0.0-rc.7"
+clap = "3.1"
+clap_complete = "3.1"
 hex = "0.4"
 tokio = { version = "1.6", features = ["full"] }
 rand = "0.8"

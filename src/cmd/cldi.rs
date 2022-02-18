@@ -46,6 +46,33 @@ where
         ])
 }
 
+// pub fn with_completions_subcmd<'help, C, Co, Ex, Ev, Wa>(cmd: Command<'help, Co, Ex, Ev, Wa>) -> Command<'help, Co, Ex, Ev, Wa> {
+//     let without_handler = || Command::new("completions")
+//         .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
+//         .arg(
+//             Arg::new("shell")
+//                 .required(true)
+//                 .possible_values(&[
+//                     "bash",
+//                     "zsh",
+//                     "powershell",
+//                     "fish",
+//                     "elvish",
+//                 ])
+//                 .validator(|s| s.parse::<clap_complete::Shell>()),
+//         );
+//     let cmd = cmd.subcommand(without_handler());
+//     let completions_subcmd = without_handler()
+//         .handler(|_cmd, m, ctx|{
+//             let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
+//             let mut stdout = std::io::stdout();
+//             clap_complete::generate(shell, &mut cmd.get_clap_command().clone(), "cldi", &mut stdout);
+//             Ok(())
+//         });
+    
+//     cmd.subcommand(completions_subcmd)
+// }
+
 pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
 {
     Command::new("cldi")

@@ -34,3 +34,14 @@ pub struct Config {
     #[serde(default = "default::data_dir")]
     pub data_dir: String,
 }
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            controller_addr: default::controller_addr(),
+            executor_addr: default::executor_addr(),
+            default_account: default::default_account(),
+            data_dir: default::data_dir(),
+        }
+    }
+}

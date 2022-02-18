@@ -1,14 +1,14 @@
-mod admin;
-mod rpc;
-// // mod executor;
-// // #[cfg(feature = "evm")]
-mod evm;
-// mod wallet;
-mod key;
-mod cldi;
-mod bench;
+// mod admin;
+// mod rpc;
+// // // mod executor;
+// // // #[cfg(feature = "evm")]
+// mod evm;
+// // mod wallet;
+// mod key;
+// mod cldi;
+// mod bench;
 
-pub use cldi::cldi_cmd;
+// pub use cldi::cldi_cmd;
 
 use crate::crypto::Crypto;
 use crate::sdk::context::Context;
@@ -29,32 +29,32 @@ use crate::sdk::{
 };
 
 
-/// Command handler that associated with a command.
-pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
-    // No &mut for ArgMatches bc there is no much thing we can do with it.
-    fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
-
 // /// Command handler that associated with a command.
 // pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
 //     // No &mut for ArgMatches bc there is no much thing we can do with it.
-//     Box<dyn 'static + FnMut(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>>;
+//     fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
+
+/// Command handler that associated with a command.
+pub type CommandHandler<'help, Ctx> =
+    // No &mut for ArgMatches bc there is no much thing we can do with it.
+    Box<dyn 'help + Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()>>;
 
 
 /// Command
 // #[derive(Clone)]
-pub struct Command<'help, Co, Ex, Ev, Wa> {
+pub struct Command<'help, Ctx> {
     cmd: clap::Command<'help>,
-    handler: CommandHandler<'help, Co, Ex, Ev, Wa>,
+    handler: CommandHandler<'help, Ctx>,
 
     subcmds: HashMap<String, Self>,
 }
 
-impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
+impl<'help, Ctx: 'help> Command<'help, Ctx> {
     /// Create a new command.
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             cmd: clap::Command::new(name),
-            handler: Self::dispatch_subcmd,
+            handler: Box::new(Self::dispatch_subcmd),
             subcmds: HashMap::new(),
         }
     }
@@ -90,16 +90,11 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
         self
     }
 
-    // pub fn handler<H>(mut self, handler: H) -> Self 
-    // where
-    //     H: FnMut(&Self, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()> + 'static
-    // {
-    //     self.handler = Box::new(handler);
-    //     self
-    // }
-    pub fn handler(mut self, handler: CommandHandler<'help, Co, Ex, Ev, Wa>) -> Self 
+    pub fn handler<H>(mut self, handler: H) -> Self 
+    where
+        H: Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help
     {
-        self.handler = handler;
+        self.handler = Box::new(handler);
         self
     }
 
@@ -126,7 +121,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
             .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
-    pub fn exec(&self, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()> {
+    pub fn exec(&self, ctx: &mut Ctx) -> Result<()> {
         let m = self.cmd.clone().get_matches();
         self.exec_with(&m, ctx)
     }
@@ -135,12 +130,12 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     pub fn exec_with(
         &self,
         m: &ArgMatches,
-        ctx: &mut Context<Co, Ex, Ev, Wa>,
+        ctx: &mut Ctx,
     ) -> Result<()> {
         (self.handler)(self, m, ctx)
     }
 
-    pub fn exec_from<I, T>(&self, iter: I, ctx: &mut Context<Co, Ex, Ev, Wa>) -> Result<()>
+    pub fn exec_from<I, T>(&self, iter: I, ctx: &mut Ctx) -> Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
@@ -152,7 +147,7 @@ impl<'help, Co, Ex, Ev, Wa> Command<'help, Co, Ex, Ev, Wa> {
     pub fn dispatch_subcmd(
         &self,
         m: &ArgMatches,
-        ctx: &mut Context<Co, Ex, Ev, Wa>,
+        ctx: &mut Ctx,
     ) -> Result<()> {
         if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
             if let Some(subcmd) = self.subcmds.get(subcmd_name) {
