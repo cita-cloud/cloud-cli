@@ -20,16 +20,40 @@ use crate::{
     crypto::{ EthCrypto, SmCrypto },
 };
 
-use anyhow::Result;
+use std::path::Path;
 
-fn main() -> Result<()> {
-    let config = Config {
-        controller_addr: "localhost:50005".into(),
-        executor_addr: "localhost:50002".into(),
-        default_account: None,
-        wallet_dir: "d:/cld/cloud-cli/tmp-wallet".into(),
+use anyhow::Result;
+use std::fs;
+
+
+// FIXME
+fn load_config() -> Result<Config> {
+    let data_dir = {
+        let home = home::home_dir().expect("cannot find home dir");
+        home.join(".cloud-cli-v0.3.0")
+    };
+    if data_dir.exists() && data_dir.is_file() {
+        todo!("migrate old wallet")
+    } else {
+        fs::create_dir_all(&data_dir)?;
+    }
+
+    let config: Config = {
+        let path = data_dir.join("config.toml");
+        let s = if path.exists() {
+            fs::read_to_string(path)?
+        } else {
+            Default::default()
+        };
+
+        toml::from_str(&s).unwrap()
     };
 
+    Ok(config)
+}
+
+fn main() -> Result<()> {
+    let config = load_config()?;
     let mut ctx = sdk::context::from_config::<SmCrypto>(config).unwrap();
 
     let cldi = cmd::cldi_cmd();

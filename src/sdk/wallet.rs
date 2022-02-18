@@ -204,23 +204,23 @@ struct Unlocked {
 }
 
 pub struct Wallet<C: Crypto> {
-    wallet_dir: PathBuf,
+    data_dir: PathBuf,
 
     current_account_id: Option<String>,
     account_map: BTreeMap<String, MaybeLockedAccount<LockedAccount<C>, Account<C>>>,
 }
 
 impl<C: Crypto> Wallet<C> {
-    pub async fn open(wallet_dir: impl AsRef<Path>) -> Result<Self> {
-        let wallet_dir = wallet_dir.as_ref().to_path_buf();
-        let accounts_dir = wallet_dir.join("accounts");
+    pub async fn open(data_dir: impl AsRef<Path>) -> Result<Self> {
+        let data_dir = data_dir.as_ref().to_path_buf();
+        let accounts_dir = data_dir.join("accounts");
 
         fs::create_dir_all(&accounts_dir)
             .await
             .context("failed to create accounts dir")?;
 
         let mut this = Self {
-            wallet_dir,
+            data_dir,
             current_account_id: None,
             account_map: BTreeMap::new(),
         };
@@ -251,7 +251,7 @@ impl<C: Crypto> Wallet<C> {
         maybe_locked: MaybeLockedAccount<LockedAccount<C>, Account<C>>,
     ) -> Result<()> {
         // TODO: validate id
-        let accounts_dir = self.wallet_dir.join("accounts");
+        let accounts_dir = self.data_dir.join("accounts");
         fs::create_dir_all(&accounts_dir)
             .await
             .context("cannot create directory for accounts")?;
@@ -300,7 +300,7 @@ impl<C: Crypto> Wallet<C> {
 
     async fn load_account(&mut self, id: &str) -> Result<()> {
         let content = {
-            let path = self.wallet_dir.join("accounts").join(format!("{id}.toml"));
+            let path = self.data_dir.join("accounts").join(format!("{id}.toml"));
             fs::read_to_string(path)
                 .await
                 .context("cannot read account file")?

@@ -333,7 +333,7 @@ pub fn from_config<C: Crypto>(
             EvmClient::new(channel)
         };
 
-        let wallet = Wallet::open(&config.wallet_dir).await?;
+        let wallet = Wallet::open(&config.data_dir).await?;
 
         anyhow::Ok((controller, executor, evm, wallet))
     })??;
