@@ -63,9 +63,8 @@ pub trait Crypto: Send + Sync +'static {
 
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
 
-    fn pk2addr(pk: &Self::PublicKey) -> Self::Address;
     fn sk2pk(sk: &Self::SecretKey) -> Self::PublicKey;
-
+    fn pk2addr(pk: &Self::PublicKey) -> Self::Address;
     fn sk2addr(sk: &Self::SecretKey) -> Self::Address {
         Self::pk2addr(&Self::sk2pk(sk))
     }

@@ -537,6 +537,8 @@ where
                         })
                     })
                     .collect::<Vec<_>>();
+                
+                // TODO: return earily if error
                 for h in hs {
                     if let Err(e) = h.await {
                         first_reported_error.lock().get_or_insert(e.into());

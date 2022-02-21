@@ -18,7 +18,7 @@ pub trait GrpcClientBehaviour: Sized {
     }
 
     // TODO: maybe add async.
-    // Endpoint::connect_lazy, although no async fn, does require a async environment
+    // Endpoint::connect_lazy, although no async fn, does require running in a async runtime
     fn connect_lazy(addr: &str) -> Result<Self> {
         let addr = format!("http://{addr}");
         let ch = Endpoint::from_shared(addr)?.connect_lazy();
