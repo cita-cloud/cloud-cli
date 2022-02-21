@@ -6,8 +6,8 @@ mod proto;
 mod sdk;
 mod utils;
 // mod wallet;
+// mod cmd;
 mod cmd;
-mod cmd_;
 mod config;
 // mod interactive;
 
