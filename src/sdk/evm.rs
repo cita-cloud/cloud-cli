@@ -113,7 +113,7 @@ impl<C: Crypto> EvmBehaviour<C> for EvmClient {
 pub trait EvmBehaviourExt<C: Crypto> {
     async fn store_contract_abi<S>(&self, signer: &S, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
 }
 
 #[tonic::async_trait]
@@ -125,7 +125,7 @@ where
     // The binary protocol is the implementation details of the current EVM service.
     async fn store_contract_abi<S>(&self, signer: &S, contract_addr: C::Address, abi: &[u8]) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let abi_addr = parse_addr::<C>(ABI_ADDRESS)?;
         let data = [contract_addr.as_slice(), abi].concat();

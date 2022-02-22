@@ -15,7 +15,7 @@ pub use sm::SmCrypto;
 
 // TODO: better name + add Copy?
 /// assert_eq!(ArrayLike::try_from_slice(arr.as_slice()), Ok(arr));
-pub trait ArrayLike: Copy + PartialEq + Eq + Sized + Send + Sync + 'static {
+pub trait ArrayLike: PartialEq + Eq + Sized + Send + Sync + 'static {
     fn as_slice(&self) -> &[u8];
     fn try_from_slice(slice: &[u8]) -> Result<Self>;
 
@@ -37,6 +37,16 @@ impl<const N: usize> ArrayLike for [u8; N] {
                 slice.len()
             )
         })
+    }
+}
+
+impl ArrayLike for Vec<u8> {
+    fn as_slice(&self) -> &[u8] {
+        self.as_slice()
+    }
+
+    fn try_from_slice(slice: &[u8]) -> Result<Self> {
+        Ok(slice.to_vec())
     }
 }
 

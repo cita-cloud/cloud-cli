@@ -180,16 +180,11 @@ impl<C: Crypto> ControllerBehaviour<C> for ControllerClient {
     }
 }
 
-pub trait SignerBehaviour<C: Crypto> {
-    fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction;
-    fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction;
-}
+pub trait SignerBehaviour {
+    fn hash(&self, msg: &[u8]) -> Vec<u8>;
+    fn address(&self) -> &[u8];
+    fn sign(&self, msg: &[u8]) -> Vec<u8>;
 
-impl<C, A> SignerBehaviour<C> for A
-where
-    C: Crypto,
-    A: AccountBehaviour<SigningAlgorithm = C>,
-{
     fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
         // calc tx hash
         let tx_hash = {
@@ -199,7 +194,7 @@ where
                 tx.encode(&mut buf).unwrap();
                 buf
             };
-            C::hash(tx_bytes.as_slice())
+            self.hash(tx_bytes.as_slice())
         };
 
         // sign tx hash
@@ -233,7 +228,7 @@ where
                 utxo.encode(&mut buf).unwrap();
                 buf
             };
-            C::hash(utxo_bytes.as_slice())
+            self.hash(utxo_bytes.as_slice())
         };
 
         // sign utxo hash
@@ -257,7 +252,82 @@ where
 
         raw_utxo
     }
+
 }
+
+// impl<C, A> SignerBehaviour for A
+// where
+//     C: Crypto,
+//     A: AccountBehaviour<SigningAlgorithm = C>,
+// {
+//     fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
+//         // calc tx hash
+//         let tx_hash = {
+//             // build tx bytes
+//             let tx_bytes = {
+//                 let mut buf = Vec::with_capacity(tx.encoded_len());
+//                 tx.encode(&mut buf).unwrap();
+//                 buf
+//             };
+//             C::hash(tx_bytes.as_slice())
+//         };
+
+//         // sign tx hash
+//         let sender = self.address().to_vec();
+//         let signature = self.sign(tx_hash.as_slice()).to_vec();
+
+//         // build raw tx
+//         let raw_tx = {
+//             let witness = Witness { sender, signature };
+
+//             let unverified_tx = UnverifiedTransaction {
+//                 transaction: Some(tx),
+//                 transaction_hash: tx_hash.to_vec(),
+//                 witness: Some(witness),
+//             };
+
+//             RawTransaction {
+//                 tx: Some(Tx::NormalTx(unverified_tx)),
+//             }
+//         };
+
+//         raw_tx
+//     }
+
+//     fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
+//         // calc utxo hash
+//         let utxo_hash = {
+//             // build utxo bytes
+//             let utxo_bytes = {
+//                 let mut buf = Vec::with_capacity(utxo.encoded_len());
+//                 utxo.encode(&mut buf).unwrap();
+//                 buf
+//             };
+//             C::hash(utxo_bytes.as_slice())
+//         };
+
+//         // sign utxo hash
+//         let sender = self.address().to_vec();
+//         let signature = self.sign(utxo_hash.as_slice()).to_vec();
+
+//         // build raw utxo
+//         let raw_utxo = {
+//             let witness = Witness { sender, signature };
+
+//             let unverified_utxo = UnverifiedUtxoTransaction {
+//                 transaction: Some(utxo),
+//                 transaction_hash: utxo_hash.to_vec(),
+//                 witnesses: vec![witness],
+//             };
+
+//             RawTransaction {
+//                 tx: Some(Tx::UtxoTx(unverified_utxo)),
+//             }
+//         };
+
+//         raw_utxo
+//     }
+// }
 
 
 // It's actually the implementation details of the current controller service.
@@ -274,17 +344,17 @@ pub enum UtxoType {
 pub trait TransactionSenderBehaviour<C: Crypto> {
     async fn send_raw_tx<S>(&self, signer: &S, raw_tx: CloudNormalTransaction) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
     async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
 
     async fn send_tx<S>(&self, signer: &S, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
     async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
 }
 
 #[tonic::async_trait]
@@ -295,7 +365,7 @@ where
 {
     async fn send_raw_tx<S>(&self, signer: &S, raw_tx: CloudNormalTransaction) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let raw = signer.sign_raw_tx(raw_tx);
         self.send_raw(raw).await.context("failed to send raw")
@@ -303,7 +373,7 @@ where
 
     async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> 
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let raw = signer.sign_raw_utxo(raw_utxo);
         self.send_raw(raw).await.context("failed to send raw")
@@ -311,7 +381,7 @@ where
 
     async fn send_tx<S>(&self, signer: &S, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let (current_block_number, system_config) =
             tokio::try_join!(self.get_block_number(false), self.get_system_config())
@@ -333,7 +403,7 @@ where
 
     async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> 
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let system_config = self
             .get_system_config()

@@ -10,7 +10,6 @@ use super::controller::TransactionSenderBehaviour;
 use super::controller::UtxoType;
 use crate::utils::hex;
 // use super::controller::HasSystemConfig;
-use super::account::AccountBehaviour;
 // use crate::types::{ Hash, Address };
 
 use anyhow::Context as _;
@@ -23,16 +22,16 @@ pub trait AdminBehaviour<C: Crypto> {
     // TODO: maybe we can use some concrete error types that allows user to handle them better.
     async fn update_admin<S>(&self, old_admin_signer: &S, new_admin_addr: C::Address) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
     async fn set_block_interval<S>(&self, admin_signer: &S, block_interval: u32) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
     async fn update_validators<S>(&self, admin_signer: &S, validators: &[C::Address]) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
     async fn emergency_brake<S>(&self, admin_signer: &S, switch: bool) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync;
+        S: SignerBehaviour + Send + Sync;
 }
 
 #[tonic::async_trait]
@@ -45,7 +44,7 @@ where
 
     async fn update_admin<S>(&self, old_admin_signer: &S, new_admin_addr: C::Address) -> Result<C::Hash>
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let output = new_admin_addr.to_vec();
         self.send_utxo(old_admin_signer, output, UtxoType::Admin)
@@ -55,7 +54,7 @@ where
 
     async fn set_block_interval<S>(&self, admin_signer: &S, block_interval: u32) -> Result<C::Hash> 
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let output = block_interval.to_be_bytes().to_vec();
         self.send_utxo(admin_signer, output, UtxoType::BlockInterval)
@@ -65,7 +64,7 @@ where
 
     async fn update_validators<S>(&self, admin_signer: &S, validators: &[C::Address]) -> Result<C::Hash> 
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let output = {
             let mut output = vec![];
@@ -82,7 +81,7 @@ where
 
     async fn emergency_brake<S>(&self, admin_signer: &S, switch: bool) -> Result<C::Hash> 
     where
-        S: SignerBehaviour<C> + Send + Sync,
+        S: SignerBehaviour + Send + Sync,
     {
         let output = if switch { vec![0] } else { vec![] };
         self.send_utxo(admin_signer, output, UtxoType::EmergencyBrake)
