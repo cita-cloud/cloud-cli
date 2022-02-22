@@ -2,6 +2,10 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 
+use tempfile::NamedTempFile;
+use std::path::Path;
+use std::io::Write;
+
 use crate::crypto::ArrayLike;
 use crate::crypto::Crypto;
 
@@ -63,4 +67,22 @@ pub fn display_time(timestamp: u64) -> String {
 
 pub fn remove_0x(s: &str) -> &str {
     s.strip_prefix("0x").unwrap_or(s)
+}
+
+
+pub fn safe_save(path: impl AsRef<Path>, content: &[u8], replace: bool) -> Result<()> {
+    let path = path.as_ref();
+    let dir = path.parent().ok_or(anyhow!("cannot load containing dir"))?;
+
+    let mut tmp = NamedTempFile::new_in(dir)?;
+    tmp.write_all(content)?;
+
+    let mut f = if replace {
+        tmp.persist(path)?
+    } else {
+        tmp.persist_noclobber(path)?
+    };
+    f.flush()?;
+
+    Ok(())
 }

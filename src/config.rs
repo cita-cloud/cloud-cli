@@ -6,6 +6,7 @@ use anyhow::Result;
 use std::io::Write;
 use std::fs;
 use std::fs::File;
+use crate::utils::safe_save;
 
 use tempfile::NamedTempFile;
 
@@ -45,12 +46,9 @@ impl Config {
 
     // atomically save
     pub fn save(&self) -> Result<()> {
-        let tmp = NamedTempFile::new_in(self.data_dir)?;
+        let path = self.data_dir.join(CLOUD_CLI_CONFIG_FILE_NAME);
         let content = toml::to_string_pretty(self)?;
-        tmp.write_all(content.as_bytes())?;
-        let f = tmp.persist(Path::new(&self.data_dir).join(CLOUD_CLI_CONFIG_FILE_NAME))?;
-        f.flush()?;
-        Ok(())
+        safe_save(path, content.as_bytes(), true)
     }
 }
 
