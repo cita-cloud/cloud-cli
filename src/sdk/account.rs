@@ -1,4 +1,4 @@
-use crate::crypto::{ArrayLike, Crypto};
+use crate::crypto::{ArrayLike, Crypto, Address, Hash};
 
 pub trait AccountBehaviour: Sized {
     type SigningAlgorithm: Crypto;
@@ -10,7 +10,7 @@ pub trait AccountBehaviour: Sized {
 
     fn from_secret_key(sk: <Self::SigningAlgorithm as Crypto>::SecretKey) -> Self;
 
-    fn address(&self) -> &<Self::SigningAlgorithm as Crypto>::Address;
+    fn address(&self) -> &Address;
     fn public_key(&self) -> &<Self::SigningAlgorithm as Crypto>::PublicKey;
     fn expose_secret_key(&self) -> &<Self::SigningAlgorithm as Crypto>::SecretKey;
 
@@ -21,7 +21,7 @@ pub trait AccountBehaviour: Sized {
 
 #[derive(Debug, Clone)]
 pub struct Account<C: Crypto> {
-    pub(crate) address: C::Address,
+    pub(crate) address: Address,
     pub(crate) public_key: C::PublicKey,
     pub(crate) secret_key: C::SecretKey,
 }

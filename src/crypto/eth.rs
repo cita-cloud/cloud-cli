@@ -14,6 +14,7 @@
 
 /// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
 /// This crypto impl must be compatible with `kms_eth` to work with it.
+
 use tiny_keccak::{Hasher, Keccak};
 
 use secp256k1::rand::rngs::OsRng;
@@ -25,12 +26,7 @@ use secp256k1::SecretKey as RawSecretKey;
 use ctr::cipher::{NewCipher, StreamCipher};
 
 use super::Crypto;
-
-pub const HASH_BYTES_LEN: usize = 32;
-pub type Hash = [u8; HASH_BYTES_LEN];
-
-pub const ADDR_BYTES_LEN: usize = 20;
-pub type Address = [u8; ADDR_BYTES_LEN];
+use super::{ Hash, Address, HASH_BYTES_LEN, ADDR_BYTES_LEN };
 
 pub const PUBLIC_KEY_BYTES_LEN: usize = 64;
 pub type PublicKey = [u8; PUBLIC_KEY_BYTES_LEN];
@@ -106,13 +102,12 @@ fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
 pub struct EthCrypto;
 
 impl Crypto for EthCrypto {
-    type Hash = Hash;
-    type Address = Address;
     type PublicKey = PublicKey;
     type SecretKey = SecretKey;
+
     type Signature = Signature;
 
-    fn hash(msg: &[u8]) -> Self::Hash {
+    fn hash(msg: &[u8]) -> Hash {
         keccak_hash(msg)
     }
 
@@ -132,7 +127,7 @@ impl Crypto for EthCrypto {
         secp256k1_sign(msg, sk)
     }
 
-    fn pk2addr(pk: &Self::PublicKey) -> Self::Address {
+    fn pk2addr(pk: &Self::PublicKey) -> Address {
         secp256k1_pk2addr(pk)
     }
 

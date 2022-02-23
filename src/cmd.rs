@@ -1,4 +1,4 @@
-// mod admin;
+mod admin;
 // mod rpc;
 // // // mod executor;
 // // // #[cfg(feature = "evm")]
@@ -35,9 +35,9 @@ pub type CommandHandler<'help, Ctx> =
 
 /// Command
 // #[derive(Clone)]
-pub struct Command<'help, Ctx> {
+pub struct Command<'help, Ctx: 'help> {
     cmd: clap::Command<'help>,
-    handler: CommandHandler<'help, Ctx>,
+    handler: Box<dyn Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help>,
 
     subcmds: HashMap<String, Self>,
 }
@@ -85,7 +85,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
 
     pub fn handler<H>(mut self, handler: H) -> Self 
     where
-        H: Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help
+        H: Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help
     {
         self.handler = Box::new(handler);
         self

@@ -50,16 +50,19 @@ impl ArrayLike for Vec<u8> {
     }
 }
 
-pub trait Crypto: Send + Sync +'static {
-    type Hash: ArrayLike;
-    type Address: ArrayLike;
+pub const HASH_BYTES_LEN: usize = 32;
+pub type Hash = [u8; HASH_BYTES_LEN];
 
+pub const ADDR_BYTES_LEN: usize = 20;
+pub type Address = [u8; ADDR_BYTES_LEN];
+
+pub trait Crypto: Send + Sync +'static {
     type PublicKey: ArrayLike;
     type SecretKey: ArrayLike;
 
     type Signature: ArrayLike;
 
-    fn hash(msg: &[u8]) -> Self::Hash;
+    fn hash(msg: &[u8]) -> Hash;
 
     fn encrypt(plaintext: &[u8], pw: &[u8]) -> Vec<u8>;
     fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>>;
@@ -74,8 +77,8 @@ pub trait Crypto: Send + Sync +'static {
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
 
     fn sk2pk(sk: &Self::SecretKey) -> Self::PublicKey;
-    fn pk2addr(pk: &Self::PublicKey) -> Self::Address;
-    fn sk2addr(sk: &Self::SecretKey) -> Self::Address {
+    fn pk2addr(pk: &Self::PublicKey) -> Address;
+    fn sk2addr(sk: &Self::SecretKey) -> Address {
         Self::pk2addr(&Self::sk2pk(sk))
     }
 }

@@ -8,10 +8,16 @@ use std::io::Write;
 
 use crate::crypto::ArrayLike;
 use crate::crypto::Crypto;
+use crate::crypto::{Address, Hash};
 
-pub fn parse_addr<C: Crypto>(s: &str) -> Result<C::Address> {
+pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
-    C::Address::try_from_slice(&input)
+    Address::try_from_slice(&input)
+}
+
+pub fn parse_pk<C: Crypto>(s: &str) -> Result<C::PublicKey> {
+    let input = parse_data(s)?;
+    C::PublicKey::try_from_slice(&input)
 }
 
 pub fn parse_sk<C: Crypto>(s: &str) -> Result<C::SecretKey> {
@@ -19,9 +25,9 @@ pub fn parse_sk<C: Crypto>(s: &str) -> Result<C::SecretKey> {
     C::SecretKey::try_from_slice(&input)
 }
 
-pub fn parse_hash<C: Crypto>(s: &str) -> Result<C::Hash> {
+pub fn parse_hash(s: &str) -> Result<Hash> {
     let input = parse_data(s)?;
-    C::Hash::try_from_slice(&input)
+    Hash::try_from_slice(&input)
 }
 
 // pub fn parse_addr(s: &str) -> Result<Vec<u8>> {

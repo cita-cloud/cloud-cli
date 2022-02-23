@@ -4,24 +4,12 @@ use prost::Message;
 use anyhow::Context;
 
 use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient as ControllerClient, BlockNumber, Flag, SystemConfig,
-        TransactionIndex,
-    },
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
-    },
+    // common::{Address, Empty, Hash, NodeInfo, NodeNetInfo},
     executor::{executor_service_client::ExecutorServiceClient, CallRequest, CallResponse},
 };
 
 use crate::crypto::ArrayLike;
+use crate::crypto::{Address, Hash};
 use crate::crypto::Crypto;
 use anyhow::Result;
 use tonic::transport::Channel;
@@ -31,21 +19,21 @@ pub type ExecutorClient =
 
 #[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
-pub trait ExecutorBehaviour<C: Crypto> {
+pub trait ExecutorBehaviour {
     async fn call(
         &self,
-        from: C::Address,
-        to: C::Address,
+        from: Address,
+        to: Address,
         data: Vec<u8>,
     ) -> Result<CallResponse>;
 }
 
 #[tonic::async_trait]
-impl<C: Crypto> ExecutorBehaviour<C> for ExecutorClient {
+impl ExecutorBehaviour for ExecutorClient {
     async fn call(
         &self,
-        from: C::Address,
-        to: C::Address,
+        from: Address,
+        to: Address,
         data: Vec<u8>,
     ) -> Result<CallResponse> {
         let req = CallRequest {

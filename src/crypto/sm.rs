@@ -97,13 +97,11 @@ pub fn pk2addr(pk: &PublicKey) -> Address {
 pub struct SmCrypto;
 
 impl Crypto for SmCrypto {
-    type Hash = Hash;
-    type Address = Address;
     type PublicKey = PublicKey;
     type SecretKey = SecretKey;
     type Signature = Signature;
 
-    fn hash(msg: &[u8]) -> Self::Hash {
+    fn hash(msg: &[u8]) -> Hash {
         sm3_hash(msg)
     }
 
@@ -112,8 +110,8 @@ impl Crypto for SmCrypto {
     }
 
     fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>> {
+        // sm4_decrypt will panic when password is wrong, so catch it.
         std::panic::catch_unwind(|| {
-            // sm4_decrypt will panic when password is wrong, so.
             sm4_decrypt(ciphertext, pw)
         }).ok()
     }
@@ -126,7 +124,7 @@ impl Crypto for SmCrypto {
         sm2_sign(msg, sk)
     }
 
-    fn pk2addr(pk: &Self::PublicKey) -> Self::Address {
+    fn pk2addr(pk: &Self::PublicKey) -> Address {
         pk2addr(pk)
     }
 

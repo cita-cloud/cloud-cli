@@ -22,7 +22,6 @@ use std::future::Future;
 use super::evm::EvmClient;
 use super::executor::ExecutorClient;
 use super::{
-    account::AccountBehaviour,
     controller::{
         ControllerBehaviour, ControllerClient, TransactionSenderBehaviour,
         SignerBehaviour, UtxoType,
@@ -30,25 +29,35 @@ use super::{
     evm::EvmBehaviour,
     evm::EvmBehaviourExt,
     executor::ExecutorBehaviour,
-    wallet::WalletBehaviour,
 };
 // use super::controller::ControllerClient;
 use anyhow::Context as _;
 use anyhow::Result;
+use anyhow::anyhow;
 
-use super::wallet::{MaybeLockedAccount, Wallet};
+use super::wallet::Wallet;
+use super::wallet::MultiCryptoAccount;
 
-pub struct Context<Co, Ex, Ev, Wa> {
+pub struct Context<Co, Ex, Ev> {
     /// Those gRPC client are connected lazily.
     pub controller: Co,
     pub executor: Ex,
     pub evm: Ev,
-    pub wallet: Wa,
 
+    pub wallet: Wallet,
     pub config: Config,
 
     pub rt: CancelableRuntime,
+
+    pub current_account_id: String,
 }
+
+impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
+    pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
+        let current = self.wallet.get(&self.current_account_id).ok_or_else(|| anyhow!("current account no found"))?;
+        current.unlocked().ok_or_else(|| anyhow!("current account is locked, please unlock it first"))
+    }
+} 
 
 
 #[derive(Debug, thiserror::Error)]
@@ -81,7 +90,7 @@ impl CancelableRuntime {
 //     Co: ControllerBehaviour<C> + Send + Sync,
 //     Context<Co, Ex, Ev, Wa>: Send + Sync,
 // {
-//     async fn send_raw(&self, raw: RawTransaction) -> Result<C::Hash> {
+//     async fn send_raw(&self, raw: RawTransaction) -> Result<Hash> {
 //         <Co as ControllerBehaviour<C>>::send_raw(&self.controller, raw).await
 //     }
 
@@ -92,7 +101,7 @@ impl CancelableRuntime {
 //     async fn get_block_number(&self, for_pending: bool) -> Result<u64> {
 //         <Co as ControllerBehaviour<C>>::get_block_number(&self.controller, for_pending).await
 //     }
-//     async fn get_block_hash(&self, block_number: u64) -> Result<C::Hash> {
+//     async fn get_block_hash(&self, block_number: u64) -> Result<Hash> {
 //         <Co as ControllerBehaviour<C>>::get_block_hash(&self.controller, block_number).await
 //     }
 
@@ -100,19 +109,19 @@ impl CancelableRuntime {
 //         <Co as ControllerBehaviour<C>>::get_block_by_number(&self.controller, block_number).await
 //     }
 
-//     async fn get_block_by_hash(&self, hash: C::Hash) -> Result<CompactBlock> {
+//     async fn get_block_by_hash(&self, hash: Hash) -> Result<CompactBlock> {
 //         <Co as ControllerBehaviour<C>>::get_block_by_hash(&self.controller, hash).await
 //     }
 
-//     async fn get_tx(&self, tx_hash: C::Hash) -> Result<RawTransaction> {
+//     async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction> {
 //         <Co as ControllerBehaviour<C>>::get_tx(&self.controller, tx_hash).await
 //     }
 
-//     async fn get_tx_index(&self, tx_hash: C::Hash) -> Result<u64> {
+//     async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64> {
 //         <Co as ControllerBehaviour<C>>::get_tx_index(&self.controller, tx_hash).await
 //     }
 
-//     async fn get_tx_block_number(&self, tx_hash: C::Hash) -> Result<u64> {
+//     async fn get_tx_block_number(&self, tx_hash: Hash) -> Result<u64> {
 //         <Co as ControllerBehaviour<C>>::get_tx_block_number(&self.controller, tx_hash).await
 //     }
 
@@ -138,8 +147,8 @@ impl CancelableRuntime {
 // {
 //     async fn call(
 //         &self,
-//         from: C::Address,
-//         to: C::Address,
+//         from: Address,
+//         to: Address,
 //         payload: Vec<u8>,
 //     ) -> Result<CallResponse> {
 //         <Ex as ExecutorBehaviour<C>>::call(&self.executor, from, to, payload).await
@@ -153,23 +162,23 @@ impl CancelableRuntime {
 //     Ev: EvmBehaviour<C> + Send + Sync,
 //     Context<Co, Ex, Ev, Wa>: Send + Sync,
 // {
-//     async fn get_receipt(&self, hash: C::Hash) -> Result<Receipt> {
+//     async fn get_receipt(&self, hash: Hash) -> Result<Receipt> {
 //         <Ev as EvmBehaviour<C>>::get_receipt(&self.evm, hash).await
 //     }
 
-//     async fn get_code(&self, addr: C::Address) -> Result<ByteCode> {
+//     async fn get_code(&self, addr: Address) -> Result<ByteCode> {
 //         <Ev as EvmBehaviour<C>>::get_code(&self.evm, addr).await
 //     }
 
-//     async fn get_balance(&self, addr: C::Address) -> Result<Balance> {
+//     async fn get_balance(&self, addr: Address) -> Result<Balance> {
 //         <Ev as EvmBehaviour<C>>::get_balance(&self.evm, addr).await
 //     }
 
-//     async fn get_tx_count(&self, addr: C::Address) -> Result<Nonce> {
+//     async fn get_tx_count(&self, addr: Address) -> Result<Nonce> {
 //         <Ev as EvmBehaviour<C>>::get_tx_count(&self.evm, addr).await
 //     }
 
-//     async fn get_abi(&self, addr: C::Address) -> Result<ByteAbi> {
+//     async fn get_abi(&self, addr: Address) -> Result<ByteAbi> {
 //         <Ev as EvmBehaviour<C>>::get_abi(&self.evm, addr).await
 //     }
 // }
@@ -229,13 +238,13 @@ impl CancelableRuntime {
 //     Wa: WalletBehaviour<C> + Send + Sync,
 //     Context<Co, Ex, Ev, Wa>: Send + Sync,
 // {
-//     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<C::Hash> {
+//     async fn send_raw_tx(&self, raw_tx: CloudNormalTransaction) -> Result<Hash> {
 //         let account = self.current_account().await?.1;
 //         let raw = account.sign_raw_tx(raw_tx)?;
 //         self.send_raw(raw).await.context("failed to send raw")
 //     }
 
-//     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<C::Hash> {
+//     async fn send_raw_utxo(&self, raw_utxo: CloudUtxoTransaction) -> Result<Hash> {
 //         let account = self.current_account().await?.1;
 //         let raw = account.sign_raw_utxo(raw_utxo)?;
 //         self.send_raw(raw).await.context("failed to send raw")
@@ -251,7 +260,7 @@ impl CancelableRuntime {
 //     Context<Co, Ex, Ev, Wa>: Send + Sync,
 // {
 //     // Use send_raw_tx if you want more control over the tx content
-//     async fn send_tx(&self, to: C::Address, data: Vec<u8>, value: Vec<u8>) -> Result<C::Hash> {
+//     async fn send_tx(&self, to: Address, data: Vec<u8>, value: Vec<u8>) -> Result<Hash> {
 //         let (current_block_number, system_config) =
 //             tokio::try_join!(self.get_block_number(false), self.get_system_config())
 //                 .context("failed to fetch chain status")?;
@@ -280,7 +289,7 @@ impl CancelableRuntime {
 //     Context<Co, Ex, Ev, Wa>: Send + Sync,
 // {
 //     // Use send_raw_utxo if you want more control over the utxo content
-//     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<C::Hash> {
+//     async fn send_utxo(&self, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash> {
 //         let system_config = self
 //             .get_system_config()
 //             .await
@@ -307,47 +316,48 @@ impl CancelableRuntime {
 //     }
 // }
 
-pub fn from_config<C: Crypto>(
-    config: Config,
-) -> Result<Context<ControllerClient, ExecutorClient, EvmClient, Wallet<C>>> {
-    let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
+// pub fn from_config<C: Crypto>(
+//     config: Config,
+// ) -> Result<Context<ControllerClient, ExecutorClient, EvmClient, Wallet>> {
+//     // let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
 
-    let (controller, executor, evm, wallet) = rt.block_on(async {
-        // Although connect_lazy isn't async, they still must be in an async context.
-        let controller = {
-            let addr = format!("http://{}", config.controller_addr);
-            let channel = Endpoint::from_shared(addr)?.connect_lazy();
-            ControllerClient::new(channel)
-        };
+//     // let (controller, executor, evm, wallet) = rt.block_on(async {
+//     //     // Although connect_lazy isn't async, they still must be in an async context.
+//     //     let controller = {
+//     //         let addr = format!("http://{}", config.controller_addr);
+//     //         let channel = Endpoint::from_shared(addr)?.connect_lazy();
+//     //         ControllerClient::new(channel)
+//     //     };
 
-        let executor = {
-            let addr = format!("http://{}", config.executor_addr);
-            let channel = Endpoint::from_shared(addr)?.connect_lazy();
-            ExecutorClient::new(channel)
-        };
+//     //     let executor = {
+//     //         let addr = format!("http://{}", config.executor_addr);
+//     //         let channel = Endpoint::from_shared(addr)?.connect_lazy();
+//     //         ExecutorClient::new(channel)
+//     //     };
 
-        let evm = {
-            // use the same addr as executor
-            let addr = format!("http://{}", config.executor_addr);
-            let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
-            EvmClient::new(channel)
-        };
+//     //     let evm = {
+//     //         // use the same addr as executor
+//     //         let addr = format!("http://{}", config.executor_addr);
+//     //         let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
+//     //         EvmClient::new(channel)
+//     //     };
 
-        let wallet = Wallet::open(&config.data_dir).await?;
+//     //     let wallet = Wallet::open(&config.data_dir).await?;
 
-        anyhow::Ok((controller, executor, evm, wallet))
-    })??;
+//     //     anyhow::Ok((controller, executor, evm, wallet))
+//     // })??;
 
-    let this = Context {
-        controller,
-        executor,
-        evm,
-        wallet,
+//     // let this = Context {
+//     //     controller,
+//     //     executor,
+//     //     evm,
+//     //     wallet,
 
-        config,
+//     //     config,
 
-        rt,
-    };
+//     //     rt,
+//     // };
 
-    Ok(this)
-}
+//     // Ok(this)
+//     todo!()
+// }

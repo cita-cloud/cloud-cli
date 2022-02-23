@@ -6,8 +6,8 @@ mod proto;
 mod sdk;
 mod utils;
 // mod wallet;
-// mod cmd;
 mod cmd;
+// mod cmd;
 mod config;
 // mod interactive;
 
@@ -60,48 +60,49 @@ fn load_config() -> Result<Config> {
 }
 
 fn main() -> Result<()> {
-    let config = load_config()?;
-    let mut ctx = sdk::context::from_config::<SmCrypto>(config).unwrap();
+    todo!()
+    // let config = load_config()?;
+    // let mut ctx = sdk::context::from_config::<SmCrypto>(config).unwrap();
 
-    let cldi = cmd::cldi_cmd();
-    let m = cldi.get_matches();
-    if m.subcommand().is_some() {
-        cldi.exec_with(&m, &mut ctx).map_err(|e|{
-            if let Some(e) = e.downcast_ref::<clap::Error>() {
-                e.exit();
-            }
-            e
-        })?;
-    } else {
-        // TODO: simplify this, and fix `cldi -r addr` case
-        let mut rl = rustyline::Editor::<()>::new();
-        loop {
-            let line = rl.readline("cldi> ");
-            match line {
-                Ok(line) => {
-                    rl.add_history_entry(&line);
+    // let cldi = cmd::cldi_cmd();
+    // let m = cldi.get_matches();
+    // if m.subcommand().is_some() {
+    //     cldi.exec_with(&m, &mut ctx).map_err(|e|{
+    //         if let Some(e) = e.downcast_ref::<clap::Error>() {
+    //             e.exit();
+    //         }
+    //         e
+    //     })?;
+    // } else {
+    //     // TODO: simplify this, and fix `cldi -r addr` case
+    //     let mut rl = rustyline::Editor::<()>::new();
+    //     loop {
+    //         let line = rl.readline("cldi> ");
+    //         match line {
+    //             Ok(line) => {
+    //                 rl.add_history_entry(&line);
 
-                    let args = match shell_words::split(&line) {
-                        Ok(args) => args,
-                        Err(e) => {
-                            println!("parse error: `{}`", e);
-                            continue;
-                        }
-                    };
-                    let input = std::iter::once(cldi.get_name().into()).chain(args);
-                    if let Err(e) = cldi.exec_from(input, &mut ctx) {
-                        println!("{:?}", e);
-                    }
-                }
-                Err(ReadlineError::Eof) => break,
-                Err(ReadlineError::Interrupted) => println!("press CTRL+D to exit"),
-                Err(e) => {
-                    println!("readline error {}", e);
-                    break;
-                }
-            }
-        }
-    }
+    //                 let args = match shell_words::split(&line) {
+    //                     Ok(args) => args,
+    //                     Err(e) => {
+    //                         println!("parse error: `{}`", e);
+    //                         continue;
+    //                     }
+    //                 };
+    //                 let input = std::iter::once(cldi.get_name().into()).chain(args);
+    //                 if let Err(e) = cldi.exec_from(input, &mut ctx) {
+    //                     println!("{:?}", e);
+    //                 }
+    //             }
+    //             Err(ReadlineError::Eof) => break,
+    //             Err(ReadlineError::Interrupted) => println!("press CTRL+D to exit"),
+    //             Err(e) => {
+    //                 println!("readline error {}", e);
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 
-    Ok(())
+    // Ok(())
 }
