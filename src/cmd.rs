@@ -8,7 +8,7 @@ mod evm;
 mod cldi;
 mod bench;
 
-// pub use cldi::cldi_cmd;
+pub use cldi::cldi_cmd;
 
 use crate::crypto::Crypto;
 use crate::sdk::context::Context;

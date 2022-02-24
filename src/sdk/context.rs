@@ -19,6 +19,7 @@ use crate::proto::{
 };
 
 use std::future::Future;
+use super::client::GrpcClientBehaviour;
 use super::evm::EvmClient;
 use super::executor::ExecutorClient;
 use super::{
@@ -53,6 +54,36 @@ pub struct Context<Co, Ex, Ev> {
 }
 
 impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
+    pub fn from_config(config: Config) -> Result<Self>
+    where
+        Co: GrpcClientBehaviour,
+        Ex: GrpcClientBehaviour,
+        Ev: GrpcClientBehaviour,
+    {
+        let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
+        let wallet = Wallet::open(&config.data_dir)?;
+        let default_context_setting = config.context_settings.get(&config.default_context)
+            .ok_or_else(|| anyhow!("missing default context setting"))?
+            .clone();
+        // connect_lazy must be run in async environment.
+        let (controller, executor, evm) = rt.block_on(async {
+            let co = Co::connect_lazy(&default_context_setting.controller_addr)?;
+            let ex = Ex::connect_lazy(&default_context_setting.executor_addr)?;
+            let ev = Ev::connect_lazy(&default_context_setting.executor_addr)?;
+            anyhow::Ok((co, ex, ev))
+        })??;
+
+        Ok(Self {
+            controller,
+            executor,
+            evm,
+            wallet,
+            config,
+            current_setting: default_context_setting,
+            rt,
+        })
+    }
+
     pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
         let current = self.wallet.get(&self.current_setting.account_id).ok_or_else(|| anyhow!("current account no found"))?;
         current.unlocked().ok_or_else(|| anyhow!("current account is locked, please unlock it first"))

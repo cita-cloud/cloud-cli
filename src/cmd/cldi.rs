@@ -13,6 +13,7 @@ use super::{
 };
 
 use crate::crypto::Crypto;
+use crate::sdk::client::GrpcClientBehaviour;
 use crate::sdk::{
     admin::AdminBehaviour, controller::ControllerBehaviour,
     evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour,
@@ -72,9 +73,13 @@ where
 //     cmd.subcommand(completions_subcmd)
 // }
 
-pub fn cldi_cmd<'help>() -> Command<'help, Context<ControllerClient, ExecutorClient, EvmClient>>
+pub fn cldi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+    Ex: ExecutorBehaviour + GrpcClientBehaviour,
+    Ev: EvmBehaviour + GrpcClientBehaviour,
 {
-    Command::<Context<ControllerClient, ExecutorClient, EvmClient>>::new("cldi")
+    Command::<Context<Co, Ex, Ev>>::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
         .arg(
             Arg::new("controller-addr")
@@ -93,27 +98,14 @@ pub fn cldi_cmd<'help>() -> Command<'help, Context<ControllerClient, ExecutorCli
         .handler(|cmd, m, ctx| {
             ctx.rt.block_on(async {
                 if let Some(controller_addr) = m.value_of("controller-addr") {
-                    let controller = {
-                        let addr = format!("http://{controller_addr}");
-                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
-                        ControllerClient::new(channel)
-                    };
+                    let controller = Co::connect_lazy(controller_addr)?;
                     ctx.controller = controller;
                 }
 
                 if let Some(executor_addr) = m.value_of("executor-addr") {
-                    let executor = {
-                        let addr = format!("http://{executor_addr}");
-                        let channel = Endpoint::from_shared(addr)?.connect_lazy();
-                        ExecutorClient::new(channel)
-                    };
-
-                    let evm = {
-                        // the same addr
-                        let addr = format!("http://{executor_addr}");
-                        let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
-                        EvmClient::new(channel)
-                    };
+                    let executor = Ex::connect_lazy(executor_addr)?;
+                    // The same address as executor
+                    let evm = Ev::connect_lazy(executor_addr)?;
 
                     ctx.executor = executor;
                     ctx.evm = evm;
