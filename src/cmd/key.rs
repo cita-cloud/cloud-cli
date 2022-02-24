@@ -9,15 +9,11 @@ use crate::sdk::context::Context;
 use prost::Message;
 
 use crate::crypto::{ArrayLike, Crypto};
-use crate::sdk::wallet::WalletBehaviour;
 use crate::utils::hex;
 
-pub fn generate_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Wa: WalletBehaviour<C>,
+pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::new("generate")
+    Command::<Context<Co, Ex, Ev>>::new("generate")
         .aliases(&["gen", "g"])
         .about("generate a new key")
         .arg(
@@ -56,12 +52,9 @@ where
         })
 }
 
-pub fn list_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Wa: WalletBehaviour<C>,
+pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::new("list")
+    Command::<Context<Co, Ex, Ev>>::new("list")
         .aliases(&["ls", "l"])
         .about("list keys")
         .handler(|_cmd, _m, ctx| {
@@ -85,12 +78,9 @@ where
         })
 }
 
-pub fn export_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Wa: WalletBehaviour<C>,
+pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::new("export")
+    Command::<Context<Co, Ex, Ev>>::new("export")
         .about("export key")
         .arg(
             Arg::new("id")
@@ -133,12 +123,9 @@ where
         })
 }
 
-pub fn use_key<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Wa: WalletBehaviour<C>,
+pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::new("use-key")
+    Command::<Context<Co, Ex, Ev>>::new("use-key")
         .about("select a key as default")
         .arg(
             Arg::new("id")
@@ -174,12 +161,9 @@ where
         })
 }
 
-pub fn key_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
-where
-    C: Crypto,
-    Wa: WalletBehaviour<C>,
+pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::new("key")
+    Command::<Context<Co, Ex, Ev>>::new("key")
         .about("Key commands")
         .setting(AppSettings::SubcommandRequired)
         .subcommands([

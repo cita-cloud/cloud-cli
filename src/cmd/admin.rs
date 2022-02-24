@@ -39,7 +39,7 @@ pub fn update_validators<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, 
 where
     Co: AdminBehaviour,
 {
-    Command::<'help, Context<Co, Ex, Ev>>::new("update-validators")
+    Command::<Context<Co, Ex, Ev>>::new("update-validators")
         .about("Update validators of the chain")
         .arg(
             Arg::new("validators")
@@ -68,7 +68,7 @@ pub fn set_block_interval<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex,
 where
     Co: AdminBehaviour,
 {
-    Command::<'help, Context<Co, Ex, Ev>>::new("set-block-interval")
+    Command::<Context<Co, Ex, Ev>>::new("set-block-interval")
         .about("Set block interval")
         .arg(
             Arg::new("block_interval")
@@ -91,7 +91,7 @@ pub fn emergency_brake<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev
 where
     Co: AdminBehaviour,
 {
-    Command::<'help, Context<Co, Ex, Ev>>::new("emergency-brake")
+    Command::<Context<Co, Ex, Ev>>::new("emergency-brake")
         .about("Send emergency brake cmd to chain")
         .arg(
             Arg::new("switch")

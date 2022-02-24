@@ -1,12 +1,12 @@
 mod admin;
-// mod rpc;
+mod rpc;
 // // // mod executor;
 // // // #[cfg(feature = "evm")]
-// mod evm;
+mod evm;
 // // mod wallet;
 // mod key;
-// mod cldi;
-// mod bench;
+mod cldi;
+mod bench;
 
 // pub use cldi::cldi_cmd;
 
@@ -27,10 +27,10 @@ use anyhow::{anyhow, bail, ensure, Context as _, Result};
 //     // No &mut for ArgMatches bc there is no much thing we can do with it.
 //     fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
 
-/// Command handler that associated with a command.
-pub type CommandHandler<'help, Ctx> =
-    // No &mut for ArgMatches bc there is no much thing we can do with it.
-    Box<dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help>;
+// /// Command handler that associated with a command.
+// pub type CommandHandler<'help, Ctx> =
+//     // No &mut for ArgMatches bc there is no much thing we can do with it.
+//     Box<dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help>;
 
 
 /// Command

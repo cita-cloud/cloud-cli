@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::config::Config;
+use crate::config::{Config, ContextSetting};
 use crate::crypto::{ArrayLike, Crypto};
 
 use tonic::transport::channel::Channel;
@@ -45,18 +45,31 @@ pub struct Context<Co, Ex, Ev> {
     pub evm: Ev,
 
     pub wallet: Wallet,
+
     pub config: Config,
+    pub current_setting: ContextSetting,
 
     pub rt: CancelableRuntime,
-
-    pub current_account_id: String,
 }
 
 impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
     pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
-        let current = self.wallet.get(&self.current_account_id).ok_or_else(|| anyhow!("current account no found"))?;
+        let current = self.wallet.get(&self.current_setting.account_id).ok_or_else(|| anyhow!("current account no found"))?;
         current.unlocked().ok_or_else(|| anyhow!("current account is locked, please unlock it first"))
     }
+
+    pub fn current_controller_addr(&self) -> &str {
+        &self.current_setting.controller_addr
+    }
+
+    pub fn current_executor_addr(&self) -> &str {
+        &self.current_setting.executor_addr
+    }
+
+    pub fn switch_context(&mut self, context_name: &str) -> Result<()> {
+        todo!()
+    }
+
 } 
 
 

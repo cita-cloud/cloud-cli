@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::Context as _;
 use anyhow::Result;
 use rayon::prelude::*;
 use std::future::Future;
@@ -11,6 +11,7 @@ use super::Command;
 use crate::crypto::Crypto;
 use crate::sdk::client::GrpcClientBehaviour;
 use clap::Arg;
+use crate::sdk::context::Context;
 
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
@@ -20,7 +21,6 @@ use crate::sdk::{
         ControllerBehaviour, SignerBehaviour, TransactionSenderBehaviour,
         ControllerClient,
     },
-    wallet::WalletBehaviour,
 };
 use crate::proto::{
     blockchain::Transaction,
@@ -33,13 +33,11 @@ use crate::proto::{
 
 use crate::utils::{parse_addr, parse_data, parse_value, hex};
 
-pub fn bench_send<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn bench_send<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    C: Crypto,
-    Co: ControllerBehaviour<C> + GrpcClientBehaviour + Clone + Send + Sync + 'static,
-    Wa: WalletBehaviour<C>,
+    Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
 {
-    Command::new("bench-send")
+    Command::<Context<Co, Ex, Ev>>::new("bench-send")
         .about("Send transactions with {-c} workers over {--connections} connections")
         .arg(
             Arg::new("concurrency")
@@ -85,8 +83,9 @@ where
                 .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
 
+            let controller_addr = ctx.current_controller_addr();
+            let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
-                let controller_addr = &ctx.config.controller_addr;
                 let connector = || async { 
                     if timeout > 0 {
                         Co::connect_timeout(controller_addr, Duration::from_secs(timeout)).await
@@ -99,7 +98,6 @@ where
                     tokio::try_join!(ctx.controller.get_block_number(false), ctx.controller.get_system_config())
                         .context("failed to fetch chain status")?;
 
-                let signer = ctx.wallet.current_account().await?.1;
                 let workload_builder = || {
                     let mut rng = thread_rng();
                     let raw_tx = Transaction {
@@ -368,6 +366,7 @@ where
     let before_preparing = || println!("{preparing_info}");
     let before_working = || {
         println!("{working_info}");
+        // start the timer
         t.replace(std::time::Instant::now());
     };
 

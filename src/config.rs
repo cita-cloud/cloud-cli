@@ -1,5 +1,7 @@
+use std::default;
 use std::path::Path;
 use std::path::PathBuf;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
@@ -19,7 +21,7 @@ pub struct Config {
     pub data_dir: PathBuf,
 
     pub default_context: String,
-    pub contexts: Vec<ContextConfig>,
+    pub context_settings: BTreeMap<String, ContextSetting>,
 }
 
 impl Config {
@@ -58,26 +60,33 @@ impl Default for Config {
             let home = home::home_dir().expect("cannot find home dir");
             home.join(".cloud-cli-v0.3.0")
         };
+        let default_context = "default".to_string();
+        let context_settings = {
+            let mut m = BTreeMap::new();
+            m.insert(default_context.clone(), ContextSetting::default());
+            m
+        };
         Self {
-            default_context: "default".into(),
+            default_context,
             data_dir,
-            contexts: vec![ContextConfig::default()],
+            context_settings,
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ContextConfig {
-    name: String,
-    controller_addr: String,
-    executor_addr: String,
-    account_id: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextSetting {
+    pub controller_addr: String,
+    pub executor_addr: String,
+
+    pub account_id: String,
+
+    // pub crypto_type: 
 }
 
-impl Default for ContextConfig {
+impl Default for ContextSetting {
     fn default() -> Self {
         Self {
-            name: "default".into(),
             controller_addr: "localhost:50004".into(),
             executor_addr: "localhost:50002".into(),
             account_id: "default".into(),

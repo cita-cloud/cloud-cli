@@ -6,7 +6,7 @@ use tonic::transport::Endpoint;
 use super::Command;
 use super::{
     admin,
-    key,
+    // key,
     evm,
     rpc,
     bench,
@@ -14,18 +14,17 @@ use super::{
 
 use crate::crypto::Crypto;
 use crate::sdk::{
-    account::AccountBehaviour, admin::AdminBehaviour, controller::ControllerBehaviour,
-    evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour, wallet::WalletBehaviour,
+    admin::AdminBehaviour, controller::ControllerBehaviour,
+    evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour,
     controller::ControllerClient, executor::ExecutorClient, evm::EvmClient,
-    wallet::Wallet
+    wallet::Wallet, context::Context,
 };
 
 
-pub fn get_cmd<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Co, Ex, Ev, Wa>
+pub fn get_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    C: Crypto,
-    Co: ControllerBehaviour<C>,
-    Ev: EvmBehaviour<C>,
+    Co: ControllerBehaviour,
+    Ev: EvmBehaviour,
 {
     Command::new("get")
         .about("Get chain info")
@@ -46,7 +45,7 @@ where
         ])
 }
 
-// pub fn with_completions_subcmd<'help, C, Co, Ex, Ev, Wa>(cmd: Command<'help, Co, Ex, Ev, Wa>) -> Command<'help, Co, Ex, Ev, Wa> {
+// pub fn with_completions_subcmd<'help, Co, Ex, Ev>(cmd: Command<'help, Co, Ex, Ev, Wa>) -> Command<'help, Context<Co, Ex, Ev>> {
 //     let without_handler = || Command::new("completions")
 //         .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
 //         .arg(
@@ -73,9 +72,9 @@ where
 //     cmd.subcommand(completions_subcmd)
 // }
 
-pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
+pub fn cldi_cmd<'help>() -> Command<'help, Context<ControllerClient, ExecutorClient, EvmClient>>
 {
-    Command::new("cldi")
+    Command::<Context<ControllerClient, ExecutorClient, EvmClient>>::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
         .arg(
             Arg::new("controller-addr")
@@ -126,15 +125,15 @@ pub fn cldi_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, Executor
         })
         .subcommands([
             admin::admin_cmd(),
-            key::key_cmd(),
+            // key::key_cmd(),
             // TODO: figure out why it cannot infer C.
-            self::get_cmd::<C, _, _, _, _>(),
+            self::get_cmd(),
             // evm::store_contract_abi(),
             // rpc::add_node::<C, _, _, _, _>(),
             evm::evm_cmd(),
-            rpc::rpc_cmd::<C, _, _, _, _>(),
+            rpc::rpc_cmd(),
             rpc::send(),
-            rpc::call::<C, _, _, _, _>(),
+            rpc::call(),
             bench::bench_send().name("bench"),
         ])
 }
