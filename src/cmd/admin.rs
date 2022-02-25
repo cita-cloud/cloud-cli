@@ -1,10 +1,10 @@
 use clap::Arg;
 
-use crate::sdk::admin::AdminBehaviour;
+use crate::core::admin::AdminBehaviour;
 use crate::utils::{parse_addr, parse_data};
 
 use super::*;
-use crate::sdk::context::Context;
+use crate::core::context::Context;
 use prost::Message;
 
 use crate::crypto::{ArrayLike, Crypto, Hash, Address};

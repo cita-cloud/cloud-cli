@@ -12,7 +12,7 @@ mod context;
 pub use cldi::cldi_cmd;
 
 use crate::crypto::Crypto;
-use crate::sdk::context::Context;
+use crate::core::context::Context;
 use clap::AppFlags;
 use clap::AppSettings;
 use clap::{Arg, ArgMatches};

@@ -9,14 +9,14 @@ use rand::{thread_rng, Rng};
 
 use super::Command;
 use crate::crypto::Crypto;
-use crate::sdk::client::GrpcClientBehaviour;
+use crate::core::client::GrpcClientBehaviour;
 use clap::Arg;
-use crate::sdk::context::Context;
+use crate::core::context::Context;
 
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 
-use crate::sdk::{
+use crate::core::{
     controller::{
         ControllerBehaviour, SignerBehaviour, TransactionSenderBehaviour,
         ControllerClient,

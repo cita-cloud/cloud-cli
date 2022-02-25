@@ -7,11 +7,11 @@ use crate::utils::{parse_addr, parse_hash, parse_data, hex};
 
 // use super::*;
 use super::Command;
-use crate::sdk::context::Context;
+use crate::core::context::Context;
 use prost::Message;
-use crate::sdk::controller::ControllerBehaviour;
-use crate::sdk::controller::TransactionSenderBehaviour;
-use crate::sdk::executor::ExecutorBehaviour;
+use crate::core::controller::ControllerBehaviour;
+use crate::core::controller::TransactionSenderBehaviour;
+use crate::core::executor::ExecutorBehaviour;
 
 use tokio::try_join;
 

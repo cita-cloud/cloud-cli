@@ -3,7 +3,7 @@
 mod crypto;
 mod display;
 mod proto;
-mod sdk;
+mod core;
 mod utils;
 // mod wallet;
 mod cmd;
@@ -20,8 +20,8 @@ use crate::{
 };
 
 
-use sdk::context::Context;
-use sdk::{
+use crate::core::context::Context;
+use crate::core::{
     controller::ControllerClient,
     executor::ExecutorClient,
     evm::EvmClient,
