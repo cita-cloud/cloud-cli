@@ -2,6 +2,7 @@ use std::{path::{PathBuf, Path}, collections::{BTreeSet, BTreeMap}};
 use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::ensure;
+use anyhow::bail;
 
 use crate::{crypto::{ArrayLike, Crypto, SmCrypto, EthCrypto, Address, Hash}, utils::{parse_addr, parse_pk, parse_sk, parse_data}};
 use serde::{Deserialize, Serialize};
@@ -70,7 +71,7 @@ pub struct Account<C: Crypto> {
 }
 
 impl<C: Crypto> Account<C> {
-    fn generate() -> Self {
+    pub fn generate() -> Self {
         let (public_key, secret_key) = C::generate_keypair();
         let address = C::pk2addr(&public_key);
 
@@ -81,7 +82,7 @@ impl<C: Crypto> Account<C> {
         }
     }
 
-    fn from_secret_key(sk: C::SecretKey) -> Self {
+    pub fn from_secret_key(sk: C::SecretKey) -> Self {
         let public_key = C::sk2pk(&sk);
         let address = C::pk2addr(&public_key);
         Self {
@@ -91,11 +92,24 @@ impl<C: Crypto> Account<C> {
         }
     }
 
-    fn sign(&self, msg: &[u8]) -> C::Signature {
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+
+    pub fn public_key(&self) -> &C::PublicKey {
+        &self.public_key
+    }
+
+    // TODO: maybe remove the `expose_`
+    pub fn expose_secret_key(&self) -> &C::SecretKey {
+        &self.secret_key
+    }
+
+    pub fn sign(&self, msg: &[u8]) -> C::Signature {
         C::sign(msg, &self.secret_key)
     }
 
-    fn lock(self, pw: &[u8]) -> LockedAccount<C> {
+    pub fn lock(self, pw: &[u8]) -> LockedAccount<C> {
         let encrypted_sk = C::encrypt(self.secret_key.as_slice(), pw);
         LockedAccount {
             address: self.address,
@@ -105,7 +119,7 @@ impl<C: Crypto> Account<C> {
     }
 
     // We don't want to impl Serialize for it directly in case of leaking secret key without noticing.
-    fn serialize_with_secret_key<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize_with_secret_key<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
     {
         SerializedAccount {
             address: hex(self.address.as_slice()),
@@ -114,7 +128,7 @@ impl<C: Crypto> Account<C> {
         }.serialize(serializer)
     }
 
-    fn deserialize<'de, D:  Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error>
+    pub fn deserialize<'de, D:  Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error>
     {
         use serde::de::Unexpected;
         use serde::de::Error;
@@ -214,6 +228,14 @@ pub struct LockedAccount<C: Crypto> {
 }
 
 impl<C: Crypto> LockedAccount<C> {
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+
+    pub fn public_key(&self) -> &C::PublicKey {
+        &self.public_key
+    }
+
     pub fn unlock(self, pw: &[u8]) -> Result<Account<C>> {
         let decrypted = C::decrypt(&self.encrypted_sk, pw).ok_or(anyhow!("invalid password"))?;
         let secret_key = C::SecretKey::try_from_slice(&decrypted)
@@ -332,10 +354,24 @@ pub enum MultiCryptoAccount {
 }
 
 impl MultiCryptoAccount {
-    pub fn lock(self, pw: &[u8]) -> MultiCryptoLockedAccount {
+    pub fn address(&self) -> &Address {
         match self {
-            Self::Sm(ac) => MultiCryptoLockedAccount::Sm(ac.lock(pw)),
-            Self::Eth(ac) => MultiCryptoLockedAccount::Eth(ac.lock(pw)),
+            Self::Sm(ac) => ac.address(),
+            Self::Eth(ac) => ac.address(),
+        }
+    }
+
+    pub fn public_key(&self) -> &[u8] {
+        match self {
+            Self::Sm(ac) => ac.public_key().as_slice(),
+            Self::Eth(ac) => ac.public_key().as_slice(),
+        }
+    }
+
+    pub fn lock(self, pw: &[u8]) -> LockedMultiCryptoAccount {
+        match self {
+            Self::Sm(ac) => LockedMultiCryptoAccount::Sm(ac.lock(pw)),
+            Self::Eth(ac) => LockedMultiCryptoAccount::Eth(ac.lock(pw)),
         }
     }
 }
@@ -354,7 +390,7 @@ impl From<Account<EthCrypto>> for MultiCryptoAccount {
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "crypto_type")]
-pub enum MultiCryptoLockedAccount {
+pub enum LockedMultiCryptoAccount {
     Sm(
         #[serde(with = "LockedAccount")]
         LockedAccount<SmCrypto>
@@ -365,7 +401,22 @@ pub enum MultiCryptoLockedAccount {
     ),
 }
 
-impl MultiCryptoLockedAccount {
+impl LockedMultiCryptoAccount {
+    pub fn address(&self) -> &Address {
+        match self {
+            Self::Sm(ac) => ac.address(),
+            Self::Eth(ac) => ac.address(),
+        }
+    }
+
+    pub fn public_key(&self) -> &[u8] {
+        match self {
+            Self::Sm(ac) => ac.public_key().as_slice(),
+            Self::Eth(ac) => ac.public_key().as_slice(),
+        }
+    }
+
+
     pub fn unlock(self, pw: &[u8]) -> Result<MultiCryptoAccount> {
         let unlocked = match self {
             Self::Sm(ac) => MultiCryptoAccount::Sm(ac.unlock(pw)?),
@@ -375,13 +426,13 @@ impl MultiCryptoLockedAccount {
     }
 }
 
-impl From<LockedAccount<SmCrypto>> for MultiCryptoLockedAccount {
+impl From<LockedAccount<SmCrypto>> for LockedMultiCryptoAccount {
     fn from(locked: LockedAccount<SmCrypto>) -> Self {
         Self::Sm(locked)
     }
 }
 
-impl From<LockedAccount<EthCrypto>> for MultiCryptoLockedAccount {
+impl From<LockedAccount<EthCrypto>> for LockedMultiCryptoAccount {
     fn from(locked: LockedAccount<EthCrypto>) -> Self {
         Self::Eth(locked)
     }
@@ -392,21 +443,49 @@ impl From<LockedAccount<EthCrypto>> for MultiCryptoLockedAccount {
 #[serde(untagged)]
 pub enum MaybeLockedAccount {
     Unlocked(MultiCryptoAccount),
-    Locked(MultiCryptoLockedAccount),
+    Locked(LockedMultiCryptoAccount),
 }
 
 impl MaybeLockedAccount {
-    pub fn unlock(self, pw: &[u8]) -> Result<MultiCryptoAccount> {
+    pub fn address(&self) -> &Address {
         match self {
-            Self::Locked(locked) => locked.unlock(pw),
-            Self::Unlocked(unlocked) => Ok(unlocked),
+            Self::Unlocked(unlocked) => unlocked.address(),
+            Self::Locked(locked) => locked.address(),
         }
     }
 
-    pub fn unlocked(&self) -> Option<&MultiCryptoAccount> {
+    pub fn public_key(&self) -> &[u8] {
         match self {
-            Self::Unlocked(ac) => Some(ac),
-            Self::Locked(_) => None,
+            Self::Unlocked(unlocked) => unlocked.public_key(),
+            Self::Locked(locked) => locked.public_key(),
+        }
+    }
+
+    pub fn is_locked(&self) -> bool {
+        match self {
+            Self::Unlocked(..) => false,
+            Self::Locked(..) => true,
+        }
+    }
+
+    pub fn lock(self, pw: &[u8]) -> LockedMultiCryptoAccount {
+        match self {
+            Self::Unlocked(unlocked) => unlocked.lock(pw),
+            Self::Locked(locked) => locked,
+        }
+    }
+
+    pub fn unlock(self, pw: &[u8]) -> Result<MultiCryptoAccount> {
+        match self {
+            Self::Unlocked(unlocked) => Ok(unlocked),
+            Self::Locked(locked) => locked.unlock(pw),
+        }
+    }
+
+    pub fn unlocked(&self) -> Result<&MultiCryptoAccount> {
+        match self {
+            Self::Unlocked(ac) => Ok(ac),
+            Self::Locked(_) => bail!("account is locked, please unlock it first"),
         }
     }
 }
@@ -431,18 +510,18 @@ impl From<MultiCryptoAccount> for MaybeLockedAccount {
 
 impl From<LockedAccount<SmCrypto>> for MaybeLockedAccount {
     fn from(locked: LockedAccount<SmCrypto>) -> Self {
-        MultiCryptoLockedAccount::from(locked).into()
+        LockedMultiCryptoAccount::from(locked).into()
     }
 }
 
 impl From<LockedAccount<EthCrypto>> for MaybeLockedAccount {
     fn from(locked: LockedAccount<EthCrypto>) -> Self {
-        MultiCryptoLockedAccount::from(locked).into()
+        LockedMultiCryptoAccount::from(locked).into()
     }
 }
 
-impl From<MultiCryptoLockedAccount> for MaybeLockedAccount {
-    fn from(locked: MultiCryptoLockedAccount) -> Self {
+impl From<LockedMultiCryptoAccount> for MaybeLockedAccount {
+    fn from(locked: LockedMultiCryptoAccount) -> Self {
         Self::Locked(locked)
     }
 }
@@ -524,40 +603,49 @@ impl Wallet {
         Ok(this)
     }
 
-    pub fn save(&mut self, id: &str, maybe_locked: impl Into<MaybeLockedAccount>) -> Result<()> {
+    pub fn save(&mut self, account_id: &str, maybe_locked: impl Into<MaybeLockedAccount>) -> Result<()> {
         let maybe_locked = maybe_locked.into();
          
         let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
-        let account_file = accounts_dir.join(format!("{id}.toml"));
+        let account_file = accounts_dir.join(format!("{account_id}.toml"));
 
         let content = toml::to_string_pretty(&maybe_locked)?;
         safe_save(account_file, content.as_bytes(), false)?;
 
-        self.accounts.insert(id.into(), maybe_locked);
+        self.accounts.insert(account_id.into(), maybe_locked);
         Ok(())
     }
 
-    fn load(&mut self, id: &str) -> Result<()> {
+    fn load(&mut self, account_id: &str) -> Result<()> {
         let content = {
             let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
-            let path = accounts_dir.join(format!("{id}.toml"));
+            let path = accounts_dir.join(format!("{account_id}.toml"));
             fs::read_to_string(path)
                 .context("cannot read account file")?
         };
 
         let maybe_locked: MaybeLockedAccount = toml::from_str(&content)?;
-        self.accounts.insert(id.into(), maybe_locked);
+        self.accounts.insert(account_id.into(), maybe_locked);
 
         Ok(())
     }
 
-    pub fn get(&self, id: &str) -> Option<&MaybeLockedAccount> {
-        self.accounts.get(id)
+    pub fn get(&self, account_id: &str) -> Option<&MaybeLockedAccount> {
+        self.accounts.get(account_id)
     }
 
-    pub fn unlock(&mut self, id: &str, pw: &[u8]) -> Result<()> {
-        let (id, maybe_locked) = self.accounts.remove_entry(id)
-            .ok_or(anyhow!("account not found"))?;
+    pub fn lock(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
+        let (id, maybe_locked) = self.accounts.remove_entry(account_id)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
+        let locked = maybe_locked.lock(pw);
+        self.accounts.insert(id, locked.into());
+
+        Ok(())
+    }
+
+    pub fn unlock(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
+        let (id, maybe_locked) = self.accounts.remove_entry(account_id)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
         let unlocked = maybe_locked.unlock(pw)?;
         self.accounts.insert(id, unlocked.into());
 

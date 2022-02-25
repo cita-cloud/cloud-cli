@@ -74,6 +74,12 @@ impl Default for Config {
     }
 }
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum CryptoType {
+    Sm,
+    Eth,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextSetting {
     pub controller_addr: String,
@@ -81,7 +87,7 @@ pub struct ContextSetting {
 
     pub account_id: String,
 
-    // pub crypto_type: 
+    pub crypto_type: CryptoType,
 }
 
 impl Default for ContextSetting {
@@ -90,6 +96,7 @@ impl Default for ContextSetting {
             controller_addr: "localhost:50004".into(),
             executor_addr: "localhost:50002".into(),
             account_id: "default".into(),
+            crypto_type: CryptoType::Sm,
         }
     }
 }

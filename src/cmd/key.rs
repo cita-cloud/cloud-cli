@@ -1,12 +1,19 @@
 use clap::App;
 use clap::Arg;
+use serde_json::json;
 
+use crate::config::CryptoType;
+use crate::crypto::EthCrypto;
+use crate::crypto::SmCrypto;
+use crate::sdk::wallet::Account;
 use crate::sdk::wallet::MaybeLockedAccount;
+use crate::sdk::wallet::MultiCryptoAccount;
 use crate::utils::{parse_addr, parse_data};
 
 use super::*;
 use crate::sdk::context::Context;
 use prost::Message;
+use crate::display::Display;
 
 use crate::crypto::{ArrayLike, Crypto};
 use crate::utils::hex;
@@ -34,19 +41,21 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
-            let account = ctx.rt.block_on(async {
-                let wallet = &mut ctx.wallet;
+            let account: MultiCryptoAccount = match ctx.current_setting.crypto_type {
+                CryptoType::Sm => Account::<SmCrypto>::generate().into(),
+                CryptoType::Eth => Account::<EthCrypto>::generate().into(),
+            };
 
-                wallet.generate_account(id, pw).await?;
-                if let Some(pw) = pw {
-                    // TODO: maybe auto unlock generated account?
-                    wallet.unlock_account(id, pw).await?;
-                }
-                wallet.get_account(id).await
-            })??;
+            let maybe_locked: MaybeLockedAccount = if let Some(pw) = pw {
+                account.lock(pw.as_bytes()).into()
+            } else {
+                account.into()
+            };
+            let output = json!(maybe_locked);
 
-            let addr = hex(account.address().as_slice());
-            println!("key `{id}` generated, address: {addr}");
+            ctx.wallet.save(id.into(), maybe_locked)?;
+
+            println!("{output}");
 
             Ok(())
         })
@@ -58,22 +67,16 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         .aliases(&["ls", "l"])
         .about("list keys")
         .handler(|_cmd, _m, ctx| {
-            let id_and_accounts = ctx.rt.block_on(ctx.wallet.list_account())?;
+            let keys = ctx.wallet.list().map(|(id, account)| {
+                json!({
+                    "id": id,
+                    "address": hex(account.address()),
+                    "pubkey": hex(account.public_key()),
+                    "is_locked": account.is_locked(),
+                })
+            }).collect::<Vec<_>>();
+            println!("{}", json!(keys));
 
-            for (id, account) in id_and_accounts {
-                // TODO: impl crate::display::Display
-                match account {
-                    MaybeLockedAccount::Locked(..) => {
-                        println!("id `{id}`: locked");
-                    }
-                    MaybeLockedAccount::Unlocked(unlocked) => {
-                        let addr = hex(unlocked.address().as_slice());
-                        let pk = hex(unlocked.public_key().as_slice());
-                        println!("id: `{id}`\naddress: {addr}\npubkey: {pk}");
-                    }
-                }
-                println!();
-            }
             Ok(())
         })
 }
@@ -100,24 +103,27 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
-            ctx.rt.block_on(async {
-                let wallet = &mut ctx.wallet;
 
-                if let Some(pw) = pw {
-                    wallet.unlock_account(id, pw)
-                        .await
-                        .context("failed to export account, please check your password")?;
-                }
+            // It's awkward to implement it this way due to some ownership design with the unlock.
+            // This can be solved with `#[derive(Clone)]` but it's better not to implement Clone for
+            // sensitive data.
 
-                let account = wallet.get_account(id).await.context("failed to get key")?;
+            // Be careful to keep the account's original lock status, i.e. don't unlock/lock it
+            // just for exporting.
+            let was_locked = ctx.wallet.get(id)
+                .ok_or_else(|| anyhow!("account `{}` not found", id))?
+                .is_locked();
 
-                let addr = hex(account.address().as_slice());
-                let pk = hex(account.public_key().as_slice());
-                let sk = hex(account.expose_secret_key().as_slice());
-                println!("id: `{id}`\naddress: {addr}\npubkey: {pk}\nprivkey: {sk}");
+            if let Some(pw) = pw {
+                ctx.wallet.unlock(id, pw.as_bytes())?;
+            }
+            let unlocked = ctx.wallet.get(id).unwrap().unlocked()?;
+            let output = json!(unlocked);
+            println!("{}", output.display());
 
-                anyhow::Ok(())
-            })??;
+            if was_locked {
+                ctx.wallet.lock(id, pw.unwrap().as_bytes())?;
+            }
 
             Ok(())
         })
@@ -126,7 +132,7 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
     Command::<Context<Co, Ex, Ev>>::new("use-key")
-        .about("select a key as default")
+        .about("unlock a key to be used as default")
         .arg(
             Arg::new("id")
                 .help("The ID of the key")
@@ -143,19 +149,12 @@ pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         .handler(|_cmd, m, ctx| {
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
-            ctx.rt.block_on(async {
-                let wallet = &mut ctx.wallet;
 
-                if let Some(pw) = pw {
-                    wallet.unlock_account(id, pw)
-                        .await
-                        .context("failed to export account, please check your password")?;
-                }
-
-                wallet.set_current_account(id).await?;
-
-                anyhow::Ok(())
-            })??;
+            if let Some(pw) = pw {
+                ctx.wallet.unlock(id, pw.as_bytes())?;
+            }
+            ctx.wallet.get(id).ok_or_else(|| anyhow!("account `{}` not found", id))?;
+            ctx.current_setting.account_id = id.into();
 
             Ok(())
         })

@@ -6,7 +6,7 @@ use tonic::transport::Endpoint;
 use super::Command;
 use super::{
     admin,
-    // key,
+    key,
     evm,
     rpc,
     bench,
@@ -117,7 +117,7 @@ where
         })
         .subcommands([
             admin::admin_cmd(),
-            // key::key_cmd(),
+            key::key_cmd(),
             // TODO: figure out why it cannot infer C.
             self::get_cmd(),
             // evm::store_contract_abi(),
