@@ -236,7 +236,7 @@ impl<C: Crypto> LockedAccount<C> {
         &self.public_key
     }
 
-    pub fn unlock(self, pw: &[u8]) -> Result<Account<C>> {
+    pub fn unlock(&self, pw: &[u8]) -> Result<Account<C>> {
         let decrypted = C::decrypt(&self.encrypted_sk, pw).ok_or(anyhow!("invalid password"))?;
         let secret_key = C::SecretKey::try_from_slice(&decrypted)
             .map_err(|_| anyhow!("the decrypted secret key is invalid"))?;
@@ -417,7 +417,7 @@ impl LockedMultiCryptoAccount {
     }
 
 
-    pub fn unlock(self, pw: &[u8]) -> Result<MultiCryptoAccount> {
+    pub fn unlock(&self, pw: &[u8]) -> Result<MultiCryptoAccount> {
         let unlocked = match self {
             Self::Sm(ac) => MultiCryptoAccount::Sm(ac.unlock(pw)?),
             Self::Eth(ac) => MultiCryptoAccount::Eth(ac.unlock(pw)?),
@@ -441,12 +441,12 @@ impl From<LockedAccount<EthCrypto>> for LockedMultiCryptoAccount {
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum MaybeLockedAccount {
+pub enum MaybeLocked {
     Unlocked(MultiCryptoAccount),
     Locked(LockedMultiCryptoAccount),
 }
 
-impl MaybeLockedAccount {
+impl MaybeLocked {
     pub fn address(&self) -> &Address {
         match self {
             Self::Unlocked(unlocked) => unlocked.address(),
@@ -475,9 +475,22 @@ impl MaybeLockedAccount {
         }
     }
 
-    pub fn unlock(self, pw: &[u8]) -> Result<MultiCryptoAccount> {
+    pub fn unlock(&self, pw: &[u8]) -> Result<MultiCryptoAccount> {
+        // manually clone here to avoid impl Clone for sensitive data
+        fn cloned<C: Crypto>(ac: &Account<C>) -> Account<C> {
+            Account::<C> {
+                address: ac.address,
+                public_key: ac.public_key.clone(),
+                secret_key: ac.secret_key.clone(),
+            }
+        }
         match self {
-            Self::Unlocked(unlocked) => Ok(unlocked),
+            Self::Unlocked(unlocked) => {
+                match unlocked {
+                    MultiCryptoAccount::Eth(ac) => Ok(cloned(ac).into()),
+                    MultiCryptoAccount::Sm(ac) => Ok(cloned(ac).into()),
+                }
+            },
             Self::Locked(locked) => locked.unlock(pw),
         }
     }
@@ -490,37 +503,37 @@ impl MaybeLockedAccount {
     }
 }
 
-impl From<Account<SmCrypto>> for MaybeLockedAccount {
+impl From<Account<SmCrypto>> for MaybeLocked {
     fn from(account: Account<SmCrypto>) -> Self {
         MultiCryptoAccount::from(account).into()
     }
 }
 
-impl From<Account<EthCrypto>> for MaybeLockedAccount {
+impl From<Account<EthCrypto>> for MaybeLocked {
     fn from(account: Account<EthCrypto>) -> Self {
         MultiCryptoAccount::from(account).into()
     }
 }
 
-impl From<MultiCryptoAccount> for MaybeLockedAccount {
+impl From<MultiCryptoAccount> for MaybeLocked {
     fn from(unlocked: MultiCryptoAccount) -> Self {
         Self::Unlocked(unlocked)
     }
 }
 
-impl From<LockedAccount<SmCrypto>> for MaybeLockedAccount {
+impl From<LockedAccount<SmCrypto>> for MaybeLocked {
     fn from(locked: LockedAccount<SmCrypto>) -> Self {
         LockedMultiCryptoAccount::from(locked).into()
     }
 }
 
-impl From<LockedAccount<EthCrypto>> for MaybeLockedAccount {
+impl From<LockedAccount<EthCrypto>> for MaybeLocked {
     fn from(locked: LockedAccount<EthCrypto>) -> Self {
         LockedMultiCryptoAccount::from(locked).into()
     }
 }
 
-impl From<LockedMultiCryptoAccount> for MaybeLockedAccount {
+impl From<LockedMultiCryptoAccount> for MaybeLocked {
     fn from(locked: LockedMultiCryptoAccount) -> Self {
         Self::Locked(locked)
     }
@@ -565,7 +578,7 @@ impl SignerBehaviour for MultiCryptoAccount {
 
 pub struct Wallet {
     wallet_dir: PathBuf,
-    accounts: BTreeMap<String, MaybeLockedAccount>,
+    accounts: BTreeMap<String, MaybeLocked>,
 }
 
 impl Wallet {
@@ -575,7 +588,7 @@ impl Wallet {
         let wallet_dir = wallet_dir.as_ref().to_path_buf();
         let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
 
-        fs::create_dir_all(&accounts_dir)
+        fs::create_dir(&accounts_dir)
             .context("failed to create accounts dir")?;
 
         let mut this = Self {
@@ -603,7 +616,7 @@ impl Wallet {
         Ok(this)
     }
 
-    pub fn save(&mut self, account_id: &str, maybe_locked: impl Into<MaybeLockedAccount>) -> Result<()> {
+    pub fn save(&mut self, account_id: &str, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
         let maybe_locked = maybe_locked.into();
          
         let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
@@ -624,13 +637,13 @@ impl Wallet {
                 .context("cannot read account file")?
         };
 
-        let maybe_locked: MaybeLockedAccount = toml::from_str(&content)?;
+        let maybe_locked: MaybeLocked = toml::from_str(&content)?;
         self.accounts.insert(account_id.into(), maybe_locked);
 
         Ok(())
     }
 
-    pub fn get(&self, account_id: &str) -> Option<&MaybeLockedAccount> {
+    pub fn get(&self, account_id: &str) -> Option<&MaybeLocked> {
         self.accounts.get(account_id)
     }
 
@@ -644,15 +657,14 @@ impl Wallet {
     }
 
     pub fn unlock(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
-        let (id, maybe_locked) = self.accounts.remove_entry(account_id)
+        let maybe_locked = self.accounts.get_mut(account_id)
             .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
-        let unlocked = maybe_locked.unlock(pw)?;
-        self.accounts.insert(id, unlocked.into());
+        *maybe_locked = maybe_locked.unlock(pw)?.into();
 
         Ok(())
     }
 
-    pub fn list(&self) -> impl Iterator<Item = (&String, &MaybeLockedAccount)> {
+    pub fn list(&self) -> impl Iterator<Item = (&String, &MaybeLocked)> {
         self.accounts.iter()
     }
 }

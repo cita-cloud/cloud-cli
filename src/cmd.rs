@@ -7,6 +7,7 @@ mod evm;
 mod key;
 mod cldi;
 mod bench;
+mod context;
 
 pub use cldi::cldi_cmd;
 

@@ -10,6 +10,7 @@ use super::{
     evm,
     rpc,
     bench,
+    context,
 };
 
 use crate::crypto::Crypto;
@@ -80,7 +81,7 @@ where
     Ev: EvmBehaviour + GrpcClientBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("cldi")
-        .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
+        .about("The command line interface to interact with `CITA-Cloud v6.3.0`")
         .arg(
             Arg::new("controller-addr")
                 .help("controller address")
@@ -122,6 +123,7 @@ where
             self::get_cmd(),
             // evm::store_contract_abi(),
             // rpc::add_node::<C, _, _, _, _>(),
+            context::context_cmd(),
             evm::evm_cmd(),
             rpc::rpc_cmd(),
             rpc::send(),

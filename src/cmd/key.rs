@@ -6,7 +6,7 @@ use crate::config::CryptoType;
 use crate::crypto::EthCrypto;
 use crate::crypto::SmCrypto;
 use crate::sdk::wallet::Account;
-use crate::sdk::wallet::MaybeLockedAccount;
+use crate::sdk::wallet::MaybeLocked;
 use crate::sdk::wallet::MultiCryptoAccount;
 use crate::utils::{parse_addr, parse_data};
 
@@ -20,7 +20,7 @@ use crate::utils::hex;
 
 pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
-    Command::<Context<Co, Ex, Ev>>::new("generate")
+    Command::<Context<Co, Ex, Ev>>::new("generate-key")
         .aliases(&["gen", "g"])
         .about("generate a new key")
         .arg(
@@ -46,11 +46,12 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
                 CryptoType::Eth => Account::<EthCrypto>::generate().into(),
             };
 
-            let maybe_locked: MaybeLockedAccount = if let Some(pw) = pw {
+            let maybe_locked: MaybeLocked = if let Some(pw) = pw {
                 account.lock(pw.as_bytes()).into()
             } else {
                 account.into()
             };
+            // TODO: don't display secret key
             let output = json!(maybe_locked);
 
             ctx.wallet.save(id.into(), maybe_locked)?;
@@ -75,7 +76,9 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
                     "is_locked": account.is_locked(),
                 })
             }).collect::<Vec<_>>();
-            println!("{}", json!(keys));
+
+            let output = serde_json::to_string_pretty(&keys)?;
+            println!("{}", output);
 
             Ok(())
         })
@@ -104,26 +107,19 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
 
-            // It's awkward to implement it this way due to some ownership design with the unlock.
-            // This can be solved with `#[derive(Clone)]` but it's better not to implement Clone for
-            // sensitive data.
+            let maybe_locked = ctx.wallet.get(id)
+                .ok_or_else(|| anyhow!("account `{}` not found", id))?;
 
-            // Be careful to keep the account's original lock status, i.e. don't unlock/lock it
-            // just for exporting.
-            let was_locked = ctx.wallet.get(id)
-                .ok_or_else(|| anyhow!("account `{}` not found", id))?
-                .is_locked();
+            let json = if let Some(pw) = pw {
+                let unlocked = maybe_locked.unlock(pw.as_bytes())?;
+                json!(unlocked)
+            } else {
+                let unlocked = maybe_locked.unlocked()?;
+                json!(unlocked)
+            };
 
-            if let Some(pw) = pw {
-                ctx.wallet.unlock(id, pw.as_bytes())?;
-            }
-            let unlocked = ctx.wallet.get(id).unwrap().unlocked()?;
-            let output = json!(unlocked);
-            println!("{}", output.display());
-
-            if was_locked {
-                ctx.wallet.lock(id, pw.unwrap().as_bytes())?;
-            }
+            let output = serde_json::to_string_pretty(&json)?;
+            println!("{}", output);
 
             Ok(())
         })
@@ -166,9 +162,9 @@ pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         .about("Key commands")
         .setting(AppSettings::SubcommandRequired)
         .subcommands([
-            generate_key(),
-            list_key(),
-            export_key(),
+            generate_key().name("generate"),
+            list_key().name("list"),
+            export_key().name("export"),
             use_key().name("use"),
         ])
 }

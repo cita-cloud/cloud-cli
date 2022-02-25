@@ -86,7 +86,6 @@ pub struct ContextSetting {
     pub executor_addr: String,
 
     pub account_id: String,
-
     pub crypto_type: CryptoType,
 }
 

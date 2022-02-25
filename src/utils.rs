@@ -76,14 +76,14 @@ pub fn remove_0x(s: &str) -> &str {
 }
 
 
-pub fn safe_save(path: impl AsRef<Path>, content: &[u8], replace: bool) -> Result<()> {
+pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool) -> Result<()> {
     let path = path.as_ref();
     let dir = path.parent().ok_or(anyhow!("cannot load containing dir"))?;
 
     let mut tmp = NamedTempFile::new_in(dir)?;
     tmp.write_all(content)?;
 
-    let mut f = if replace {
+    let mut f = if override_existing {
         tmp.persist(path)?
     } else {
         tmp.persist_noclobber(path)?

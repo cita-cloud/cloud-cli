@@ -23,6 +23,9 @@ use tonic::transport::Channel;
 
 pub type ControllerClient = crate::proto::controller::rpc_service_client::RpcServiceClient<Channel>;
 
+#[cfg(test)]
+pub type MockControllerClient = MockControllerBehaviour;
+
 #[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
 pub trait ControllerBehaviour {
@@ -454,5 +457,4 @@ where
 // pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
 //     async fn send_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash>;
 // }
-
 

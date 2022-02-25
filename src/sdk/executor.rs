@@ -17,6 +17,9 @@ use tonic::transport::Channel;
 pub type ExecutorClient =
     crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
 
+#[cfg(test)]
+pub type MockExecutorClient = MockExecutorBehaviour;
+
 #[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
 pub trait ExecutorBehaviour {
