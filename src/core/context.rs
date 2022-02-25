@@ -6,31 +6,10 @@ use crate::crypto::{ArrayLike, Crypto};
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 
-use crate::proto::{
-    blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudNormalTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
-    },
-    common::{Address, Empty, Hash, NodeInfo, NodeNetInfo, TotalNodeInfo},
-    controller::{BlockNumber, Flag, SystemConfig, TransactionIndex},
-    evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
-    executor::{CallRequest, CallResponse},
-};
-
 use std::future::Future;
 use super::client::GrpcClientBehaviour;
 use super::evm::EvmClient;
 use super::executor::ExecutorClient;
-use super::{
-    controller::{
-        ControllerBehaviour, ControllerClient, TransactionSenderBehaviour,
-        SignerBehaviour, UtxoType,
-    },
-    evm::EvmBehaviour,
-    evm::EvmBehaviourExt,
-    executor::ExecutorBehaviour,
-};
 // use super::controller::ControllerClient;
 use anyhow::Context as _;
 use anyhow::Result;
@@ -65,7 +44,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         let default_context_setting = config.context_settings.get(&config.default_context)
             .ok_or_else(|| anyhow!("missing default context setting"))?
             .clone();
-        // connect_lazy must be run in async environment.
+        // connect_lazy must run in async environment.
         let (controller, executor, evm) = rt.block_on(async {
             let co = Co::connect_lazy(&default_context_setting.controller_addr)?;
             let ex = Ex::connect_lazy(&default_context_setting.executor_addr)?;
@@ -98,10 +77,41 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         &self.current_setting.executor_addr
     }
 
-    pub fn switch_context(&mut self, context_name: &str) -> Result<()> {
-        todo!()
+    pub fn switch_context(&mut self, setting: ContextSetting) -> Result<()>
+    where
+        Co: GrpcClientBehaviour,
+        Ex: GrpcClientBehaviour,
+        Ev: GrpcClientBehaviour,
+    {
+        if self.current_setting == setting {
+            return Ok(());
+        }
+
+        let (controller, executor, evm) = self.rt.block_on(async {
+            let co = Co::connect_lazy(&setting.controller_addr)?;
+            let ex = Ex::connect_lazy(&setting.executor_addr)?;
+            let ev = Ev::connect_lazy(&setting.executor_addr)?;
+            anyhow::Ok((co, ex, ev))
+        })??;
+        self.controller = controller;
+        self.executor = executor;
+        self.evm = evm;
+        self.current_setting = setting;
+
+        Ok(())
     }
 
+    pub fn switch_context_to(&mut self, context_id: &str) -> Result<()>
+    where
+        Co: GrpcClientBehaviour,
+        Ex: GrpcClientBehaviour,
+        Ev: GrpcClientBehaviour,
+    {
+        let setting = self.config.context_settings.get(context_id)
+            .ok_or_else(|| anyhow!("context`{}` not found", context_id))?
+            .clone();
+        self.switch_context(setting)
+    }
 } 
 
 

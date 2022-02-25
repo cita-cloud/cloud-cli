@@ -14,13 +14,14 @@ use super::{
 };
 
 use crate::crypto::Crypto;
-use crate::sdk::client::GrpcClientBehaviour;
-use crate::sdk::{
+use crate::core::client::GrpcClientBehaviour;
+use crate::core::{
     admin::AdminBehaviour, controller::ControllerBehaviour,
     evm::EvmBehaviour, evm::EvmBehaviourExt, executor::ExecutorBehaviour,
     controller::ControllerClient, executor::ExecutorClient, evm::EvmClient,
     wallet::Wallet, context::Context,
 };
+use crate::config::ContextSetting;
 
 
 pub fn get_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -96,25 +97,41 @@ where
                 .takes_value(true)
                 // TODO: add validator
         )
+        .arg(
+            Arg::new("account-id")
+                .help("account id")
+                .short('u')
+                .takes_value(true)
+                // TODO: add validator
+        )
         .handler(|cmd, m, ctx| {
-            ctx.rt.block_on(async {
-                if let Some(controller_addr) = m.value_of("controller-addr") {
-                    let controller = Co::connect_lazy(controller_addr)?;
-                    ctx.controller = controller;
-                }
+            // If a subcommand is passed, it's considered as a tmp context for that subcommand.
+            // Otherwise modify the current context.
+            let mut previous_setting: Option<ContextSetting> = None;
+            let mut current_setting = ctx.current_setting.clone();
 
-                if let Some(executor_addr) = m.value_of("executor-addr") {
-                    let executor = Ex::connect_lazy(executor_addr)?;
-                    // The same address as executor
-                    let evm = Ev::connect_lazy(executor_addr)?;
+            let is_tmp_ctx = m.subcommand().is_some();
+            if is_tmp_ctx {
+                previous_setting.replace(current_setting.clone());
+            }
 
-                    ctx.executor = executor;
-                    ctx.evm = evm;
-                }
-                anyhow::Ok(())
-            })??;
+            if let Some(controller_addr) = m.value_of("controller-addr") {
+                current_setting.controller_addr = controller_addr.into();
+            }
+            if let Some(executor_addr) = m.value_of("executor-addr") {
+                current_setting.executor_addr = executor_addr.into();
+            }
+            if let Some(account_id) = m.value_of("account-id") {
+                current_setting.account_id = account_id.into();
+            }
 
-            cmd.dispatch_subcmd(m, ctx)
+            ctx.switch_context(current_setting)?;
+            let ret = cmd.dispatch_subcmd(m, ctx);
+            if let Some(previous) = previous_setting {
+                ctx.switch_context(previous).expect("cannot restore previous context");
+            }
+
+            ret
         })
         .subcommands([
             admin::admin_cmd(),
