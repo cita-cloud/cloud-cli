@@ -588,7 +588,7 @@ impl Wallet {
         let wallet_dir = wallet_dir.as_ref().to_path_buf();
         let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
 
-        fs::create_dir(&accounts_dir)
+        fs::create_dir_all(&accounts_dir)
             .context("failed to create accounts dir")?;
 
         let mut this = Self {
