@@ -3,11 +3,9 @@
 
 /// Please refer to [kms_sm](https://github.com/cita-cloud/kms_sm).
 /// This crypto impl must be compatible with `kms_sm` to work with it.
-
-
 use super::Crypto;
-use rand::Rng;
 use efficient_sm2::KeyPair;
+use rand::Rng;
 
 pub const SM3_HASH_BYTES_LEN: usize = 32;
 pub type Hash = [u8; SM3_HASH_BYTES_LEN];
@@ -23,7 +21,6 @@ pub type SecretKey = [u8; SM2_SECKEY_BYTES_LEN];
 
 pub const SM2_SIGNATURE_BYTES_LEN: usize = 128;
 pub type Signature = [u8; SM2_SIGNATURE_BYTES_LEN];
-
 
 pub fn sm3_hash(input: &[u8]) -> Hash {
     libsm::sm3::hash::Sm3Hash::new(input).get_hash()
@@ -94,7 +91,6 @@ pub fn pk2addr(pk: &PublicKey) -> Address {
         .unwrap()
 }
 
-
 pub struct SmCrypto;
 
 impl Crypto for SmCrypto {
@@ -112,9 +108,7 @@ impl Crypto for SmCrypto {
 
     fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>> {
         // sm4_decrypt will panic when password is wrong, so catch it.
-        std::panic::catch_unwind(|| {
-            sm4_decrypt(ciphertext, pw)
-        }).ok()
+        std::panic::catch_unwind(|| sm4_decrypt(ciphertext, pw)).ok()
     }
 
     fn generate_secret_key() -> Self::SecretKey {
@@ -132,6 +126,4 @@ impl Crypto for SmCrypto {
     fn sk2pk(sk: &Self::SecretKey) -> Self::PublicKey {
         sk2pk(sk)
     }
-    
 }
-

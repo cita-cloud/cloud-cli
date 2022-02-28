@@ -1,11 +1,10 @@
-use mockall::mock;
-use tonic::transport::Channel;
-use super::controller::ControllerBehaviour;
-use super::executor::ExecutorBehaviour;
-use super::evm::EvmBehaviour;
 use super::client::GrpcClientBehaviour;
 use super::context::Context;
+use super::controller::ControllerBehaviour;
+use super::evm::EvmBehaviour;
+use super::executor::ExecutorBehaviour;
 use crate::config::Config;
+use crate::crypto::{Address, Hash};
 use crate::proto::blockchain::CompactBlock;
 use crate::proto::blockchain::RawTransaction;
 use crate::proto::common::TotalNodeInfo;
@@ -16,11 +15,11 @@ use crate::proto::evm::ByteCode;
 use crate::proto::evm::Nonce;
 use crate::proto::evm::Receipt;
 use crate::proto::executor::CallResponse;
-use tempfile::TempDir;
-use tempfile::tempdir;
 use anyhow::Result;
-use crate::crypto::{Hash, Address};
-
+use mockall::mock;
+use tempfile::tempdir;
+use tempfile::TempDir;
+use tonic::transport::Channel;
 
 // #[automock]
 // trait ControllerClient: ControllerBehaviour + GrpcClientBehaviour {}
@@ -28,7 +27,6 @@ use crate::crypto::{Hash, Address};
 // trait ExecutorClient: ExecutorBehaviour + GrpcClientBehaviour {}
 // #[automock]
 // trait EvmClient: EvmBehaviour + GrpcClientBehaviour {}
-
 
 mock! {
     pub ControllerClient {}
@@ -103,31 +101,27 @@ mock! {
     }
 }
 
-
-pub fn context() -> (Context<MockControllerClient, MockExecutorClient, MockEvmClient>, TempDir) {
+pub fn context() -> (
+    Context<MockControllerClient, MockExecutorClient, MockEvmClient>,
+    TempDir,
+) {
     // set up mock context
     let mock_ctx = MockControllerClient::from_channel_context();
-    mock_ctx
-        .expect()
-        .returning(|_| {
-            let mock = MockControllerClient::default();
-            mock
-        });
+    mock_ctx.expect().returning(|_| {
+        let mock = MockControllerClient::default();
+        mock
+    });
     let mock_ctx = MockExecutorClient::from_channel_context();
-    mock_ctx
-        .expect()
-        .returning(|_| {
-            let mock = MockExecutorClient::default();
-            mock
-        });
+    mock_ctx.expect().returning(|_| {
+        let mock = MockExecutorClient::default();
+        mock
+    });
     let mock_ctx = MockEvmClient::from_channel_context();
-    mock_ctx
-        .expect()
-        .returning(|_| {
-            let mock = MockEvmClient::default();
-            mock
-        });
-        
+    mock_ctx.expect().returning(|_| {
+        let mock = MockEvmClient::default();
+        mock
+    });
+
     let test_dir = tempdir().expect("cannot get temp dir");
     let mut config = Config::default();
     config.data_dir = test_dir.path().to_path_buf();
@@ -136,4 +130,3 @@ pub fn context() -> (Context<MockControllerClient, MockExecutorClient, MockEvmCl
 
     (ctx, test_dir)
 }
-

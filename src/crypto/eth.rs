@@ -14,7 +14,6 @@
 
 /// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
 /// This crypto impl must be compatible with `kms_eth` to work with it.
-
 use tiny_keccak::{Hasher, Keccak};
 
 use secp256k1::rand::rngs::OsRng;
@@ -26,7 +25,7 @@ use secp256k1::SecretKey as RawSecretKey;
 use ctr::cipher::{NewCipher, StreamCipher};
 
 use super::Crypto;
-use super::{ Hash, Address, HASH_BYTES_LEN, ADDR_BYTES_LEN };
+use super::{Address, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
 
 pub const PUBLIC_KEY_BYTES_LEN: usize = 64;
 pub type PublicKey = [u8; PUBLIC_KEY_BYTES_LEN];

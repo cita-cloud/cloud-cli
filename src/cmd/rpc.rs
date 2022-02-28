@@ -1,24 +1,24 @@
 use clap::App;
-use clap::Arg;
 use clap::AppSettings;
+use clap::Arg;
 
 use crate::utils::parse_value;
-use crate::utils::{parse_addr, parse_hash, parse_data, hex};
+use crate::utils::{hex, parse_addr, parse_data, parse_hash};
 
 // use super::*;
 use super::Command;
 use crate::core::context::Context;
-use prost::Message;
 use crate::core::controller::ControllerBehaviour;
 use crate::core::controller::TransactionSenderBehaviour;
 use crate::core::executor::ExecutorBehaviour;
+use prost::Message;
 
 use tokio::try_join;
 
-use anyhow::Result;
-use anyhow::Context as _;
-use crate::display::Display;
 use crate::crypto::ArrayLike;
+use crate::display::Display;
+use anyhow::Context as _;
+use anyhow::Result;
 
 // TODO: get version
 
@@ -60,7 +60,6 @@ where
             Ok(())
         })
 }
-
 
 pub fn send<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
@@ -185,7 +184,9 @@ where
         .handler(|_cmd, m, ctx| {
             let for_pending = m.is_present("for_pending");
 
-            let block_number = ctx.rt.block_on(ctx.controller.get_block_number(for_pending))??;
+            let block_number = ctx
+                .rt
+                .block_on(ctx.controller.get_block_number(for_pending))??;
             println!("{}", block_number);
             Ok(())
         })
@@ -310,7 +311,7 @@ where
         .arg(
             Arg::new("multiaddr")
                 .help("multi addres of the new node")
-                .required(true)
+                .required(true),
         )
         .handler(|_cmd, m, ctx| {
             let multiaddr = m.value_of("multiaddr").unwrap().into();
@@ -350,36 +351,24 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::mock::context;
     use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+    use anyhow::Result;
 
     #[test]
-    fn test_get_peer_count() {
+    fn test_get_peer_count() -> Result<()> {
         let cmd = get_peer_count();
         let rpc_cmd = rpc_cmd();
         let cldi_cmd = cldi_cmd();
 
         let (mut ctx, _dir) = context();
-        ctx.controller
-            .expect_get_peer_count()
-            .returning(|| Ok(42));
+        ctx.controller.expect_get_peer_count().returning(|| Ok(42));
 
-        cmd.exec_from(
-            ["get-peer-count"],
-            &mut ctx,
-        ).unwrap();
-        rpc_cmd.exec_from(
-            ["rpc", "get-peer-count"],
-            &mut ctx,
-        ).unwrap();
-        cldi_cmd.exec_from(
-            ["cldi", "rpc", "get-peer-count"],
-            &mut ctx,
-        ).unwrap();
-        cldi_cmd.exec_from(
-            ["cldi", "get", "peer-count"],
-            &mut ctx,
-        ).unwrap();
+        cmd.exec_from(["get-peer-count"], &mut ctx)?;
+        rpc_cmd.exec_from(["rpc", "get-peer-count"], &mut ctx)?;
+        cldi_cmd.exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx)?;
+        cldi_cmd.exec_from(["cldi", "get", "peer-count"], &mut ctx)?;
+
+        Ok(())
     }
-
 }

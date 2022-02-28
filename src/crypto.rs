@@ -56,7 +56,7 @@ pub type Hash = [u8; HASH_BYTES_LEN];
 pub const ADDR_BYTES_LEN: usize = 20;
 pub type Address = [u8; ADDR_BYTES_LEN];
 
-pub trait Crypto: Send + Sync +'static {
+pub trait Crypto: Send + Sync + 'static {
     type PublicKey: ArrayLike;
     type SecretKey: ArrayLike;
 

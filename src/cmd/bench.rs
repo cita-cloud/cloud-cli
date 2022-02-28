@@ -1,26 +1,20 @@
 use anyhow::Context as _;
 use anyhow::Result;
-use rayon::prelude::*;
-use std::future::Future;
-use std::time::Duration;
-use std::sync::Arc;
 use parking_lot::Mutex;
 use rand::{thread_rng, Rng};
+use rayon::prelude::*;
+use std::future::Future;
+use std::sync::Arc;
+use std::time::Duration;
 
 use super::Command;
-use crate::crypto::Crypto;
 use crate::core::client::GrpcClientBehaviour;
-use clap::Arg;
 use crate::core::context::Context;
+use crate::crypto::Crypto;
+use clap::Arg;
 
-use tonic::transport::channel::Channel;
-use tonic::transport::channel::Endpoint;
-
-use crate::core::{
-    controller::{
-        ControllerBehaviour, SignerBehaviour, TransactionSenderBehaviour,
-        ControllerClient,
-    },
+use crate::core::controller::{
+    ControllerBehaviour, ControllerClient, SignerBehaviour, TransactionSenderBehaviour,
 };
 use crate::proto::{
     blockchain::Transaction,
@@ -31,7 +25,7 @@ use crate::proto::{
     executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
 };
 
-use crate::utils::{parse_addr, parse_data, parse_value, hex};
+use crate::utils::{hex, parse_addr, parse_data, parse_value};
 
 fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("bench-basic")
@@ -80,6 +74,7 @@ where
     bench_basic::<Co, Ex, Ev>()
         .name("bench-send")
         .about("Send transactions with {-c} workers over {--connections} connections")
+        // TODO: add args to allow customized transaction
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
@@ -92,7 +87,7 @@ where
             let controller_addr = ctx.current_controller_addr();
             let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
-                let connector = || async { 
+                let connector = || async {
                     if timeout > 0 {
                         Co::connect_timeout(controller_addr, Duration::from_secs(timeout)).await
                     } else {
@@ -100,9 +95,11 @@ where
                     }
                 };
 
-                let (current_block_number, system_config) =
-                    tokio::try_join!(ctx.controller.get_block_number(false), ctx.controller.get_system_config())
-                        .context("failed to fetch chain status")?;
+                let (current_block_number, system_config) = tokio::try_join!(
+                    ctx.controller.get_block_number(false),
+                    ctx.controller.get_system_config()
+                )
+                .context("failed to fetch chain status")?;
 
                 let workload_builder = || {
                     let mut rng = thread_rng();
@@ -119,9 +116,8 @@ where
                     signer.sign_raw_tx(raw_tx)
                 };
 
-                let worker_fn = |client: Co, raw| async move {
-                    client.send_raw(raw).await.map(|_| ())
-                };
+                let worker_fn =
+                    |client: Co, raw| async move { client.send_raw(raw).await.map(|_| ()) };
 
                 bench_fn_with_progbar(
                     total,
@@ -131,8 +127,9 @@ where
                     workload_builder,
                     worker_fn,
                     "Preparing connections and transactions",
-                    "Sending transactions.."
-                ).await;
+                    "Sending transactions..",
+                )
+                .await;
 
                 anyhow::Ok(())
             })??;
@@ -232,7 +229,6 @@ where
 //     Ok(())
 // }
 
-
 // async fn bench_call(
 //     executor_addr: &str,
 //     from: Vec<u8>,
@@ -322,7 +318,6 @@ where
 
 // }
 
-
 async fn bench_fn_with_progbar<
     Connector,
     Connection,
@@ -344,8 +339,7 @@ async fn bench_fn_with_progbar<
 
     preparing_info: &str,
     working_info: &str,
-)
-where
+) where
     Connection: Clone + Send + Sync + 'static,
     // ConnectionError: std::error::Error + Send + Sync + 'static,
     ConnectionResultFut: Future<Output = Result<Connection>>,
@@ -362,8 +356,10 @@ where
         let progbar = indicatif::ProgressBar::new(total);
         progbar.set_style(
             indicatif::ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos:>7}/{len:7}")
-                .progress_chars("=> ")
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos:>7}/{len:7}",
+                )
+                .progress_chars("=> "),
         );
         Arc::new(progbar)
     };
@@ -409,7 +405,10 @@ where
     println!("`{}` success, `{}` failure", success, failure);
 
     if let Err(e) = bench_res {
-        println!("bench isn't completed successfully, the first reported error is {}", e);
+        println!(
+            "bench isn't completed successfully, the first reported error is {}",
+            e
+        );
     }
 }
 
@@ -460,7 +459,11 @@ where
         let mut conns = Vec::with_capacity(connections as usize);
         for _ in 0..connections {
             let connector_fn = connector_fn.clone();
-            conns.push(connector_fn().await.context("preparing connection failed")?);
+            conns.push(
+                connector_fn()
+                    .await
+                    .context("preparing connection failed")?,
+            );
         }
         conns
     };
@@ -542,7 +545,7 @@ where
                         })
                     })
                     .collect::<Vec<_>>();
-                
+
                 // TODO: return earily if error
                 for h in hs {
                     if let Err(e) = h.await {
@@ -563,7 +566,7 @@ where
     Arc::get_mut(&mut first_reported_error)
         .expect("other references should have been dropped here")
         .get_mut()
-    // ...
+        // ...
         .take()
         .map(Err)
         .unwrap_or(Ok(()))

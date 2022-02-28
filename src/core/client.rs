@@ -1,11 +1,11 @@
 use anyhow::Result;
-use tonic::transport::Endpoint;
-use tonic::transport::Channel;
 use std::time::Duration;
+use tonic::transport::Channel;
+use tonic::transport::Endpoint;
 
 use super::controller::ControllerClient;
-use super::executor::ExecutorClient;
 use super::evm::EvmClient;
+use super::executor::ExecutorClient;
 
 #[tonic::async_trait]
 pub trait GrpcClientBehaviour: Sized {

@@ -1,25 +1,18 @@
-use clap::App;
 use clap::Arg;
 use serde_json::json;
 
 use crate::config::CryptoType;
-use crate::crypto::EthCrypto;
-use crate::crypto::SmCrypto;
 use crate::core::wallet::Account;
 use crate::core::wallet::MaybeLocked;
 use crate::core::wallet::MultiCryptoAccount;
-use crate::utils::{parse_addr, parse_data};
+use crate::crypto::EthCrypto;
+use crate::crypto::SmCrypto;
 
 use super::*;
 use crate::core::context::Context;
-use prost::Message;
-use crate::display::Display;
-
-use crate::crypto::{ArrayLike, Crypto};
 use crate::utils::hex;
 
-pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-{
+pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("generate-key")
         .aliases(&["gen", "g"])
         .about("generate a new key")
@@ -62,20 +55,23 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         })
 }
 
-pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-{
+pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("list")
         .aliases(&["ls", "l"])
         .about("list keys")
         .handler(|_cmd, _m, ctx| {
-            let keys = ctx.wallet.list().map(|(id, account)| {
-                json!({
-                    "id": id,
-                    "address": hex(account.address()),
-                    "pubkey": hex(account.public_key()),
-                    "is_locked": account.is_locked(),
+            let keys = ctx
+                .wallet
+                .list()
+                .map(|(id, account)| {
+                    json!({
+                        "id": id,
+                        "address": hex(account.address()),
+                        "pubkey": hex(account.public_key()),
+                        "is_locked": account.is_locked(),
+                    })
                 })
-            }).collect::<Vec<_>>();
+                .collect::<Vec<_>>();
 
             let output = serde_json::to_string_pretty(&keys)?;
             println!("{}", output);
@@ -84,8 +80,7 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         })
 }
 
-pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-{
+pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("export")
         .about("export key")
         .arg(
@@ -107,7 +102,9 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
             let id = m.value_of("id").unwrap();
             let pw = m.value_of("password");
 
-            let maybe_locked = ctx.wallet.get(id)
+            let maybe_locked = ctx
+                .wallet
+                .get(id)
                 .ok_or_else(|| anyhow!("account `{}` not found", id))?;
 
             let json = if let Some(pw) = pw {
@@ -125,8 +122,7 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
         })
 }
 
-pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-{
+pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("use-key")
         .about("unlock a key to be used as default")
         .arg(
@@ -149,15 +145,16 @@ pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
             if let Some(pw) = pw {
                 ctx.wallet.unlock(id, pw.as_bytes())?;
             }
-            ctx.wallet.get(id).ok_or_else(|| anyhow!("account `{}` not found", id))?;
+            ctx.wallet
+                .get(id)
+                .ok_or_else(|| anyhow!("account `{}` not found", id))?;
             ctx.current_setting.account_id = id.into();
 
             Ok(())
         })
 }
 
-pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-{
+pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("key")
         .about("Key commands")
         .subcommand_required_else_help(true)

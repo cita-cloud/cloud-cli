@@ -1,17 +1,23 @@
-use std::{path::{PathBuf, Path}, collections::{BTreeSet, BTreeMap}};
-use anyhow::Result;
 use anyhow::anyhow;
-use anyhow::ensure;
 use anyhow::bail;
+use anyhow::ensure;
+use anyhow::Result;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::{Path, PathBuf},
+};
 
-use crate::{crypto::{ArrayLike, Crypto, SmCrypto, EthCrypto, Address, Hash}, utils::{parse_addr, parse_pk, parse_sk, parse_data}};
-use serde::{Deserialize, Serialize};
-use serde::Serializer;
-use serde::Deserializer;
-use std::fs;
 use crate::utils::hex;
-use anyhow::Context;
 use crate::utils::safe_save;
+use crate::{
+    crypto::{Address, ArrayLike, Crypto, EthCrypto, Hash, SmCrypto},
+    utils::{parse_addr, parse_data, parse_pk, parse_sk},
+};
+use anyhow::Context;
+use serde::Deserializer;
+use serde::Serializer;
+use serde::{Deserialize, Serialize};
+use std::fs;
 
 use super::controller::SignerBehaviour;
 
@@ -49,7 +55,7 @@ use super::controller::SignerBehaviour;
 //                 write!(formatter, "A crypto specific hex-encoded bit array")
 //             }
 
-//             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> 
+//             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E>
 //             {
 //                 let err_fn = |_| de::Error::invalid_value(de::Unexpected::Str(v),&self);
 //                 let d = parse_data(v).map_err(err_fn)?;
@@ -62,7 +68,6 @@ use super::controller::SignerBehaviour;
 //         deserializer.deserialize_str(HexVisitor::<T>(PhantomData))
 //     }
 // }
-
 
 pub struct Account<C: Crypto> {
     address: Address,
@@ -119,33 +124,41 @@ impl<C: Crypto> Account<C> {
     }
 
     // We don't want to impl Serialize for it directly in case of leaking secret key without noticing.
-    pub fn serialize_with_secret_key<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    {
+    pub fn serialize_with_secret_key<S: Serializer>(
+        &self,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         SerializedAccount {
             address: hex(self.address.as_slice()),
             public_key: hex(self.public_key.as_slice()),
             secret_key: hex(self.secret_key.as_slice()),
-        }.serialize(serializer)
+        }
+        .serialize(serializer)
     }
 
-    pub fn deserialize<'de, D:  Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error>
-    {
-        use serde::de::Unexpected;
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
+        use serde::de::Unexpected;
 
         let serialized: SerializedAccount = Deserialize::deserialize(deserializer)?;
-        let address = parse_addr(&serialized.address)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str(&serialized.address), &e.to_string().as_str())
-            })?;
-        let public_key = parse_pk::<C>(&serialized.public_key)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str(&serialized.public_key), &e.to_string().as_str())
-            })?;
-        let secret_key = parse_sk::<C>(&serialized.secret_key)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str("/* secret-key omitted */"), &e.to_string().as_str())
-            })?;
+        let address = parse_addr(&serialized.address).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str(&serialized.address),
+                &e.to_string().as_str(),
+            )
+        })?;
+        let public_key = parse_pk::<C>(&serialized.public_key).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str(&serialized.public_key),
+                &e.to_string().as_str(),
+            )
+        })?;
+        let secret_key = parse_sk::<C>(&serialized.secret_key).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str("/* secret-key omitted */"),
+                &e.to_string().as_str(),
+            )
+        })?;
 
         if public_key != C::sk2pk(&secret_key) {
             return Err(D::Error::invalid_value(
@@ -181,7 +194,6 @@ impl<C: Crypto> Account<C> {
     //     )
 
     // }
-
 }
 
 // We recorded the address and pubkey for better human-readability
@@ -216,8 +228,6 @@ impl<C: Crypto> TryFrom<SerializedAccount> for Account<C> {
         })
     }
 }
-
-
 
 #[derive(Deserialize)]
 #[serde(try_from = "SerializedLockedAccount")]
@@ -260,33 +270,38 @@ impl<C: Crypto> LockedAccount<C> {
     }
 
     // We don't want to impl Serialize for it directly in case of leaking secret key without noticing.
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         SerializedLockedAccount {
             address: hex(self.address.as_slice()),
             public_key: hex(self.public_key.as_slice()),
             encrypted_sk: hex(self.encrypted_sk.as_slice()),
-        }.serialize(serializer)
+        }
+        .serialize(serializer)
     }
 
-    fn deserialize<'de, D:  Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error>
-    {
-        use serde::de::Unexpected;
+    fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
+        use serde::de::Unexpected;
 
         let serialized: SerializedLockedAccount = Deserialize::deserialize(deserializer)?;
-        let address = parse_addr(&serialized.address)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str(&serialized.address), &e.to_string().as_str())
-            })?;
-        let public_key = parse_pk::<C>(&serialized.public_key)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str(&serialized.public_key), &e.to_string().as_str())
-            })?;
-        let encrypted_sk = parse_data(&serialized.encrypted_sk)
-            .map_err(|e|{
-                D::Error::invalid_value(Unexpected::Str(&serialized.encrypted_sk), &e.to_string().as_str())
-            })?;
+        let address = parse_addr(&serialized.address).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str(&serialized.address),
+                &e.to_string().as_str(),
+            )
+        })?;
+        let public_key = parse_pk::<C>(&serialized.public_key).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str(&serialized.public_key),
+                &e.to_string().as_str(),
+            )
+        })?;
+        let encrypted_sk = parse_data(&serialized.encrypted_sk).map_err(|e| {
+            D::Error::invalid_value(
+                Unexpected::Str(&serialized.encrypted_sk),
+                &e.to_string().as_str(),
+            )
+        })?;
 
         if address != C::pk2addr(&public_key) {
             return Err(D::Error::invalid_value(
@@ -301,7 +316,6 @@ impl<C: Crypto> LockedAccount<C> {
             encrypted_sk,
         })
     }
-
 }
 
 // We recorded the address and pubkey for better human-readability
@@ -333,23 +347,22 @@ impl<C: Crypto> TryFrom<SerializedLockedAccount> for LockedAccount<C> {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "crypto_type")]
 pub enum MultiCryptoAccount {
     Sm(
         #[serde(
             serialize_with = "Account::serialize_with_secret_key",
-            deserialize_with = "Account::deserialize",
+            deserialize_with = "Account::deserialize"
         )]
-        Account<SmCrypto>
+        Account<SmCrypto>,
     ),
     Eth(
         #[serde(
             serialize_with = "Account::serialize_with_secret_key",
-            deserialize_with = "Account::deserialize",
+            deserialize_with = "Account::deserialize"
         )]
-        Account<EthCrypto>
+        Account<EthCrypto>,
     ),
 }
 
@@ -391,14 +404,8 @@ impl From<Account<EthCrypto>> for MultiCryptoAccount {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "crypto_type")]
 pub enum LockedMultiCryptoAccount {
-    Sm(
-        #[serde(with = "LockedAccount")]
-        LockedAccount<SmCrypto>
-    ),
-    Eth(
-        #[serde(with = "LockedAccount")]
-        LockedAccount<EthCrypto>
-    ),
+    Sm(#[serde(with = "LockedAccount")] LockedAccount<SmCrypto>),
+    Eth(#[serde(with = "LockedAccount")] LockedAccount<EthCrypto>),
 }
 
 impl LockedMultiCryptoAccount {
@@ -415,7 +422,6 @@ impl LockedMultiCryptoAccount {
             Self::Eth(ac) => ac.public_key().as_slice(),
         }
     }
-
 
     pub fn unlock(&self, pw: &[u8]) -> Result<MultiCryptoAccount> {
         let unlocked = match self {
@@ -437,7 +443,6 @@ impl From<LockedAccount<EthCrypto>> for LockedMultiCryptoAccount {
         Self::Eth(locked)
     }
 }
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
@@ -485,11 +490,9 @@ impl MaybeLocked {
             }
         }
         match self {
-            Self::Unlocked(unlocked) => {
-                match unlocked {
-                    MultiCryptoAccount::Eth(ac) => Ok(cloned(ac).into()),
-                    MultiCryptoAccount::Sm(ac) => Ok(cloned(ac).into()),
-                }
+            Self::Unlocked(unlocked) => match unlocked {
+                MultiCryptoAccount::Eth(ac) => Ok(cloned(ac).into()),
+                MultiCryptoAccount::Sm(ac) => Ok(cloned(ac).into()),
             },
             Self::Locked(locked) => locked.unlock(pw),
         }
@@ -588,16 +591,14 @@ impl Wallet {
         let wallet_dir = wallet_dir.as_ref().to_path_buf();
         let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
 
-        fs::create_dir_all(&accounts_dir)
-            .context("failed to create accounts dir")?;
+        fs::create_dir_all(&accounts_dir).context("failed to create accounts dir")?;
 
         let mut this = Self {
             wallet_dir,
             accounts: BTreeMap::new(),
         };
 
-        let dir = fs::read_dir(accounts_dir)
-            .context("cannot read accounts dir")?;
+        let dir = fs::read_dir(accounts_dir).context("cannot read accounts dir")?;
         for ent in dir {
             let ent = ent.context("cannot read account file")?;
             let path = ent.path();
@@ -618,7 +619,7 @@ impl Wallet {
 
     pub fn save(&mut self, account_id: &str, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
         let maybe_locked = maybe_locked.into();
-         
+
         let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
         let account_file = accounts_dir.join(format!("{account_id}.toml"));
 
@@ -633,8 +634,7 @@ impl Wallet {
         let content = {
             let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
             let path = accounts_dir.join(format!("{account_id}.toml"));
-            fs::read_to_string(path)
-                .context("cannot read account file")?
+            fs::read_to_string(path).context("cannot read account file")?
         };
 
         let maybe_locked: MaybeLocked = toml::from_str(&content)?;
@@ -648,7 +648,9 @@ impl Wallet {
     }
 
     pub fn lock(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
-        let (id, maybe_locked) = self.accounts.remove_entry(account_id)
+        let (id, maybe_locked) = self
+            .accounts
+            .remove_entry(account_id)
             .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
         let locked = maybe_locked.lock(pw);
         self.accounts.insert(id, locked.into());
@@ -657,7 +659,9 @@ impl Wallet {
     }
 
     pub fn unlock(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
-        let maybe_locked = self.accounts.get_mut(account_id)
+        let maybe_locked = self
+            .accounts
+            .get_mut(account_id)
             .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
         *maybe_locked = maybe_locked.unlock(pw)?.into();
 

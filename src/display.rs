@@ -218,13 +218,10 @@ impl Display for NodeInfo {
 impl Display for TotalNodeInfo {
     fn to_json(&self) -> Json {
         let nodes: Vec<Json> = self.nodes.iter().map(Display::to_json).collect();
-        json!({
-            "nodes": nodes
-        })
+        json!({ "nodes": nodes })
     }
 }
 
-#[cfg(feature = "evm")]
 impl Display for Log {
     fn to_json(&self) -> Json {
         json!({
@@ -242,7 +239,6 @@ impl Display for Log {
     }
 }
 
-#[cfg(feature = "evm")]
 impl Display for Receipt {
     fn to_json(&self) -> Json {
         let logs = self.logs.iter().map(Log::to_json).collect::<Vec<_>>();

@@ -1,17 +1,16 @@
+use std::collections::BTreeMap;
 use std::default;
 use std::path::Path;
 use std::path::PathBuf;
-use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use crate::utils::safe_save;
 use anyhow::Result;
-use std::io::Write;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
-use crate::utils::safe_save;
+use std::io::Write;
 
 const CLOUD_CLI_CONFIG_FILE_NAME: &str = "config.toml";
-
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {

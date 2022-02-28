@@ -2,9 +2,9 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 
-use tempfile::NamedTempFile;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
+use tempfile::NamedTempFile;
 
 use crate::crypto::ArrayLike;
 use crate::crypto::Crypto;
@@ -47,7 +47,9 @@ pub fn parse_value(s: &str) -> Result<[u8; 32]> {
     }
     // padding 0 to 32 bytes
     let padded = format!("{:0>64}", s);
-    hex::decode(&padded).map(|v| v.try_into().unwrap()).map_err(|e| anyhow!("invalid value: {e}"))
+    hex::decode(&padded)
+        .map(|v| v.try_into().unwrap())
+        .map_err(|e| anyhow!("invalid value: {e}"))
 }
 
 pub fn parse_data(s: &str) -> Result<Vec<u8>> {
@@ -74,7 +76,6 @@ pub fn display_time(timestamp: u64) -> String {
 pub fn remove_0x(s: &str) -> &str {
     s.strip_prefix("0x").unwrap_or(s)
 }
-
 
 pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool) -> Result<()> {
     let path = path.as_ref();

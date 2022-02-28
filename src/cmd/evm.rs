@@ -1,10 +1,10 @@
 use clap::App;
 use clap::Arg;
 
-use crate::crypto::ArrayLike;
 use crate::core::evm::EvmBehaviour;
 use crate::core::evm::EvmBehaviourExt;
 use crate::core::executor::ExecutorBehaviour;
+use crate::crypto::ArrayLike;
 use crate::utils::{parse_addr, parse_data, parse_hash};
 
 use super::*;
@@ -20,11 +20,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-receipt")
         .about("Get receipt by tx_hash")
-        .arg(
-            Arg::new("tx_hash")
-                .required(true)
-                .validator(parse_hash),
-        )
+        .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
         .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash(m.value_of("tx_hash").unwrap())?;
 
@@ -129,7 +125,9 @@ where
 
             let signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
-                ctx.controller.store_contract_abi(signer, contract_addr, &abi).await
+                ctx.controller
+                    .store_contract_abi(signer, contract_addr, &abi)
+                    .await
             })??;
             println!("{}", hex(tx_hash.as_slice()));
             Ok(())

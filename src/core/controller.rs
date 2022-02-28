@@ -8,13 +8,13 @@ use crate::proto::{
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Empty, NodeInfo, Hash as CloudHash, NodeNetInfo, TotalNodeInfo},
+    common::{Empty, Hash as CloudHash, NodeInfo, NodeNetInfo, TotalNodeInfo},
     controller::{
         rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig, TransactionIndex,
     },
 };
 
-use crate::crypto::{ArrayLike, Crypto, Hash, Address};
+use crate::crypto::{Address, ArrayLike, Crypto, Hash};
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
@@ -250,7 +250,6 @@ pub trait SignerBehaviour {
 
         raw_utxo
     }
-
 }
 
 // impl<C, A> SignerBehaviour for A
@@ -327,7 +326,6 @@ pub trait SignerBehaviour {
 //     }
 // }
 
-
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]
 #[derive(Debug, Clone, Copy)]
@@ -347,7 +345,13 @@ pub trait TransactionSenderBehaviour {
     where
         S: SignerBehaviour + Send + Sync;
 
-    async fn send_tx<S>(&self, signer: &S, to: Address, data: Vec<u8>, value: Vec<u8>) -> Result<Hash>
+    async fn send_tx<S>(
+        &self,
+        signer: &S,
+        to: Address,
+        data: Vec<u8>,
+        value: Vec<u8>,
+    ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
     async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash>
@@ -368,7 +372,7 @@ where
         self.send_raw(raw).await.context("failed to send raw")
     }
 
-    async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<Hash> 
+    async fn send_raw_utxo<S>(&self, signer: &S, raw_utxo: CloudUtxoTransaction) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
@@ -376,7 +380,13 @@ where
         self.send_raw(raw).await.context("failed to send raw")
     }
 
-    async fn send_tx<S>(&self, signer: &S, to: Address, data: Vec<u8>, value: Vec<u8>) -> Result<Hash>
+    async fn send_tx<S>(
+        &self,
+        signer: &S,
+        to: Address,
+        data: Vec<u8>,
+        value: Vec<u8>,
+    ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
@@ -398,7 +408,7 @@ where
         self.send_raw_tx(signer, raw_tx).await
     }
 
-    async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash> 
+    async fn send_utxo<S>(&self, signer: &S, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
@@ -453,4 +463,3 @@ where
 // pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
 //     async fn send_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash>;
 // }
-

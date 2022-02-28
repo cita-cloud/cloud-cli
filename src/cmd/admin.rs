@@ -1,13 +1,12 @@
 use clap::Arg;
 
 use crate::core::admin::AdminBehaviour;
-use crate::utils::{parse_addr, parse_data};
+use crate::utils::parse_addr;
 
 use super::*;
 use crate::core::context::Context;
-use prost::Message;
 
-use crate::crypto::{ArrayLike, Crypto, Hash, Address};
+use crate::crypto::{Address, ArrayLike, Crypto, Hash};
 use crate::utils::hex;
 
 // I have no idea why rustc cannot infer the Command's generic params.
@@ -28,7 +27,9 @@ where
             let new_admin_addr = parse_addr(m.value_of("admin").unwrap())?;
             let old_admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
-                ctx.controller.update_admin(old_admin_signer, new_admin_addr).await
+                ctx.controller
+                    .update_admin(old_admin_signer, new_admin_addr)
+                    .await
             })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
@@ -80,7 +81,9 @@ where
             let block_interval = m.value_of("block_interval").unwrap().parse::<u32>()?;
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
-                ctx.controller.set_block_interval(admin_signer, block_interval).await
+                ctx.controller
+                    .set_block_interval(admin_signer, block_interval)
+                    .await
             })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
@@ -102,9 +105,9 @@ where
         .handler(|_cmd, m, ctx| {
             let switch = m.value_of("switch").unwrap() == "on";
             let admin_signer = ctx.current_account()?;
-            let tx_hash = ctx.rt.block_on(async {
-                ctx.controller.emergency_brake(admin_signer, switch).await
-            })??;
+            let tx_hash = ctx
+                .rt
+                .block_on(async { ctx.controller.emergency_brake(admin_signer, switch).await })??;
             println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })

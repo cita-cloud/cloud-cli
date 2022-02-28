@@ -6,18 +6,17 @@ use crate::crypto::{ArrayLike, Crypto};
 use tonic::transport::channel::Channel;
 use tonic::transport::channel::Endpoint;
 
-use std::future::Future;
 use super::client::GrpcClientBehaviour;
 use super::evm::EvmClient;
 use super::executor::ExecutorClient;
+use std::future::Future;
 // use super::controller::ControllerClient;
+use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
-use anyhow::anyhow;
 
-use super::wallet::Wallet;
 use super::wallet::MultiCryptoAccount;
-
+use super::wallet::Wallet;
 
 pub struct Context<Co, Ex, Ev> {
     /// Those gRPC client are connected lazily.
@@ -43,7 +42,9 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
         let wallet = Wallet::open(&config.data_dir)?;
 
-        let default_context_setting = config.context_settings.get(&config.default_context)
+        let default_context_setting = config
+            .context_settings
+            .get(&config.default_context)
             // TODO: log warning and use default context setting
             .ok_or_else(|| anyhow!("missing default context setting"))?
             .clone();
@@ -68,8 +69,13 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
 
     pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
         let id = &self.current_setting.account_id;
-        let current = self.wallet.get(id).ok_or_else(|| anyhow!("current account `{}` not found", id))?;
-        current.unlocked().with_context(|| format!("cannot get current account `{}` ", id))
+        let current = self
+            .wallet
+            .get(id)
+            .ok_or_else(|| anyhow!("current account `{}` not found", id))?;
+        current
+            .unlocked()
+            .with_context(|| format!("cannot get current account `{}` ", id))
     }
 
     pub fn current_controller_addr(&self) -> &str {
@@ -110,13 +116,15 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ex: GrpcClientBehaviour,
         Ev: GrpcClientBehaviour,
     {
-        let setting = self.config.context_settings.get(context_name)
+        let setting = self
+            .config
+            .context_settings
+            .get(context_name)
             .ok_or_else(|| anyhow!("context`{}` not found", context_name))?
             .clone();
         self.switch_context(setting)
     }
-} 
-
+}
 
 #[derive(Debug, thiserror::Error)]
 #[error("Canceled")]

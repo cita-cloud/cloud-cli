@@ -1,18 +1,16 @@
 mod admin;
 mod rpc;
-// // // mod executor;
-// // // #[cfg(feature = "evm")]
 mod evm;
-// // mod wallet;
-mod key;
-mod cldi;
 mod bench;
+mod cldi;
 mod context;
+mod key;
 
 pub use cldi::cldi_cmd;
+use rustyline::completion;
 
-use crate::crypto::Crypto;
 use crate::core::context::Context;
+use crate::crypto::Crypto;
 use clap::AppFlags;
 use clap::AppSettings;
 use clap::{Arg, ArgMatches};
@@ -21,7 +19,6 @@ use std::ffi::OsString;
 use tonic::transport::Endpoint;
 
 use anyhow::{anyhow, bail, ensure, Context as _, Result};
-
 
 // /// Command handler that associated with a command.
 // pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
@@ -32,7 +29,6 @@ use anyhow::{anyhow, bail, ensure, Context as _, Result};
 // pub type CommandHandler<'help, Ctx> =
 //     // No &mut for ArgMatches bc there is no much thing we can do with it.
 //     Box<dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help>;
-
 
 /// Command
 // #[derive(Clone)]
@@ -76,7 +72,8 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
 
     // https://docs.rs/clap/3.1.2/clap/enum.AppSettings.html#variant.SubcommandRequiredElseHelp
     pub fn subcommand_required_else_help(mut self, yes: bool) -> Self {
-        self.cmd = self.cmd
+        self.cmd = self
+            .cmd
             .subcommand_required(yes)
             .arg_required_else_help(yes);
         self
@@ -92,9 +89,9 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self
     }
 
-    pub fn handler<H>(mut self, handler: H) -> Self 
+    pub fn handler<H>(mut self, handler: H) -> Self
     where
-        H: Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help
+        H: Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help,
     {
         self.handler = Box::new(handler);
         self
@@ -123,17 +120,41 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
             .fold(self, |this, subcmd| this.subcommand(subcmd))
     }
 
+    pub fn with_completions_subcmd(self) -> Self {
+        let completions_without_handler = Self::new("completions")
+            .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
+            .arg(
+                Arg::new("shell")
+                    .required(true)
+                    .possible_values(&[
+                        "bash",
+                        "zsh",
+                        "powershell",
+                        "fish",
+                        "elvish",
+                    ])
+                    .validator(|s| s.parse::<clap_complete::Shell>()),
+            );
+
+        let cmd_for_completions = self.cmd.clone().subcommand(completions_without_handler.cmd.clone());
+        let completions = completions_without_handler.handler(move |_cmd, m, _ctx| {
+            let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
+            let mut stdout = std::io::stdout();
+            let bin_name = cmd_for_completions.get_name();
+            clap_complete::generate(shell, &mut cmd_for_completions.clone(), bin_name, &mut stdout);
+            Ok(())
+        });
+
+        self.subcommand(completions)
+    }
+
     pub fn exec(&self, ctx: &mut Ctx) -> Result<()> {
         let m = self.cmd.clone().get_matches();
         self.exec_with(&m, ctx)
     }
 
     /// Execute this command with context and args.
-    pub fn exec_with(
-        &self,
-        m: &ArgMatches,
-        ctx: &mut Ctx,
-    ) -> Result<()> {
+    pub fn exec_with(&self, m: &ArgMatches, ctx: &mut Ctx) -> Result<()> {
         (self.handler)(self, m, ctx)
     }
 
@@ -146,11 +167,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self.exec_with(&m, ctx)
     }
 
-    pub fn dispatch_subcmd(
-        &self,
-        m: &ArgMatches,
-        ctx: &mut Ctx,
-    ) -> Result<()> {
+    pub fn dispatch_subcmd(&self, m: &ArgMatches, ctx: &mut Ctx) -> Result<()> {
         if let Some((subcmd_name, subcmd_matches)) = m.subcommand() {
             if let Some(subcmd) = self.subcmds.get(subcmd_name) {
                 subcmd.exec_with(subcmd_matches, ctx)?;
@@ -199,61 +216,3 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
     }
 
 }
-
-// pub fn all_cmd<'help, C: Crypto>() -> Command<'help, ControllerClient, ExecutorClient, EvmClient, Wallet<C>>
-// {
-//     Command::new("cldi")
-//         .about("The command line interface to interact with `CITA-Cloud v6.3.0`.")
-//         .arg(
-//             Arg::new("controller-addr")
-//                 .help("controller address")
-//                 .short('r')
-//                 .takes_value(true)
-//                 // TODO: add validator
-//         )
-//         .arg(
-//             Arg::new("executor-addr")
-//                 .help("executor address")
-//                 .short('e')
-//                 .takes_value(true)
-//                 // TODO: add validator
-//         )
-//         .handler(|cmd, ctx, m| {
-//             let rt = ctx.rt.handle().clone();
-//             rt.block_on(async {
-//                 if let Some(controller_addr) = m.value_of("controller-addr") {
-//                     let controller = {
-//                         let addr = format!("http://{controller_addr}");
-//                         let channel = Endpoint::from_shared(addr)?.connect_lazy();
-//                         ControllerClient::new(channel)
-//                     };
-//                     ctx.controller = controller;
-//                 }
-
-//                 if let Some(executor_addr) = m.value_of("executor-addr") {
-//                     let executor = {
-//                         let addr = format!("http://{executor_addr}");
-//                         let channel = Endpoint::from_shared(addr)?.connect_lazy();
-//                         ExecutorClient::new(channel)
-//                     };
-
-//                     let evm = {
-//                         let addr = format!("http://{executor_addr}");
-//                         let channel = Endpoint::from_shared(addr).unwrap().connect_lazy();
-//                         EvmClient::new(channel)
-//                     };
-
-//                     ctx.executor = executor;
-//                     ctx.evm = evm;
-//                 }
-//                 anyhow::Ok(())
-//             })
-//         })
-//         .subcommands([
-//             // key::key_cmd(),
-//             // admin::admin_cmd(),
-//             // // TODO: figure out why I have to specify `C` for this cmd
-//             // rpc::rpc_cmd::<C, _, _, _, _>(),
-//             // evm::evm_cmd(),
-//         ])
-// }
