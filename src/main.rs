@@ -25,7 +25,6 @@ use anyhow::Context as _;
 use anyhow::Result;
 use std::{fs, io::Write};
 
-
 fn main() -> Result<()> {
     let config = {
         let data_dir = {

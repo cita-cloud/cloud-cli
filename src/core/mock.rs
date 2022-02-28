@@ -4,7 +4,7 @@ use super::controller::ControllerBehaviour;
 use super::evm::EvmBehaviour;
 use super::executor::ExecutorBehaviour;
 use crate::config::Config;
-use crate::crypto::{Address, Hash};
+use crate::crypto::{Address, Hash, Crypto, SmCrypto};
 use crate::proto::blockchain::CompactBlock;
 use crate::proto::blockchain::RawTransaction;
 use crate::proto::common::TotalNodeInfo;
@@ -15,18 +15,13 @@ use crate::proto::evm::ByteCode;
 use crate::proto::evm::Nonce;
 use crate::proto::evm::Receipt;
 use crate::proto::executor::CallResponse;
+use crate::core::wallet::Account;
 use anyhow::Result;
 use mockall::mock;
 use tempfile::tempdir;
 use tempfile::TempDir;
 use tonic::transport::Channel;
-
-// #[automock]
-// trait ControllerClient: ControllerBehaviour + GrpcClientBehaviour {}
-// #[automock]
-// trait ExecutorClient: ExecutorBehaviour + GrpcClientBehaviour {}
-// #[automock]
-// trait EvmClient: EvmBehaviour + GrpcClientBehaviour {}
+use std::time::Duration;
 
 mock! {
     pub ControllerClient {}
@@ -57,6 +52,9 @@ mock! {
     #[tonic::async_trait]
     impl GrpcClientBehaviour for ControllerClient {
         fn from_channel(ch: Channel) -> Self;
+        async fn connect(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str) -> Result<Self>;
+        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
     }
 
     impl Clone for ControllerClient {
@@ -80,6 +78,13 @@ mock! {
     #[tonic::async_trait]
     impl GrpcClientBehaviour for ExecutorClient {
         fn from_channel(ch: Channel) -> Self;
+        async fn connect(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str) -> Result<Self>;
+        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
+    }
+
+    impl Clone for ExecutorClient {
+        fn clone(&self) -> Self;
     }
 }
 
@@ -98,35 +103,58 @@ mock! {
     #[tonic::async_trait]
     impl GrpcClientBehaviour for EvmClient {
         fn from_channel(ch: Channel) -> Self;
+        async fn connect(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str) -> Result<Self>;
+        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
+    }
+
+    impl Clone for EvmClient {
+        fn clone(&self) -> Self;
     }
 }
 
+/// Returns mock context and temp dir guard.
+/// The temp dir guard must be holded to use the mock context.
 pub fn context() -> (
     Context<MockControllerClient, MockExecutorClient, MockEvmClient>,
     TempDir,
 ) {
     // set up mock context
     let mock_ctx = MockControllerClient::from_channel_context();
-    mock_ctx.expect().returning(|_| {
-        let mock = MockControllerClient::default();
-        mock
-    });
+    mock_ctx.expect().returning(|_| Default::default());
+    let mock_ctx = MockControllerClient::connect_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockControllerClient::connect_lazy_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockControllerClient::connect_timeout_context();
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
+
     let mock_ctx = MockExecutorClient::from_channel_context();
-    mock_ctx.expect().returning(|_| {
-        let mock = MockExecutorClient::default();
-        mock
-    });
+    mock_ctx.expect().returning(|_| Default::default());
+    let mock_ctx = MockExecutorClient::connect_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockExecutorClient::connect_lazy_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockExecutorClient::connect_timeout_context();
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
+
     let mock_ctx = MockEvmClient::from_channel_context();
-    mock_ctx.expect().returning(|_| {
-        let mock = MockEvmClient::default();
-        mock
-    });
+    mock_ctx.expect().returning(|_| Default::default());
+    let mock_ctx = MockEvmClient::connect_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockEvmClient::connect_lazy_context();
+    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    let mock_ctx = MockEvmClient::connect_timeout_context();
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
 
     let test_dir = tempdir().expect("cannot get temp dir");
     let mut config = Config::default();
     config.data_dir = test_dir.path().to_path_buf();
 
-    let ctx = Context::from_config(config).expect("fail to create test context");
+    let mut ctx = Context::from_config(config).expect("fail to create test context");
+
+    let default_account = Account::<SmCrypto>::generate();
+    ctx.wallet.save("default", default_account).expect("cannot save default account");
 
     (ctx, test_dir)
 }

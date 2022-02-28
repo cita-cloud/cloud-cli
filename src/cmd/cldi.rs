@@ -1,19 +1,13 @@
-use clap::App;
 use clap::Arg;
 
-use tonic::transport::Endpoint;
-
-use super::Command;
-use super::{admin, bench, context, evm, key, rpc};
-
-use crate::config::ContextSetting;
-use crate::core::client::GrpcClientBehaviour;
-use crate::core::{
-    admin::AdminBehaviour, context::Context, controller::ControllerBehaviour,
-    controller::ControllerClient, evm::EvmBehaviour, evm::EvmBehaviourExt, evm::EvmClient,
-    executor::ExecutorBehaviour, executor::ExecutorClient, wallet::Wallet,
+use crate::{
+    cmd::{admin, bench, context, evm, key, rpc, Command},
+    config::ContextSetting,
+    core::{
+        client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
+        evm::EvmBehaviour, executor::ExecutorBehaviour,
+    },
 };
-use crate::crypto::Crypto;
 
 pub fn get_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
@@ -37,38 +31,11 @@ where
     ])
 }
 
-// pub fn with_completions_subcmd<'help, Co, Ex, Ev>(cmd: Command<'help, Context<Co, Ex, Ev>>) -> Command<'help, Context<Co, Ex, Ev>> {
-//     let without_handler = || Command::new("completions")
-//         .about("Generate completions for current shell. Add the output script to `.profile` or `.bashrc` etc. to make it effective.")
-//         .arg(
-//             Arg::new("shell")
-//                 .required(true)
-//                 .possible_values(&[
-//                     "bash",
-//                     "zsh",
-//                     "powershell",
-//                     "fish",
-//                     "elvish",
-//                 ])
-//                 .validator(|s| s.parse::<clap_complete::Shell>()),
-//         );
-//     let cmd = cmd.subcommand(without_handler());
-//     let completions_subcmd = without_handler()
-//         .handler(|_cmd, m, _ctx|{
-//             let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
-//             let mut stdout = std::io::stdout();
-//             clap_complete::generate(shell, &mut cmd.get_clap_command().clone(), "cldi", &mut stdout);
-//             Ok(())
-//         });
-
-//     cmd.subcommand(completions_subcmd)
-// }
-
 pub fn cldi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
-    Ex: ExecutorBehaviour + GrpcClientBehaviour,
-    Ev: EvmBehaviour + GrpcClientBehaviour,
+    Ex: ExecutorBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+    Ev: EvmBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
 {
     Command::<Context<Co, Ex, Ev>>::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`")
@@ -127,7 +94,8 @@ where
             context::context_cmd(),
             evm::evm_cmd(),
             rpc::rpc_cmd(),
-            bench::bench_send().name("bench"),
+            bench::bench_send().alias("bench"),
+            bench::bench_call(),
             // re-export
             rpc::send(),
             rpc::call(),

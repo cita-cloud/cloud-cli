@@ -4,14 +4,10 @@ use anyhow::anyhow;
 use serde_json::json;
 
 use crate::{
-    core::{
-        client::GrpcClientBehaviour,
-        context::Context,
-    },
-    display::Display,
     cmd::Command,
+    core::{client::GrpcClientBehaviour, context::Context},
+    display::Display,
 };
-
 
 pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("save-context")

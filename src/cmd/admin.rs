@@ -1,15 +1,12 @@
+use anyhow::Result;
 use clap::Arg;
 
-use crate::core::admin::AdminBehaviour;
-use crate::utils::parse_addr;
-
-use super::*;
-use crate::core::context::Context;
-
-use crate::crypto::{Address, ArrayLike, Crypto, Hash};
-use crate::utils::hex;
-
-// I have no idea why rustc cannot infer the Command's generic params.
+use crate::{
+    cmd::Command,
+    core::{admin::AdminBehaviour, context::Context},
+    crypto::Address,
+    utils::{hex, parse_addr},
+};
 
 pub fn update_admin<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where

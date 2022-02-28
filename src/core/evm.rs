@@ -1,7 +1,3 @@
-use super::context::Context;
-use prost::Message;
-// use crate::wallet::Account;
-
 use crate::{
     crypto::EthCrypto,
     proto::{

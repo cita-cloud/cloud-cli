@@ -1,31 +1,23 @@
-use anyhow::Context as _;
-use anyhow::Result;
+use std::{future::Future, sync::Arc, time::Duration};
+
+use anyhow::{Context as _, Result};
+use clap::Arg;
 use parking_lot::Mutex;
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
-use std::future::Future;
-use std::sync::Arc;
-use std::time::Duration;
 
-use super::Command;
-use crate::core::client::GrpcClientBehaviour;
-use crate::core::context::Context;
-use crate::crypto::Crypto;
-use clap::Arg;
-
-use crate::core::controller::{
-    ControllerBehaviour, ControllerClient, SignerBehaviour, TransactionSenderBehaviour,
-};
-use crate::proto::{
-    blockchain::Transaction,
-    evm::{
-        rpc_service_client::RpcServiceClient as EvmClient, Balance, ByteAbi, ByteCode, Nonce,
-        Receipt,
+use crate::{
+    cmd::Command,
+    core::executor::ExecutorBehaviour,
+    core::{
+        client::GrpcClientBehaviour,
+        context::Context,
+        controller::{ControllerBehaviour, SignerBehaviour},
     },
-    executor::{executor_service_client::ExecutorServiceClient as ExecutorClient, CallRequest},
+    proto::blockchain::Transaction,
+    utils::{parse_addr, parse_data},
 };
 
-use crate::utils::{hex, parse_addr, parse_data, parse_value};
 
 fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("bench-basic")
@@ -113,7 +105,10 @@ where
                         chain_id: system_config.chain_id.clone(),
                         version: system_config.version,
                     };
-                    signer.sign_raw_tx(raw_tx)
+                    dbg!("before sign");
+                    let res = signer.sign_raw_tx(raw_tx);
+                    dbg!("after sign");
+                    res
                 };
 
                 let worker_fn =
@@ -137,195 +132,90 @@ where
         })
 }
 
-// async fn bench_send(
-//     rpc_addr: &str,
-//     total: u64,
-//     connections: u64,
-//     workers: u64,
-//     timeout: u64,
-// ) -> Result<(), anyhow::Error>
-// {
-//     let progbar = {
-//         let progbar = indicatif::ProgressBar::new(total);
-//         progbar.set_style(
-//             indicatif::ProgressStyle::default_bar()
-//                 .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos:>7}/{len:7}")
-//                 .progress_chars("=> ")
-//         );
-//         Arc::new(progbar)
-//     };
-//     let mut t = None;
-//     let before_preparing = || println!("Preparing connections and transactions..");
-//     let before_working = || {
-//         println!("Sending transactions...");
-//         t.replace(std::time::Instant::now());
-//     };
+pub fn bench_call<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Ex: ExecutorBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+{
+    bench_basic::<Co, Ex, Ev>()
+        .name("bench-call")
+        .about("Call executor with {-c} workers over {--connections} connections")
+        .arg(
+            Arg::new("from")
+                .short('f')
+                .long("from")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_addr),
+        )
+        .arg(
+            Arg::new("to")
+                .short('t')
+                .long("to")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_addr),
+        )
+        .arg(
+            Arg::new("data")
+                .short('d')
+                .long("data")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_data),
+        )
+        .handler(|_cmd, m, ctx| {
+            let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
+            let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
+            let timeout = m.value_of("timeout").unwrap().parse::<u64>().unwrap();
+            let workers = m
+                .value_of("concurrency")
+                .map(|s| s.parse::<u64>().unwrap())
+                .unwrap_or(total);
 
-//     let connector = || async {
-//         let endpoint = {
-//             let addr = format!("http://{}", rpc_addr);
-//             let mut endpoint = Endpoint::from_shared(addr).unwrap();
-//             if timeout > 0 {
-//                 endpoint = endpoint.timeout(Duration::from_secs(timeout));
-//             }
-//             endpoint
-//         };
-//         endpoint.connect().await.map(ControllerClient::new)
-//     };
+            let from = parse_addr(m.value_of("from").unwrap())?;
+            let to = parse_addr(m.value_of("to").unwrap())?;
+            let data = parse_data(m.value_of("data").unwrap())?;
 
-//     let workload_builder = || {
-//         let mut rng = thread_rng();
-//         let tx = Transaction {
-//             to: rng.gen::<[u8; 20]>().to_vec(),
-//             data: rng.gen::<[u8; 32]>().to_vec(),
-//             value: rng.gen::<[u8; 32]>().to_vec(),
-//             nonce: rng.gen::<u64>().to_string(),
-//             quota: 3_000_000,
-//             valid_until_block: start_at + 95,
-//             chain_id: chain_id.clone(),
-//             version,
-//         };
-//         client.prepare_raw_tx(tx)
-//     };
+            let executor_addr = ctx.current_executor_addr();
+            ctx.rt.block_on(async {
+                let connector = || async {
+                    if timeout > 0 {
+                        Ex::connect_timeout(executor_addr, Duration::from_secs(timeout)).await
+                    } else {
+                        Ex::connect(executor_addr).await
+                    }
+                };
 
-//     let progbar_cloned = progbar.clone();
-//     // OK, I couldn't manage to use &mut for conn here and have to pass a owned client,
-//     // because there is no way to specify the lifetime bound for the returned closure here.
-//     let worker_fn = |mut conn: ControllerClient<Channel>, tx: RawTransaction| async move {
-//         if conn
-//             .send_raw_transaction(tx)
-//             .await
-//             .map(|h| !h.into_inner().hash.is_empty())
-//             .unwrap_or(false)
-//         {
-//             progbar_cloned.inc(1);
-//         }
-//     };
+                let workload_builder = || (from, to, data);
 
-//     bench_fn(
-//         total,
-//         connections,
-//         workers,
-//         connector,
-//         workload_builder,
-//         worker_fn,
-//         before_preparing,
-//         before_working,
-//     )
-//     .await
-//     .context("bench failed")?;
+                let worker_fn = |client: Ex, (from, to, data)| async move {
+                    client.call(from, to, data).await.map(|_| ())
+                };
 
-//     progbar.finish_at_current_pos();
+                bench_fn_with_progbar(
+                    total,
+                    connections,
+                    workers,
+                    connector,
+                    workload_builder,
+                    worker_fn,
+                    "Preparing connections and transactions",
+                    "Sending transactions..",
+                )
+                .await;
 
-//     println!(
-//         "sending `{}` transactions finished in `{}` ms",
-//         total,
-//         t.unwrap().elapsed().as_millis()
-//     );
-//     let success = progbar.position();
-//     let failure = total - success;
-//     println!("`{}` success, `{}` failure", success, failure);
-
-//     Ok(())
-// }
-
-// async fn bench_call(
-//     executor_addr: &str,
-//     from: Vec<u8>,
-//     to: Vec<u8>,
-//     payload: Vec<u8>,
-
-//     total: u64,
-//     connections: u64,
-//     workers: u64,
-//     timeout: u64,
-// ) -> Result<(), anyhow::Error> {
-//     let progbar = {
-//         let progbar = indicatif::ProgressBar::new(total);
-//         progbar.set_style(
-//             indicatif::ProgressStyle::default_bar()
-//                 .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos:>7}/{len:7}")
-//                 .progress_chars("=> ")
-//         );
-//         Arc::new(progbar)
-//     };
-//     let mut t = None;
-//     let before_preparing = || println!("Preparing connections and transactions..");
-//     let before_working = || {
-//         println!("Sending transactions...");
-//         t.replace(std::time::Instant::now());
-//     };
-
-//     let connector = || async {
-//         let endpoint = {
-//             let addr = format!("http://{}", executor_addr);
-//             let mut endpoint = Endpoint::from_shared(addr).unwrap();
-//             if timeout > 0 {
-//                 endpoint = endpoint.timeout(Duration::from_secs(timeout));
-//             }
-//             endpoint
-//         };
-//         endpoint.connect().await.map(ExecutorClient::new)
-//     };
-
-//     let workload_builder = || CallRequest { from, to, method: payload, args: vec![] };
-//     let progbar_cloned = progbar.clone();
-//     let worker_fn = |mut client: ExecutorClient<Channel>, call_req: CallRequest| async move {
-//         if client
-//             .call(call_req)
-//             .await
-//             .is_ok()
-//         {
-//             progbar_cloned.inc(1);
-//         }
-//     };
-
-//     let mut t = None;
-//     let before_preparing = || println!("Preparing call requests");
-//     let before_working = || {
-//         println!("Sending call requests...");
-//         t.replace(std::time::Instant::now());
-//     };
-
-//     bench_fn(
-//         total,
-//         connections,
-//         workers,
-//         connector,
-//         workload_builder,
-//         worker_fn,
-//         before_preparing,
-//         before_working,
-//     )
-//     .await
-//     .context("bench failed")?;
-
-//     progbar.finish_at_current_pos();
-
-//     println!(
-//         "sending `{}` transactions finished in `{}` ms",
-//         total,
-//         t.unwrap().elapsed().as_millis()
-//     );
-//     let success = progbar.position();
-//     let failure = total - success;
-//     println!("`{}` success, `{}` failure", success, failure);
-
-//     Ok(())
-// }
-
-// async fn bench_tx() {
-
-// }
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
 
 async fn bench_fn_with_progbar<
     Connector,
     Connection,
-    // ConnectionError,
     ConnectionResultFut,
     Workload,
     WorkloadBuilder,
-    // WorkError,
     WorkResultFut,
     Worker,
 >(
@@ -341,14 +231,12 @@ async fn bench_fn_with_progbar<
     working_info: &str,
 ) where
     Connection: Clone + Send + Sync + 'static,
-    // ConnectionError: std::error::Error + Send + Sync + 'static,
     ConnectionResultFut: Future<Output = Result<Connection>>,
     Connector: FnOnce() -> ConnectionResultFut + Clone,
 
     Workload: Send + 'static,
     WorkloadBuilder: FnOnce() -> Workload + Send + Sync + Clone,
 
-    // WorkError: std::error::Error + Send + Sync + 'static,
     WorkResultFut: Future<Output = Result<()>> + Send,
     Worker: FnOnce(Connection, Workload) -> WorkResultFut + Clone + Send + Sync + 'static,
 {
@@ -393,6 +281,7 @@ async fn bench_fn_with_progbar<
     )
     .await;
 
+    dbg!(&bench_res);
     progbar.finish_at_current_pos();
 
     println!(
@@ -417,11 +306,9 @@ async fn bench_fn_with_progbar<
 async fn bench_fn<
     Connector,
     Connection,
-    // ConnectionError,
     ConnectionResultFut,
     Workload,
     WorkloadBuilder,
-    // WorkError,
     WorkResultFut,
     Worker,
     BeforePreparing,
@@ -440,14 +327,12 @@ async fn bench_fn<
 ) -> Result<(), anyhow::Error>
 where
     Connection: Clone + Send + Sync + 'static,
-    // ConnectionError: std::error::Error + Send + Sync + 'static,
     ConnectionResultFut: Future<Output = Result<Connection>>,
     Connector: FnOnce() -> ConnectionResultFut + Clone,
 
     Workload: Send + 'static,
     WorkloadBuilder: FnOnce() -> Workload + Send + Sync + Clone,
 
-    // WorkError: std::error::Error + Send + Sync + 'static,
     WorkResultFut: Future<Output = Result<()>> + Send,
     Worker: FnOnce(Connection, Workload) -> WorkResultFut + Clone + Send + Sync + 'static,
 
@@ -570,4 +455,31 @@ where
         .take()
         .map(Err)
         .unwrap_or(Ok(()))
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    fn test_bench_send() {
+        let cmd = bench_send();
+
+        let (mut ctx, _temp_dir) = context();
+        ctx.controller.expect_get_block_number()
+            .returning(|_| Ok(Default::default()));
+        ctx.controller.expect_get_system_config()
+            .returning(|| Ok(Default::default()));
+        ctx.controller.expect_send_raw()
+            .times(1)
+            .returning(|_| Ok(Default::default()));
+
+        cmd.exec_from(
+            ["bench-send", "1"],
+            &mut ctx
+        ).unwrap();
+    }
 }

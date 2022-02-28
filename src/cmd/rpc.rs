@@ -1,24 +1,19 @@
-use clap::App;
-use clap::AppSettings;
 use clap::Arg;
 
 use crate::utils::parse_value;
 use crate::utils::{hex, parse_addr, parse_data, parse_hash};
 
-// use super::*;
 use super::Command;
 use crate::core::context::Context;
 use crate::core::controller::ControllerBehaviour;
 use crate::core::controller::TransactionSenderBehaviour;
 use crate::core::executor::ExecutorBehaviour;
-use prost::Message;
 
 use tokio::try_join;
 
 use crate::crypto::ArrayLike;
 use crate::display::Display;
 use anyhow::Context as _;
-use anyhow::Result;
 
 // TODO: get version
 
@@ -46,6 +41,8 @@ where
         )
         .arg(
             Arg::new("data")
+                .short('d')
+                .long("data")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_data),
@@ -53,7 +50,7 @@ where
         .handler(|_cmd, m, ctx| {
             let from = parse_addr(m.value_of("from").unwrap())?;
             let to = parse_addr(m.value_of("to").unwrap())?;
-            let data = parse_data(m.value_of("data").unwrap_or_default())?;
+            let data = parse_data(m.value_of("data").unwrap())?;
 
             let resp = ctx.rt.block_on(ctx.executor.call(from, to, data))??;
             println!("{}", resp.display());
@@ -320,7 +317,7 @@ where
             if status == 0 {
                 println!("ok");
             } else {
-                // I have no idea about how to explain those status codes.
+                // I have no idea how to explain those status codes.
                 println!("status code: {}", status);
             }
 
@@ -334,7 +331,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
-        // .subcommand_required_else_help(true)
+        .subcommand_required_else_help(true)
         .subcommands([
             get_version(),
             get_system_config(),
@@ -353,22 +350,19 @@ mod tests {
     use super::*;
     use crate::cmd::cldi_cmd;
     use crate::core::mock::context;
-    use anyhow::Result;
 
     #[test]
-    fn test_get_peer_count() -> Result<()> {
+    fn test_get_peer_count() {
         let cmd = get_peer_count();
         let rpc_cmd = rpc_cmd();
         let cldi_cmd = cldi_cmd();
 
-        let (mut ctx, _dir) = context();
+        let (mut ctx, _temp_dir) = context();
         ctx.controller.expect_get_peer_count().returning(|| Ok(42));
 
-        cmd.exec_from(["get-peer-count"], &mut ctx)?;
-        rpc_cmd.exec_from(["rpc", "get-peer-count"], &mut ctx)?;
-        cldi_cmd.exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx)?;
-        cldi_cmd.exec_from(["cldi", "get", "peer-count"], &mut ctx)?;
-
-        Ok(())
+        cmd.exec_from(["get-peer-count"], &mut ctx).unwrap();
+        rpc_cmd.exec_from(["rpc", "get-peer-count"], &mut ctx).unwrap();
+        cldi_cmd.exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx).unwrap();
+        cldi_cmd.exec_from(["cldi", "get", "peer-count"], &mut ctx).unwrap();
     }
 }

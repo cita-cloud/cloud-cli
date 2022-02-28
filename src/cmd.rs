@@ -1,10 +1,10 @@
 mod admin;
-mod rpc;
-mod evm;
 mod bench;
 mod cldi;
 mod context;
+mod evm;
 mod key;
+mod rpc;
 
 pub use cldi::cldi_cmd;
 use rustyline::completion;
@@ -136,12 +136,20 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
                     .validator(|s| s.parse::<clap_complete::Shell>()),
             );
 
-        let cmd_for_completions = self.cmd.clone().subcommand(completions_without_handler.cmd.clone());
+        let cmd_for_completions = self
+            .cmd
+            .clone()
+            .subcommand(completions_without_handler.cmd.clone());
         let completions = completions_without_handler.handler(move |_cmd, m, _ctx| {
             let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
             let mut stdout = std::io::stdout();
             let bin_name = cmd_for_completions.get_name();
-            clap_complete::generate(shell, &mut cmd_for_completions.clone(), bin_name, &mut stdout);
+            clap_complete::generate(
+                shell,
+                &mut cmd_for_completions.clone(),
+                bin_name,
+                &mut stdout,
+            );
             Ok(())
         });
 
@@ -214,5 +222,4 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
     pub fn get_all_aliases(&self) -> impl Iterator<Item = &str> + '_ {
         self.cmd.get_all_aliases()
     }
-
 }

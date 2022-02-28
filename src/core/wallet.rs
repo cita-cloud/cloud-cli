@@ -179,21 +179,6 @@ impl<C: Crypto> Account<C> {
             secret_key,
         })
     }
-
-    // fn from_str(s: &str) -> Result<Self> {
-    //     let (address, public_key, secret_key) = {
-    //         let Serialized{ address, public_key, secret_key } = toml::from_str(s).context("cannot parse Account")?;
-    //         let address = parse_addr(address)?;
-    //         let public_key = parse_pk(address)?;
-    //         let secret_key = parse_sk(secret_key)?;
-    //         (address, public_key, secret_key)
-    //     };
-    //     ensure!(
-    //         public_key == C::sk2pk(&secret_key),
-    //         "The parsed account's recorded "
-    //     )
-
-    // }
 }
 
 // We recorded the address and pubkey for better human-readability
