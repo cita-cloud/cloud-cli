@@ -160,7 +160,7 @@ pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 {
     Command::<Context<Co, Ex, Ev>>::new("key")
         .about("Key commands")
-        .setting(AppSettings::SubcommandRequired)
+        .arg_required_else_help(true)
         .subcommands([
             generate_key().name("generate"),
             list_key().name("list"),

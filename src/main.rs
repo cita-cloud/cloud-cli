@@ -88,6 +88,7 @@ fn main() -> Result<()> {
         })?;
     } else {
         // TODO: simplify this, and fix `cldi -r addr` case
+        // TODO: put editor into context
         let mut rl = rustyline::Editor::<()>::new();
         loop {
             let line = rl.readline("cldi> ");

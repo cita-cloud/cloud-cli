@@ -143,7 +143,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("evm")
         .about("EVM commands")
-        .setting(AppSettings::SubcommandRequired)
+        .arg_required_else_help(true)
         .subcommands([
             get_receipt(),
             get_code(),

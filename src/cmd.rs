@@ -74,6 +74,11 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self
     }
 
+    pub fn arg_required_else_help(mut self, yes: bool) -> Self {
+        self.cmd = self.cmd.arg_required_else_help(yes);
+        self
+    }
+
     pub fn setting<F: Into<AppFlags>>(mut self, setting: F) -> Self {
         self.cmd = self.cmd.setting(setting);
         self

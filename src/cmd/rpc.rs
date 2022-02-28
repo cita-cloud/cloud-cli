@@ -333,7 +333,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
-        .setting(AppSettings::SubcommandRequired)
+        .arg_required_else_help(true)
         .subcommands([
             get_version(),
             get_system_config(),

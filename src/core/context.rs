@@ -18,6 +18,19 @@ use anyhow::anyhow;
 use super::wallet::Wallet;
 use super::wallet::MultiCryptoAccount;
 
+#[cfg(test)]
+use super::controller::MockControllerClient;
+#[cfg(test)]
+use super::executor::MockExecutorClient;
+#[cfg(test)]
+use super::evm::MockEvmClient;
+
+#[cfg(test)]
+pub fn mock_context() -> Context<MockControllerClient, MockExecutorClient, MockEvmClient> {
+    todo!()
+
+}
+
 pub struct Context<Co, Ex, Ev> {
     /// Those gRPC client are connected lazily.
     pub controller: Co,
@@ -42,6 +55,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
         let wallet = Wallet::open(&config.data_dir)?;
         let default_context_setting = config.context_settings.get(&config.default_context)
+            // TODO: log warning and use default context setting
             .ok_or_else(|| anyhow!("missing default context setting"))?
             .clone();
         // connect_lazy must run in async environment.
@@ -101,14 +115,14 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ok(())
     }
 
-    pub fn switch_context_to(&mut self, context_id: &str) -> Result<()>
+    pub fn switch_context_to(&mut self, context_name: &str) -> Result<()>
     where
         Co: GrpcClientBehaviour,
         Ex: GrpcClientBehaviour,
         Ev: GrpcClientBehaviour,
     {
-        let setting = self.config.context_settings.get(context_id)
-            .ok_or_else(|| anyhow!("context`{}` not found", context_id))?
+        let setting = self.config.context_settings.get(context_name)
+            .ok_or_else(|| anyhow!("context`{}` not found", context_name))?
             .clone();
         self.switch_context(setting)
     }

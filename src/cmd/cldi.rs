@@ -136,15 +136,13 @@ where
         .subcommands([
             admin::admin_cmd(),
             key::key_cmd(),
-            // TODO: figure out why it cannot infer C.
             self::get_cmd(),
-            // evm::store_contract_abi(),
-            // rpc::add_node::<C, _, _, _, _>(),
             context::context_cmd(),
             evm::evm_cmd(),
             rpc::rpc_cmd(),
+            bench::bench_send().name("bench"),
+            // re-export
             rpc::send(),
             rpc::call(),
-            bench::bench_send().name("bench"),
         ])
 }

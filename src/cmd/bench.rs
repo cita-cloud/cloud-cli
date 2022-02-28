@@ -33,16 +33,12 @@ use crate::proto::{
 
 use crate::utils::{parse_addr, parse_data, parse_value, hex};
 
-pub fn bench_send<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-where
-    Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
-{
-    Command::<Context<Co, Ex, Ev>>::new("bench-send")
-        .about("Send transactions with {-c} workers over {--connections} connections")
+fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("bench-basic")
         .arg(
             Arg::new("concurrency")
                 .help(
-                    "Number of request workers to run concurrently for sending transactions. \
+                    "Number of request workers to run concurrently. \
                     Workers will be distributed evenly among all the connections. \
                     [default: the same as total]",
                 )
@@ -57,7 +53,7 @@ where
                 .help("Number of connections connects to server")
                 .long("connections")
                 .takes_value(true)
-                .default_value("16")
+                .default_value("1")
                 .validator(str::parse::<u64>),
         )
         .arg(
@@ -74,6 +70,15 @@ where
                 .default_value("100")
                 .validator(str::parse::<u32>),
         )
+}
+
+pub fn bench_send<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+{
+    bench_basic::<Co, Ex, Ev>()
+        .name("bench-send")
+        .about("Send transactions with {-c} workers over {--connections} connections")
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
