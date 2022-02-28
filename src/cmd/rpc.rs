@@ -277,7 +277,7 @@ pub fn get_peer_count<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 where
     Co: ControllerBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("peer-count")
+    Command::<Context<Co, Ex, Ev>>::new("get-peer-count")
         .about("Get peer count")
         .handler(|_cmd, _m, ctx| {
             let peer_count = ctx.rt.block_on(ctx.controller.get_peer_count())??;
@@ -291,7 +291,7 @@ pub fn get_peers_info<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 where
     Co: ControllerBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("peers-info")
+    Command::<Context<Co, Ex, Ev>>::new("get-peers-info")
         .about("Get peers info")
         .handler(|_cmd, _m, ctx| {
             let peers_info = ctx.rt.block_on(ctx.controller.get_peers_info())??;
@@ -333,7 +333,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
-        .arg_required_else_help(true)
+        // .subcommand_required_else_help(true)
         .subcommands([
             get_version(),
             get_system_config(),
@@ -345,4 +345,41 @@ where
             get_peers_info(),
             add_node(),
         ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::mock::context;
+    use crate::cmd::cldi_cmd;
+
+    #[test]
+    fn test_get_peer_count() {
+        let cmd = get_peer_count();
+        let rpc_cmd = rpc_cmd();
+        let cldi_cmd = cldi_cmd();
+
+        let (mut ctx, _dir) = context();
+        ctx.controller
+            .expect_get_peer_count()
+            .returning(|| Ok(42));
+
+        cmd.exec_from(
+            ["get-peer-count"],
+            &mut ctx,
+        ).unwrap();
+        rpc_cmd.exec_from(
+            ["rpc", "get-peer-count"],
+            &mut ctx,
+        ).unwrap();
+        cldi_cmd.exec_from(
+            ["cldi", "rpc", "get-peer-count"],
+            &mut ctx,
+        ).unwrap();
+        cldi_cmd.exec_from(
+            ["cldi", "get", "peer-count"],
+            &mut ctx,
+        ).unwrap();
+    }
+
 }

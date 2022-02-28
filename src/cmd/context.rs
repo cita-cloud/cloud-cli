@@ -49,6 +49,7 @@ where
     Ev: GrpcClientBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("switch-context")
+        .about("switch context")
         .arg(
             Arg::new("context-name")
                 .takes_value(true)
@@ -86,10 +87,11 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("context")
         .alias("ctx")
-        .arg_required_else_help(true)
+        .about("context commands")
+        .subcommand_required_else_help(true)
         .subcommands([
             save().name("save"),
-            switch().name("switch"),
+            switch().name("use"),
             list().name("list").aliases(&["ls", "l"]),
             delete().name("delete").alias("del"),
         ])

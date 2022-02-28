@@ -1,7 +1,8 @@
 // WARNING: efficient_sm2 and libsm didn't handle the potential security risk that
 // privkey/secret leaks from un-zeroized memory.
 
-// The reference impl can be found [here](https://github.com/cita-cloud/kms_sm)
+/// Please refer to [kms_sm](https://github.com/cita-cloud/kms_sm).
+/// This crypto impl must be compatible with `kms_sm` to work with it.
 
 
 use super::Crypto;

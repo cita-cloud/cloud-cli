@@ -74,8 +74,11 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self
     }
 
-    pub fn arg_required_else_help(mut self, yes: bool) -> Self {
-        self.cmd = self.cmd.arg_required_else_help(yes);
+    // https://docs.rs/clap/3.1.2/clap/enum.AppSettings.html#variant.SubcommandRequiredElseHelp
+    pub fn subcommand_required_else_help(mut self, yes: bool) -> Self {
+        self.cmd = self.cmd
+            .subcommand_required(yes)
+            .arg_required_else_help(yes);
         self
     }
 

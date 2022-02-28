@@ -5,3 +5,5 @@ pub mod evm;
 pub mod executor;
 pub mod wallet;
 pub mod client;
+#[cfg(test)]
+pub mod mock;

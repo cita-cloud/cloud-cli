@@ -18,18 +18,6 @@ use anyhow::anyhow;
 use super::wallet::Wallet;
 use super::wallet::MultiCryptoAccount;
 
-#[cfg(test)]
-use super::controller::MockControllerClient;
-#[cfg(test)]
-use super::executor::MockExecutorClient;
-#[cfg(test)]
-use super::evm::MockEvmClient;
-
-#[cfg(test)]
-pub fn mock_context() -> Context<MockControllerClient, MockExecutorClient, MockEvmClient> {
-    todo!()
-
-}
 
 pub struct Context<Co, Ex, Ev> {
     /// Those gRPC client are connected lazily.
@@ -54,6 +42,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
     {
         let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
         let wallet = Wallet::open(&config.data_dir)?;
+
         let default_context_setting = config.context_settings.get(&config.default_context)
             // TODO: log warning and use default context setting
             .ok_or_else(|| anyhow!("missing default context setting"))?

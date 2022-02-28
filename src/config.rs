@@ -10,11 +10,10 @@ use std::fs;
 use std::fs::File;
 use crate::utils::safe_save;
 
-use tempfile::NamedTempFile;
-
 const CLOUD_CLI_CONFIG_FILE_NAME: &str = "config.toml";
 
-#[derive(Debug, Serialize, Deserialize)]
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
     // The dir containing this config file
     #[serde(skip)]

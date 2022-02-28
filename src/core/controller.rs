@@ -23,10 +23,6 @@ use tonic::transport::Channel;
 
 pub type ControllerClient = crate::proto::controller::rpc_service_client::RpcServiceClient<Channel>;
 
-#[cfg(test)]
-pub type MockControllerClient = MockControllerBehaviour;
-
-#[cfg_attr(test, mockall::automock)]
 #[tonic::async_trait]
 pub trait ControllerBehaviour {
     // TODO: should I use the protobuf type instead of concrete type? e.g. u64 -> BlockNumber

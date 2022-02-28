@@ -67,7 +67,8 @@ fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         .arg(
             Arg::new("total")
                 .help("Number of transactions to send")
-                .default_value("100")
+                .takes_value(true)
+                .required(true)
                 .validator(str::parse::<u32>),
         )
 }
