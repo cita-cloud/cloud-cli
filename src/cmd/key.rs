@@ -21,8 +21,6 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
         .about("generate a new key")
         .arg(
             Arg::new("id")
-                .long("id")
-                .short('u')
                 .help("The ID for the new generated key")
                 .required(true)
                 .takes_value(true),
