@@ -279,6 +279,7 @@ impl<C: Crypto> TryFrom<SerializedLockedAccount> for LockedAccount<C> {
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "crypto_type")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum MultiCryptoAccount {
     Sm(
         #[serde(
@@ -333,6 +334,7 @@ impl From<Account<EthCrypto>> for MultiCryptoAccount {
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "crypto_type")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum LockedMultiCryptoAccount {
     Sm(#[serde(with = "LockedAccount")] LockedAccount<SmCrypto>),
     Eth(#[serde(with = "LockedAccount")] LockedAccount<EthCrypto>),
