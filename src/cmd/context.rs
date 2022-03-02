@@ -39,23 +39,6 @@ pub fn delete<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
-pub fn switch<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-where
-    Co: GrpcClientBehaviour,
-    Ex: GrpcClientBehaviour,
-    Ev: GrpcClientBehaviour,
-{
-    Command::<Context<Co, Ex, Ev>>::new("switch-context")
-        .about("switch context")
-        .arg(Arg::new("context-name").takes_value(true).required(true))
-        .handler(|_cmd, m, ctx| {
-            let context_name = m.value_of("context-name").unwrap();
-            ctx.switch_context_to(context_name)?;
-
-            Ok(())
-        })
-}
-
 pub fn list<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("list-context")
         .about("list contexts")
@@ -83,8 +66,7 @@ where
         .subcommand_required_else_help(true)
         .subcommands([
             save().name("save"),
-            switch().name("use"),
             list().name("list").aliases(&["ls", "l"]),
-            delete().name("delete").alias("del"),
+            delete().name("delete").aliases(&["del", "rm"]),
         ])
 }

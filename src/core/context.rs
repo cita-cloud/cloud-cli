@@ -77,6 +77,13 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         &self.current_setting.executor_addr
     }
 
+    pub fn get_context_setting(&self, setting_name: &str) -> Result<&ContextSetting> {
+        self.config
+            .context_settings
+            .get(setting_name)
+            .ok_or_else(|| anyhow!("context`{}` not found", setting_name))
+    }
+
     pub fn switch_context(&mut self, setting: ContextSetting) -> Result<()>
     where
         Co: GrpcClientBehaviour,
@@ -99,21 +106,6 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         self.current_setting = setting;
 
         Ok(())
-    }
-
-    pub fn switch_context_to(&mut self, context_name: &str) -> Result<()>
-    where
-        Co: GrpcClientBehaviour,
-        Ex: GrpcClientBehaviour,
-        Ev: GrpcClientBehaviour,
-    {
-        let setting = self
-            .config
-            .context_settings
-            .get(context_name)
-            .ok_or_else(|| anyhow!("context`{}` not found", context_name))?
-            .clone();
-        self.switch_context(setting)
     }
 }
 

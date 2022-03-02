@@ -40,6 +40,13 @@ where
     Command::<Context<Co, Ex, Ev>>::new("cldi")
         .about("The command line interface to interact with `CITA-Cloud v6.3.0`")
         .arg(
+            Arg::new("context")
+                .help("context setting")
+                .short('c')
+                .long("context")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("controller-addr")
                 .help("controller address")
                 .short('r')
@@ -63,11 +70,18 @@ where
             let mut previous_setting: Option<ContextSetting> = None;
             let mut current_setting = ctx.current_setting.clone();
 
-            let is_tmp_ctx = m.subcommand().is_some();
+            let is_tmp_ctx = m.subcommand().is_some()
+                && (m.is_present("context")
+                    || m.is_present("controller-addr")
+                    || m.is_present("executor-addr")
+                    || m.is_present("account-id"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
 
+            if let Some(setting_name) = m.value_of("context") {
+                current_setting = ctx.get_context_setting(setting_name)?.clone();
+            }
             if let Some(controller_addr) = m.value_of("controller-addr") {
                 current_setting.controller_addr = controller_addr.into();
             }
