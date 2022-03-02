@@ -27,7 +27,7 @@ toml = "0.5"
 rustyline = "9.1"
 shell-words = "1.0"
 parking_lot = "0.12"
-mockall = { version = "0.11", features = ["nightly"] }
+mockall = "0.11"
 tempfile = "3.3"
 # sm
 libsm = "0.4.0"
