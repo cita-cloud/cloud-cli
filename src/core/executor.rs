@@ -1,17 +1,10 @@
-use prost::Message;
-// use crate::context::Context;
-// use crate::wallet::Account;
-use anyhow::Context;
-
-use crate::proto::executor::{
-    executor_service_client::ExecutorServiceClient, CallRequest, CallResponse,
-};
-
-use crate::crypto::ArrayLike;
-use crate::crypto::Crypto;
-use crate::crypto::{Address, Hash};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use tonic::transport::Channel;
+
+use crate::{
+    crypto::{Address, ArrayLike},
+    proto::executor::{CallRequest, CallResponse},
+};
 
 pub type ExecutorClient =
     crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;

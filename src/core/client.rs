@@ -3,9 +3,7 @@ use std::time::Duration;
 use tonic::transport::Channel;
 use tonic::transport::Endpoint;
 
-use super::controller::ControllerClient;
-use super::evm::EvmClient;
-use super::executor::ExecutorClient;
+use super::{controller::ControllerClient, evm::EvmClient, executor::ExecutorClient};
 
 #[tonic::async_trait]
 pub trait GrpcClientBehaviour: Sized {

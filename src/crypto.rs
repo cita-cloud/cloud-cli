@@ -1,6 +1,5 @@
-mod sm;
-
 mod eth;
+mod sm;
 
 use anyhow::Context;
 use anyhow::Result;

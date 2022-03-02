@@ -18,7 +18,6 @@ use crate::{
     utils::{parse_addr, parse_data},
 };
 
-
 fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("bench-basic")
         .arg(
@@ -210,6 +209,7 @@ where
         })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn bench_fn_with_progbar<
     Connector,
     Connection,
@@ -424,7 +424,7 @@ where
                             for workload in workloads {
                                 let worker_fn = worker_fn.clone();
                                 if let Err(e) = worker_fn(conn.clone(), workload).await {
-                                    first_reported_error.lock().get_or_insert(e.into());
+                                    first_reported_error.lock().get_or_insert(e);
                                 }
                             }
                         })
@@ -455,31 +455,4 @@ where
         .take()
         .map(Err)
         .unwrap_or(Ok(()))
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::cmd::cldi_cmd;
-    use crate::core::mock::context;
-
-    #[test]
-    fn test_bench_send() {
-        let cmd = bench_send();
-
-        let (mut ctx, _temp_dir) = context();
-        ctx.controller.expect_get_block_number()
-            .returning(|_| Ok(Default::default()));
-        ctx.controller.expect_get_system_config()
-            .returning(|| Ok(Default::default()));
-        ctx.controller.expect_send_raw()
-            .times(1)
-            .returning(|_| Ok(Default::default()));
-
-        cmd.exec_from(
-            ["bench-send", "1"],
-            &mut ctx
-        ).unwrap();
-    }
 }

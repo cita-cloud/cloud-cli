@@ -57,7 +57,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller.update_validators(admin_signer, &validators).await
             })??;
-            println!("tx_hash: {}", hex(&tx_hash.as_slice()));
+            println!("tx_hash: {}", hex(tx_hash.as_slice()));
             Ok(())
         })
 }

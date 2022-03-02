@@ -53,7 +53,7 @@ pub fn parse_value(s: &str) -> Result<[u8; 32]> {
 }
 
 pub fn parse_data(s: &str) -> Result<Vec<u8>> {
-    Ok(hex::decode(remove_0x(s)).context("invalid hex input")?)
+    hex::decode(remove_0x(s)).context("invalid hex input")
 }
 
 pub fn hex(data: &[u8]) -> String {

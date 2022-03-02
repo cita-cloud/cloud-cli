@@ -1,25 +1,21 @@
-use prost::Message;
-// use crate::context::Context;
-// use crate::wallet::Account;
+#![allow(clippy::let_and_return)]
 
+use anyhow::Context;
+use anyhow::Result;
+
+use prost::Message;
+use tonic::transport::Channel;
+
+use crate::crypto::{Address, ArrayLike, Hash};
 use crate::proto::{
     blockchain::{
         raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudNormalTransaction,
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
         Witness,
     },
-    common::{Empty, Hash as CloudHash, NodeInfo, NodeNetInfo, TotalNodeInfo},
-    controller::{
-        rpc_service_client::RpcServiceClient, BlockNumber, Flag, SystemConfig, TransactionIndex,
-    },
+    common::{Empty, Hash as CloudHash, NodeNetInfo, TotalNodeInfo},
+    controller::{BlockNumber, Flag, SystemConfig},
 };
-
-use crate::crypto::{Address, ArrayLike, Crypto, Hash};
-use anyhow::anyhow;
-use anyhow::Context;
-use anyhow::Result;
-
-use tonic::transport::Channel;
 
 pub type ControllerClient = crate::proto::controller::rpc_service_client::RpcServiceClient<Channel>;
 
@@ -252,80 +248,6 @@ pub trait SignerBehaviour {
     }
 }
 
-// impl<C, A> SignerBehaviour for A
-// where
-//     C: Crypto,
-//     A: AccountBehaviour<SigningAlgorithm = C>,
-// {
-//     fn sign_raw_tx(&self, tx: CloudNormalTransaction) -> RawTransaction {
-//         // calc tx hash
-//         let tx_hash = {
-//             // build tx bytes
-//             let tx_bytes = {
-//                 let mut buf = Vec::with_capacity(tx.encoded_len());
-//                 tx.encode(&mut buf).unwrap();
-//                 buf
-//             };
-//             C::hash(tx_bytes.as_slice())
-//         };
-
-//         // sign tx hash
-//         let sender = self.address().to_vec();
-//         let signature = self.sign(tx_hash.as_slice()).to_vec();
-
-//         // build raw tx
-//         let raw_tx = {
-//             let witness = Witness { sender, signature };
-
-//             let unverified_tx = UnverifiedTransaction {
-//                 transaction: Some(tx),
-//                 transaction_hash: tx_hash.to_vec(),
-//                 witness: Some(witness),
-//             };
-
-//             RawTransaction {
-//                 tx: Some(Tx::NormalTx(unverified_tx)),
-//             }
-//         };
-
-//         raw_tx
-//     }
-
-//     fn sign_raw_utxo(&self, utxo: CloudUtxoTransaction) -> RawTransaction {
-//         // calc utxo hash
-//         let utxo_hash = {
-//             // build utxo bytes
-//             let utxo_bytes = {
-//                 let mut buf = Vec::with_capacity(utxo.encoded_len());
-//                 utxo.encode(&mut buf).unwrap();
-//                 buf
-//             };
-//             C::hash(utxo_bytes.as_slice())
-//         };
-
-//         // sign utxo hash
-//         let sender = self.address().to_vec();
-//         let signature = self.sign(utxo_hash.as_slice()).to_vec();
-
-//         // build raw utxo
-//         let raw_utxo = {
-//             let witness = Witness { sender, signature };
-
-//             let unverified_utxo = UnverifiedUtxoTransaction {
-//                 transaction: Some(utxo),
-//                 transaction_hash: utxo_hash.to_vec(),
-//                 witnesses: vec![witness],
-//             };
-
-//             RawTransaction {
-//                 tx: Some(Tx::UtxoTx(unverified_utxo)),
-//             }
-//         };
-
-//         raw_utxo
-//     }
-// }
-
 // It's actually the implementation details of the current controller service.
 #[repr(u64)]
 #[derive(Debug, Clone, Copy)]
@@ -437,29 +359,3 @@ where
         self.send_raw_utxo(signer, raw_utxo).await
     }
 }
-
-// #[tonic::async_trait]
-// pub trait RawTransactionSenderBehaviour<C: Crypto> {
-//     async fn send_raw_tx<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, raw_tx: CloudNormalTransaction) -> Result<Hash>;
-//     async fn send_raw_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, raw_utxo: CloudUtxoTransaction) -> Result<Hash>;
-// }
-
-// // It's actually the implementation details of the current controller service.
-// #[repr(u64)]
-// #[derive(Debug, Clone, Copy)]
-// pub enum UtxoType {
-//     Admin = 1002,
-//     BlockInterval = 1003,
-//     Validators = 1004,
-//     EmergencyBrake = 1005,
-// }
-
-// #[tonic::async_trait]
-// pub trait NormalTransactionSenderBehaviour<C: Crypto> {
-//     async fn send_tx<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, to: Address, data: Vec<u8>, value: Vec<u8>) -> Result<Hash>;
-// }
-
-// #[tonic::async_trait]
-// pub trait UtxoTransactionSenderBehaviour<C: Crypto> {
-//     async fn send_utxo<A: AccountBehaviour<SigningAlgorithm = C>>(&self, account: &A, output: Vec<u8>, utxo_type: UtxoType) -> Result<Hash>;
-// }

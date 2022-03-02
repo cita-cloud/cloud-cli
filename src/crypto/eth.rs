@@ -24,8 +24,7 @@ use secp256k1::SecretKey as RawSecretKey;
 
 use ctr::cipher::{NewCipher, StreamCipher};
 
-use super::Crypto;
-use super::{Address, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
+use super::{Address, Crypto, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
 
 pub const PUBLIC_KEY_BYTES_LEN: usize = 64;
 pub type PublicKey = [u8; PUBLIC_KEY_BYTES_LEN];

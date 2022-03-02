@@ -4,7 +4,6 @@ use serde_json::Value as Json;
 use tentacle_multiaddr::{Multiaddr, Protocol};
 
 use crate::{
-    crypto::Crypto,
     proto::{
         blockchain::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
@@ -16,7 +15,6 @@ use crate::{
         executor::CallResponse,
     },
     utils::{display_time, hex},
-    // wallet::Account,
 };
 
 pub trait Display {

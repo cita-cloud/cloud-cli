@@ -6,32 +6,13 @@ mod evm;
 mod key;
 mod rpc;
 
-pub use cldi::cldi_cmd;
-use rustyline::completion;
-
-use crate::core::context::Context;
-use crate::crypto::Crypto;
-use clap::AppFlags;
-use clap::AppSettings;
+use anyhow::{anyhow, bail, Result};
 use clap::{Arg, ArgMatches};
 use std::collections::HashMap;
 use std::ffi::OsString;
-use tonic::transport::Endpoint;
 
-use anyhow::{anyhow, bail, ensure, Context as _, Result};
+pub use cldi::cldi_cmd;
 
-// /// Command handler that associated with a command.
-// pub type CommandHandler<'help, Co, Ex, Ev, Wa> =
-//     // No &mut for ArgMatches bc there is no much thing we can do with it.
-//     fn(&Command<'help, Co, Ex, Ev, Wa>, &ArgMatches, &mut Context<Co, Ex, Ev, Wa>) -> Result<()>;
-
-// /// Command handler that associated with a command.
-// pub type CommandHandler<'help, Ctx> =
-//     // No &mut for ArgMatches bc there is no much thing we can do with it.
-//     Box<dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help>;
-
-/// Command
-// #[derive(Clone)]
 pub struct Command<'help, Ctx: 'help> {
     cmd: clap::Command<'help>,
     handler: Box<dyn Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help>,
@@ -76,11 +57,6 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
             .cmd
             .subcommand_required(yes)
             .arg_required_else_help(yes);
-        self
-    }
-
-    pub fn setting<F: Into<AppFlags>>(mut self, setting: F) -> Self {
-        self.cmd = self.cmd.setting(setting);
         self
     }
 
@@ -156,6 +132,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self.subcommand(completions)
     }
 
+    #[allow(dead_code)]
     pub fn exec(&self, ctx: &mut Ctx) -> Result<()> {
         let m = self.cmd.clone().get_matches();
         self.exec_with(&m, ctx)
@@ -192,14 +169,17 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self.cmd.get_name()
     }
 
+    #[allow(dead_code)]
     pub fn get_clap_command(&self) -> &clap::Command<'help> {
         &self.cmd
     }
 
+    #[allow(dead_code)]
     pub fn get_subcommand(&self, subcmd: &str) -> Option<&Self> {
         self.subcmds.get(subcmd)
     }
 
+    #[allow(dead_code)]
     pub fn rename_subcommand(&mut self, old: &str, new: &str) -> Result<()> {
         let old_app = self
             .cmd
@@ -219,6 +199,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
 
     // TODO: get matches from
 
+    #[allow(dead_code)]
     pub fn get_all_aliases(&self) -> impl Iterator<Item = &str> + '_ {
         self.cmd.get_all_aliases()
     }

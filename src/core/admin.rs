@@ -1,20 +1,6 @@
-use crate::utils::{parse_addr, parse_data};
-
-use crate::crypto::Crypto;
-use crate::crypto::{Address, Hash};
-
-use crate::crypto::ArrayLike;
-
-use super::controller::ControllerBehaviour;
-use super::controller::SignerBehaviour;
-use super::controller::TransactionSenderBehaviour;
-use super::controller::UtxoType;
-use crate::utils::hex;
-// use super::controller::HasSystemConfig;
-// use crate::types::{ Hash, Address };
-
-use anyhow::Context as _;
-use anyhow::Result;
+use super::controller::{SignerBehaviour, TransactionSenderBehaviour, UtxoType};
+use crate::crypto::{Address, ArrayLike, Hash};
+use anyhow::{Context, Result};
 
 /// CITA-Cloud's system config is managed by [UTXO](https://github.com/cita-cloud/rfcs/blob/master/rfcs/0002-technology/0002-technology.md#%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE).
 /// Admin commands depend on and will change system config.

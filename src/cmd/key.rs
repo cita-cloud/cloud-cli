@@ -154,6 +154,33 @@ pub fn use_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
+pub fn lock_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("lock-key")
+        .about("lock a key")
+        .arg(
+            Arg::new("id")
+                .help("The ID of the key")
+                .takes_value(true)
+                .required(true), // TODO: add validator
+        )
+        .arg(
+            Arg::new("password")
+                .short('p')
+                .long("passowrd")
+                .help("The password to lock the key")
+                .takes_value(true)
+                .required(true), // TODO: add validator
+        )
+        .handler(|_cmd, m, ctx| {
+            let id = m.value_of("id").unwrap();
+            let pw = m.value_of("password").unwrap();
+
+            ctx.wallet.lock(id, pw.as_bytes())?;
+
+            Ok(())
+        })
+}
+
 pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("key")
         .about("Key commands")
@@ -163,5 +190,6 @@ pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
             list_key().name("list"),
             export_key().name("export"),
             use_key().name("use"),
+            lock_key().name("lock"),
         ])
 }

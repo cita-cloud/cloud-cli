@@ -1,27 +1,25 @@
-use super::client::GrpcClientBehaviour;
-use super::context::Context;
-use super::controller::ControllerBehaviour;
-use super::evm::EvmBehaviour;
-use super::executor::ExecutorBehaviour;
-use crate::config::Config;
-use crate::crypto::{Address, Hash, Crypto, SmCrypto};
-use crate::proto::blockchain::CompactBlock;
-use crate::proto::blockchain::RawTransaction;
-use crate::proto::common::TotalNodeInfo;
-use crate::proto::controller::SystemConfig;
-use crate::proto::evm::Balance;
-use crate::proto::evm::ByteAbi;
-use crate::proto::evm::ByteCode;
-use crate::proto::evm::Nonce;
-use crate::proto::evm::Receipt;
-use crate::proto::executor::CallResponse;
-use crate::core::wallet::Account;
+use super::{
+    client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
+    evm::EvmBehaviour, executor::ExecutorBehaviour,
+};
+use crate::{
+    config::Config,
+    core::wallet::Account,
+    crypto::{Address, Hash, SmCrypto},
+    proto::{
+        blockchain::{CompactBlock, RawTransaction},
+        common::TotalNodeInfo,
+        controller::SystemConfig,
+        evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
+        executor::CallResponse,
+    },
+};
 use anyhow::Result;
 use mockall::mock;
+use std::time::Duration;
 use tempfile::tempdir;
 use tempfile::TempDir;
 use tonic::transport::Channel;
-use std::time::Duration;
 
 mock! {
     pub ControllerClient {}
@@ -119,7 +117,8 @@ pub fn context() -> (
     Context<MockControllerClient, MockExecutorClient, MockEvmClient>,
     TempDir,
 ) {
-    // set up mock context
+    // Set up mock context. Note that we don't use the provided impl
+    // for the rest connect* methods since that would actually try to connect.
     let mock_ctx = MockControllerClient::from_channel_context();
     mock_ctx.expect().returning(|_| Default::default());
     let mock_ctx = MockControllerClient::connect_context();
@@ -148,13 +147,17 @@ pub fn context() -> (
     mock_ctx.expect().returning(|_, _| Ok(Default::default()));
 
     let test_dir = tempdir().expect("cannot get temp dir");
-    let mut config = Config::default();
-    config.data_dir = test_dir.path().to_path_buf();
+    let config = Config {
+        data_dir: test_dir.path().to_path_buf(),
+        ..Default::default()
+    };
 
     let mut ctx = Context::from_config(config).expect("fail to create test context");
 
     let default_account = Account::<SmCrypto>::generate();
-    ctx.wallet.save("default", default_account).expect("cannot save default account");
+    ctx.wallet
+        .save("default".into(), default_account)
+        .expect("cannot save default account");
 
     (ctx, test_dir)
 }

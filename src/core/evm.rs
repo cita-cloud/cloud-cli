@@ -1,41 +1,37 @@
-use crate::{
-    crypto::EthCrypto,
-    proto::{
-        common::{Address as CloudAddress, Empty, Hash as CloudHash, NodeInfo, NodeNetInfo},
-        evm::{rpc_service_client::RpcServiceClient, Balance, ByteAbi, ByteCode, Nonce, Receipt},
-    },
-};
-
-use super::controller::ControllerBehaviour;
-use super::controller::SignerBehaviour;
-use super::controller::TransactionSenderBehaviour;
-
-use crate::crypto::ArrayLike;
-use crate::crypto::Crypto;
-use crate::crypto::{Address, Hash};
-
-use crate::utils::parse_addr;
 use anyhow::Context as _;
 use anyhow::Result;
 use tonic::transport::Channel;
 
+use super::controller::{SignerBehaviour, TransactionSenderBehaviour};
+use crate::{
+    crypto::{Address, ArrayLike, Hash},
+    proto::{
+        common::{Address as CloudAddress, Hash as CloudHash},
+        evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
+    },
+    utils::parse_addr,
+};
+
 // TODO: use constant array for these constant to avoid runtime parsing.
 
-/// Store action target address
-const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
-/// StoreAbi action target address
-const ABI_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010001";
-/// Amend action target address
-const AMEND_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010002";
+#[allow(unused)]
+mod constant {
+    /// Store action target address
+    pub const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
+    /// StoreAbi action target address
+    pub const ABI_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010001";
+    /// Amend action target address
+    pub const AMEND_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010002";
 
-/// amend the abi data
-const AMEND_ABI: &str = "0x01";
-/// amend the account code
-const AMEND_CODE: &str = "0x02";
-/// amend the kv of db
-const AMEND_KV_H256: &str = "0x03";
-/// amend account balance
-const AMEND_BALANCE: &str = "0x05";
+    /// amend the abi data
+    pub const AMEND_ABI: &str = "0x01";
+    /// amend the account code
+    pub const AMEND_CODE: &str = "0x02";
+    /// amend the kv of db
+    pub const AMEND_KV_H256: &str = "0x03";
+    /// amend account balance
+    pub const AMEND_BALANCE: &str = "0x05";
+}
 
 pub type EvmClient = crate::proto::evm::rpc_service_client::RpcServiceClient<Channel>;
 
@@ -133,7 +129,7 @@ where
     where
         S: SignerBehaviour + Send + Sync,
     {
-        let abi_addr = parse_addr(ABI_ADDRESS)?;
+        let abi_addr = parse_addr(constant::ABI_ADDRESS)?;
         let data = [contract_addr.as_slice(), abi].concat();
         let tx_hash = self.send_tx(signer, abi_addr, data, vec![0; 32]).await?;
 
@@ -143,6 +139,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::constant::*;
     use super::*;
     use crate::utils::parse_data;
 

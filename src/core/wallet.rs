@@ -1,73 +1,16 @@
-use anyhow::anyhow;
-use anyhow::bail;
-use anyhow::ensure;
-use anyhow::Result;
+use anyhow::{anyhow, bail, ensure, Context, Result};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
 };
 
-use crate::utils::hex;
-use crate::utils::safe_save;
 use crate::{
-    crypto::{Address, ArrayLike, Crypto, EthCrypto, Hash, SmCrypto},
-    utils::{parse_addr, parse_data, parse_pk, parse_sk},
+    core::controller::SignerBehaviour,
+    crypto::{Address, ArrayLike, Crypto, EthCrypto, SmCrypto},
+    utils::{hex, parse_addr, parse_data, parse_pk, parse_sk, safe_save},
 };
-use anyhow::Context;
-use serde::Deserializer;
-use serde::Serializer;
-use serde::{Deserialize, Serialize};
-use std::fs;
-
-use super::controller::SignerBehaviour;
-
-// // TODO: use a simpler impl, this is too complex
-// mod hex_repr {
-//     use serde::Serializer;
-//     use serde::Deserializer;
-//     use super::ArrayLike;
-//     use serde::de;
-//     use serde::de::Visitor;
-//     use crate::utils::hex;
-//     use crate::utils::parse_data;
-//     use std::fmt;
-//     use std::marker::PhantomData;
-
-//     pub fn serialize<T, S>(array: &T, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         T: ArrayLike,
-//         S: Serializer,
-//     {
-//         let hex_s = hex(array.as_slice());
-//         serializer.serialize_str(&hex_s)
-//     }
-
-//     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-//     where
-//         T: ArrayLike,
-//         D: Deserializer<'de>,
-//     {
-//         struct HexVisitor<T>(PhantomData<fn() -> T>);
-//         impl<'de, V: ArrayLike> Visitor<'de> for HexVisitor<V> {
-//             type Value = V;
-
-//             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-//                 write!(formatter, "A crypto specific hex-encoded bit array")
-//             }
-
-//             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E>
-//             {
-//                 let err_fn = |_| de::Error::invalid_value(de::Unexpected::Str(v),&self);
-//                 let d = parse_data(v).map_err(err_fn)?;
-//                 let value = V::try_from_slice(&d).map_err(err_fn)?;
-
-//                 Ok(value)
-//             }
-//         }
-
-//         deserializer.deserialize_str(HexVisitor::<T>(PhantomData))
-//     }
-// }
 
 pub struct Account<C: Crypto> {
     address: Address,
@@ -87,6 +30,7 @@ impl<C: Crypto> Account<C> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_secret_key(sk: C::SecretKey) -> Self {
         let public_key = C::sk2pk(&sk);
         let address = C::pk2addr(&public_key);
@@ -106,6 +50,7 @@ impl<C: Crypto> Account<C> {
     }
 
     // TODO: maybe remove the `expose_`
+    #[allow(dead_code)]
     pub fn expose_secret_key(&self) -> &C::SecretKey {
         &self.secret_key
     }
@@ -458,6 +403,7 @@ impl MaybeLocked {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lock(self, pw: &[u8]) -> LockedMultiCryptoAccount {
         match self {
             Self::Unlocked(unlocked) => unlocked.lock(pw),
@@ -602,17 +548,34 @@ impl Wallet {
         Ok(this)
     }
 
-    pub fn save(&mut self, account_id: &str, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
+    fn save_inner(
+        &mut self,
+        account_id: String,
+        maybe_locked: impl Into<MaybeLocked>,
+        override_existing: bool,
+    ) -> Result<()> {
         let maybe_locked = maybe_locked.into();
 
         let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
         let account_file = accounts_dir.join(format!("{account_id}.toml"));
 
         let content = toml::to_string_pretty(&maybe_locked)?;
-        safe_save(account_file, content.as_bytes(), false)?;
+        safe_save(account_file, content.as_bytes(), override_existing)?;
 
-        self.accounts.insert(account_id.into(), maybe_locked);
+        self.accounts.insert(account_id, maybe_locked);
         Ok(())
+    }
+
+    pub fn save(&mut self, account_id: String, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
+        self.save_inner(account_id, maybe_locked, false)
+    }
+
+    pub fn save_override(
+        &mut self,
+        account_id: String,
+        maybe_locked: impl Into<MaybeLocked>,
+    ) -> Result<()> {
+        self.save_inner(account_id, maybe_locked, true)
     }
 
     fn load(&mut self, account_id: &str) -> Result<()> {
@@ -637,8 +600,8 @@ impl Wallet {
             .accounts
             .remove_entry(account_id)
             .ok_or_else(|| anyhow!("account `{}` not found", account_id))?;
-        let locked = maybe_locked.lock(pw);
-        self.accounts.insert(id, locked.into());
+        let locked: MaybeLocked = maybe_locked.lock(pw).into();
+        self.save_override(id, locked)?;
 
         Ok(())
     }

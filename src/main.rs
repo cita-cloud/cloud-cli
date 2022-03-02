@@ -1,40 +1,40 @@
-// mod cli;
-// mod client;
+mod cmd;
+mod config;
 mod core;
 mod crypto;
 mod display;
 mod proto;
 mod utils;
-// mod wallet;
-mod cmd;
-// mod cmd;
-mod config;
-// mod interactive;
 
+use anyhow::Result;
+use crypto::SmCrypto;
 use rustyline::error::ReadlineError;
-// use rustyline::KeyEvent;
-// use rustyline::Cmd;
+
 use crate::{
     config::Config,
-    crypto::{EthCrypto, SmCrypto},
+    core::{
+        context::Context, controller::ControllerClient, evm::EvmClient, executor::ExecutorClient,
+        wallet::Account,
+    },
 };
 
-use crate::core::context::Context;
-use crate::core::{controller::ControllerClient, evm::EvmClient, executor::ExecutorClient};
-use anyhow::Context as _;
-use anyhow::Result;
-use std::{fs, io::Write};
-
 fn main() -> Result<()> {
-    let config = {
-        let data_dir = {
-            let home = home::home_dir().expect("cannot find home dir");
-            home.join(".cloud-cli-v0.3.0")
-        };
-        Config::open(data_dir)?
+    let data_dir = {
+        let home = home::home_dir().expect("cannot find home dir");
+        home.join(".cloud-cli-v0.3.0")
     };
+    let is_first_init = data_dir.exists();
+
+    let config = Config::open(data_dir)?;
     let mut ctx: Context<ControllerClient, ExecutorClient, EvmClient> =
         Context::from_config(config)?;
+
+    if is_first_init {
+        let default_account = Account::<SmCrypto>::generate();
+        ctx.wallet
+            .save("default".into(), default_account)
+            .expect("cannot save default account");
+    }
 
     let cldi = cmd::cldi_cmd();
 
@@ -47,7 +47,6 @@ fn main() -> Result<()> {
             e
         })?;
     } else {
-        // TODO: simplify this, and fix `cldi -r addr` case
         // TODO: put editor into context
         let mut rl = rustyline::Editor::<()>::new();
         loop {

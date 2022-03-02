@@ -1,18 +1,11 @@
-use clap::App;
 use clap::Arg;
 
-use crate::core::evm::EvmBehaviour;
-use crate::core::evm::EvmBehaviourExt;
-use crate::core::executor::ExecutorBehaviour;
-use crate::crypto::ArrayLike;
-use crate::utils::{parse_addr, parse_data, parse_hash};
-
-use super::*;
-use crate::core::context::Context;
-use prost::Message;
-
-use crate::display::Display;
-use crate::utils::hex;
+use crate::{
+    cmd::Command,
+    core::{context::Context, evm::EvmBehaviour, evm::EvmBehaviourExt},
+    display::Display,
+    utils::{hex, parse_addr, parse_data, parse_hash},
+};
 
 pub fn get_receipt<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where

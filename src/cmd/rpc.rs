@@ -1,21 +1,18 @@
+use anyhow::Context as _;
 use clap::Arg;
-
-use crate::utils::parse_value;
-use crate::utils::{hex, parse_addr, parse_data, parse_hash};
-
-use super::Command;
-use crate::core::context::Context;
-use crate::core::controller::ControllerBehaviour;
-use crate::core::controller::TransactionSenderBehaviour;
-use crate::core::executor::ExecutorBehaviour;
-
 use tokio::try_join;
 
-use crate::crypto::ArrayLike;
-use crate::display::Display;
-use anyhow::Context as _;
-
-// TODO: get version
+use crate::{
+    cmd::Command,
+    core::{
+        context::Context,
+        controller::{ControllerBehaviour, TransactionSenderBehaviour},
+        executor::ExecutorBehaviour,
+    },
+    crypto::ArrayLike,
+    display::Display,
+    utils::{hex, parse_addr, parse_data, parse_hash, parse_value},
+};
 
 pub fn call<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
@@ -224,7 +221,7 @@ where
             let tx_with_index = ctx.rt.block_on(async move {
                 try_join!(
                     c.get_tx(tx_hash),
-                    c.get_tx_block_number(tx_hash.clone()),
+                    c.get_tx_block_number(tx_hash),
                     c.get_tx_index(tx_hash),
                 )
             })??;
@@ -361,8 +358,14 @@ mod tests {
         ctx.controller.expect_get_peer_count().returning(|| Ok(42));
 
         cmd.exec_from(["get-peer-count"], &mut ctx).unwrap();
-        rpc_cmd.exec_from(["rpc", "get-peer-count"], &mut ctx).unwrap();
-        cldi_cmd.exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx).unwrap();
-        cldi_cmd.exec_from(["cldi", "get", "peer-count"], &mut ctx).unwrap();
+        rpc_cmd
+            .exec_from(["rpc", "get-peer-count"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "get", "peer-count"], &mut ctx)
+            .unwrap();
     }
 }

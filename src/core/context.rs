@@ -1,22 +1,13 @@
-use std::marker::PhantomData;
-
-use crate::config::{Config, ContextSetting};
-use crate::crypto::{ArrayLike, Crypto};
-
-use tonic::transport::channel::Channel;
-use tonic::transport::channel::Endpoint;
-
-use super::client::GrpcClientBehaviour;
-use super::evm::EvmClient;
-use super::executor::ExecutorClient;
-use std::future::Future;
-// use super::controller::ControllerClient;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
+use std::future::Future;
 
-use super::wallet::MultiCryptoAccount;
-use super::wallet::Wallet;
+use super::{
+    client::GrpcClientBehaviour,
+    wallet::{MultiCryptoAccount, Wallet},
+};
+use crate::config::{Config, ContextSetting};
 
 pub struct Context<Co, Ex, Ev> {
     /// Those gRPC client are connected lazily.
