@@ -278,7 +278,6 @@ async fn bench_fn_with_progbar<
     )
     .await;
 
-    dbg!(&bench_res);
     progbar.finish_at_current_pos();
 
     println!(
