@@ -30,16 +30,6 @@ pub fn parse_hash(s: &str) -> Result<Hash> {
     Hash::try_from_slice(&input)
 }
 
-// pub fn parse_addr(s: &str) -> Result<Vec<u8>> {
-//     let s = remove_0x(s);
-//     if s.len() > 40 {
-//         return Err(anyhow!("can't parse addr, the given str is too long"));
-//     }
-//     // padding 0 to 20 bytes
-//     let padded = format!("{:0>40}", s);
-//     Ok(hex::decode(&padded)?)
-// }
-
 pub fn parse_value(s: &str) -> Result<[u8; 32]> {
     let s = remove_0x(s);
     if s.len() > 64 {
@@ -77,6 +67,7 @@ pub fn remove_0x(s: &str) -> &str {
     s.strip_prefix("0x").unwrap_or(s)
 }
 
+// Safe in the sense of file integrity, not cryptography.
 pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool) -> Result<()> {
     let path = path.as_ref();
     let dir = path.parent().ok_or(anyhow!("cannot load containing dir"))?;

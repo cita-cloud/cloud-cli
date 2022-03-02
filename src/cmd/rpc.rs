@@ -66,8 +66,8 @@ where
                 .help("the address to send")
                 .short('t')
                 .long("to")
-                .required(true)
                 .takes_value(true)
+                .required(true)
                 .validator(parse_addr),
         )
         .arg(
@@ -76,6 +76,7 @@ where
                 .short('v')
                 .long("value")
                 .takes_value(true)
+                .required(true)
                 .validator(parse_value),
         )
         .arg(
@@ -84,12 +85,13 @@ where
                 .short('d')
                 .long("data")
                 .takes_value(true)
+                .required(true)
                 .validator(parse_data),
         )
         .handler(|_cmd, m, ctx| {
             let to = parse_addr(m.value_of("to").unwrap())?;
-            let value = parse_value(m.value_of("value").unwrap_or_default())?.to_vec();
-            let data = parse_data(m.value_of("data").unwrap_or_default())?;
+            let value = parse_value(m.value_of("value").unwrap())?.to_vec();
+            let data = parse_data(m.value_of("data").unwrap())?;
 
             let signer = ctx.current_account()?;
             ctx.rt.block_on(async {

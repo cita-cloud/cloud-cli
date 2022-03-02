@@ -539,43 +539,17 @@ impl Wallet {
             if is_file && is_toml {
                 let id = path
                     .file_stem()
-                    .context("cannot read account id from account file name")?;
-                // TODO: log error
-                let _ = this.load(&id.to_string_lossy());
+                    .context("cannot read account id from account file name")?
+                    .to_string_lossy();
+
+                if let Err(e) = this.load(&id) {
+                    // TODO: use logger
+                    eprintln!("fail to load account `{}`: {}", id, e);
+                }
             }
         }
 
         Ok(this)
-    }
-
-    fn save_inner(
-        &mut self,
-        account_id: String,
-        maybe_locked: impl Into<MaybeLocked>,
-        override_existing: bool,
-    ) -> Result<()> {
-        let maybe_locked = maybe_locked.into();
-
-        let accounts_dir = self.wallet_dir.join(Self::ACCOUNTS_DIR);
-        let account_file = accounts_dir.join(format!("{account_id}.toml"));
-
-        let content = toml::to_string_pretty(&maybe_locked)?;
-        safe_save(account_file, content.as_bytes(), override_existing)?;
-
-        self.accounts.insert(account_id, maybe_locked);
-        Ok(())
-    }
-
-    pub fn save(&mut self, account_id: String, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
-        self.save_inner(account_id, maybe_locked, false)
-    }
-
-    pub fn save_override(
-        &mut self,
-        account_id: String,
-        maybe_locked: impl Into<MaybeLocked>,
-    ) -> Result<()> {
-        self.save_inner(account_id, maybe_locked, true)
     }
 
     fn load(&mut self, account_id: &str) -> Result<()> {
@@ -588,6 +562,39 @@ impl Wallet {
         let maybe_locked: MaybeLocked = toml::from_str(&content)?;
         self.accounts.insert(account_id.into(), maybe_locked);
 
+        Ok(())
+    }
+
+    fn save_to_keystore(
+        wallet_dir: impl AsRef<Path>,
+        account_id: &str,
+        maybe_locked: &MaybeLocked,
+        override_existing: bool,
+    ) -> Result<()> {
+        let wallet_dir = wallet_dir.as_ref();
+        let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
+        let account_file = accounts_dir.join(format!("{account_id}.toml"));
+
+        let content = toml::to_string_pretty(&maybe_locked)?;
+        safe_save(account_file, content.as_bytes(), override_existing)?;
+        Ok(())
+    }
+
+    pub fn save(&mut self, account_id: String, maybe_locked: impl Into<MaybeLocked>) -> Result<()> {
+        let maybe_locked = maybe_locked.into();
+        Self::save_to_keystore(&self.wallet_dir, &account_id, &maybe_locked, false)?;
+        self.accounts.insert(account_id, maybe_locked);
+        Ok(())
+    }
+
+    pub fn save_override(
+        &mut self,
+        account_id: String,
+        maybe_locked: impl Into<MaybeLocked>,
+    ) -> Result<()> {
+        let maybe_locked = maybe_locked.into();
+        Self::save_to_keystore(&self.wallet_dir, &account_id, &maybe_locked, true)?;
+        self.accounts.insert(account_id, maybe_locked);
         Ok(())
     }
 
@@ -614,6 +621,12 @@ impl Wallet {
         *maybe_locked = maybe_locked.unlock(pw)?.into();
 
         Ok(())
+    }
+
+    pub fn unlock_in_keystore(&mut self, account_id: &str, pw: &[u8]) -> Result<()> {
+        self.unlock(account_id, pw)?;
+        let unlocked = self.accounts.get(account_id).unwrap();
+        Self::save_to_keystore(&self.wallet_dir, account_id, unlocked, true)
     }
 
     pub fn list(&self) -> impl Iterator<Item = (&String, &MaybeLocked)> {

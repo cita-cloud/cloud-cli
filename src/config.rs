@@ -1,13 +1,16 @@
 use std::collections::BTreeMap;
-use std::path::Path;
-use std::path::PathBuf;
-
-use crate::utils::safe_save;
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use anyhow::bail;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
+use crate::utils::safe_save;
 
 const CLOUD_CLI_CONFIG_FILE_NAME: &str = "config.toml";
 
@@ -72,6 +75,7 @@ impl Default for Config {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CryptoType {
     Sm,
     Eth,
@@ -84,6 +88,19 @@ pub struct ContextSetting {
 
     pub account_id: String,
     pub crypto_type: CryptoType,
+}
+
+impl FromStr for CryptoType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ty = match s.to_uppercase().as_str() {
+            "SM" => CryptoType::Sm,
+            "ETH" => CryptoType::Eth,
+            unknown => bail!("unknown crypto type `{}`", unknown),
+        };
+        Ok(ty)
+    }
 }
 
 impl Default for ContextSetting {

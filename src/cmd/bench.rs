@@ -104,10 +104,7 @@ where
                         chain_id: system_config.chain_id.clone(),
                         version: system_config.version,
                     };
-                    dbg!("before sign");
-                    let res = signer.sign_raw_tx(raw_tx);
-                    dbg!("after sign");
-                    res
+                    signer.sign_raw_tx(raw_tx)
                 };
 
                 let worker_fn =
