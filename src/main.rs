@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         let home = home::home_dir().expect("cannot find home dir");
         home.join(".cloud-cli-v0.3.0")
     };
-    let is_first_init = data_dir.exists();
+    let is_first_init = !data_dir.exists();
 
     let config = Config::open(data_dir)?;
     let mut ctx: Context<ControllerClient, ExecutorClient, EvmClient> =
