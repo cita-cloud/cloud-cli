@@ -16,9 +16,13 @@ use crate::{
         context::Context, controller::ControllerClient, evm::EvmClient, executor::ExecutorClient,
         wallet::Account,
     },
+    utils::init_local_utc_offset,
 };
 
 fn main() -> Result<()> {
+    // This should be called without any other concurrent running threads.
+    init_local_utc_offset();
+
     let data_dir = {
         let home = home::home_dir().expect("cannot find home dir");
         home.join(".cloud-cli-v0.3.0")

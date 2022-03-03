@@ -1,14 +1,18 @@
+use std::io::Write;
+use std::path::Path;
+
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
-
-use std::io::Write;
-use std::path::Path;
+use crossbeam::atomic::AtomicCell;
 use tempfile::NamedTempFile;
+use time::UtcOffset;
 
-use crate::crypto::ArrayLike;
-use crate::crypto::Crypto;
-use crate::crypto::{Address, Hash};
+use crate::crypto::{Address, ArrayLike, Crypto, Hash};
+
+// Use a Option because UtcOffset::from_hms returns a Result
+// that cannot be unwraped in constant expr...
+static LOCAL_UTC_OFFSET: AtomicCell<Option<UtcOffset>> = AtomicCell::new(None);
 
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
@@ -50,8 +54,21 @@ pub fn hex(data: &[u8]) -> String {
     format!("0x{}", hex::encode(data))
 }
 
+/// This should be called without any other concurrent running threads.
+pub fn init_local_utc_offset() {
+    let local_utc_offset =
+        UtcOffset::current_local_offset().unwrap_or_else(|_| UtcOffset::from_hms(8, 0, 0).unwrap());
+
+    LOCAL_UTC_OFFSET.store(Some(local_utc_offset));
+}
+
+/// Call init_utc_offset first without any other concurrent running threads. Otherwise UTC+0 is used.
+/// This is due to a possible race condition.
+/// [CVE-2020-26235](https://github.com/chronotope/chrono/issues/602)
 pub fn display_time(timestamp: u64) -> String {
-    let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
+    let local_offset = LOCAL_UTC_OFFSET
+        .load()
+        .unwrap_or_else(|| UtcOffset::from_hms(8, 0, 0).unwrap());
     let format = time::format_description::parse(
         "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]",
     )
