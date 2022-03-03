@@ -35,7 +35,6 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
         .arg(
             Arg::new("crypto-type")
                 .help("The crypto type for the generated key. [default: <current-context-crypto-type>]")
-                .short('c')
                 .long("crypto")
                 .possible_values(["SM", "ETH"])
                 .ignore_case(true)

@@ -198,6 +198,7 @@ where
             Arg::new("height")
                 .help("the block height")
                 .takes_value(true)
+                .required(true)
                 .validator(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {

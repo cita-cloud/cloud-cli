@@ -10,9 +10,10 @@ use time::UtcOffset;
 
 use crate::crypto::{Address, ArrayLike, Crypto, Hash};
 
-// Use a Option because UtcOffset::from_hms returns a Result
+// Use an Option because UtcOffset::from_hms returns a Result
 // that cannot be unwraped in constant expr...
 static LOCAL_UTC_OFFSET: AtomicCell<Option<UtcOffset>> = AtomicCell::new(None);
+
 
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
@@ -62,8 +63,8 @@ pub fn init_local_utc_offset() {
     LOCAL_UTC_OFFSET.store(Some(local_utc_offset));
 }
 
-/// Call init_utc_offset first without any other concurrent running threads. Otherwise UTC+0 is used.
-/// This is due to a possible race condition.
+/// Call init_utc_offset first without any other concurrent running threads. Otherwise UTC+8 is used.
+/// This is due to a potential race condition.
 /// [CVE-2020-26235](https://github.com/chronotope/chrono/issues/602)
 pub fn display_time(timestamp: u64) -> String {
     let local_offset = LOCAL_UTC_OFFSET
