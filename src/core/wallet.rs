@@ -7,6 +7,7 @@ use std::{
 };
 
 use crate::{
+    config::CryptoType,
     core::controller::SignerBehaviour,
     crypto::{Address, ArrayLike, Crypto, EthCrypto, SmCrypto},
     utils::{hex, parse_addr, parse_data, parse_pk, parse_sk, safe_save},
@@ -312,6 +313,13 @@ impl MultiCryptoAccount {
         }
     }
 
+    pub fn crypto_type(&self) -> CryptoType {
+        match self {
+            Self::Sm(..) => CryptoType::Sm,
+            Self::Eth(..) => CryptoType::Eth,
+        }
+    }
+
     pub fn lock(self, pw: &[u8]) -> LockedMultiCryptoAccount {
         match self {
             Self::Sm(ac) => LockedMultiCryptoAccount::Sm(ac.lock(pw)),
@@ -352,6 +360,13 @@ impl LockedMultiCryptoAccount {
         match self {
             Self::Sm(ac) => ac.public_key().as_slice(),
             Self::Eth(ac) => ac.public_key().as_slice(),
+        }
+    }
+
+    pub fn crypto_type(&self) -> CryptoType {
+        match self {
+            Self::Sm(..) => CryptoType::Sm,
+            Self::Eth(..) => CryptoType::Eth,
         }
     }
 
@@ -435,6 +450,13 @@ impl MaybeLocked {
         match self {
             Self::Unlocked(ac) => Ok(ac),
             Self::Locked(_) => bail!("account is locked, please unlock it first"),
+        }
+    }
+
+    pub fn crypto_type(&self) -> CryptoType {
+        match self {
+            Self::Unlocked(unlocked) => unlocked.crypto_type(),
+            Self::Locked(locked) => locked.crypto_type(),
         }
     }
 }

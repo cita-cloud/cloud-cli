@@ -14,7 +14,6 @@ use crate::crypto::{Address, ArrayLike, Crypto, Hash};
 // that cannot be unwraped in constant expr...
 static LOCAL_UTC_OFFSET: AtomicCell<Option<UtcOffset>> = AtomicCell::new(None);
 
-
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
     Address::try_from_slice(&input)

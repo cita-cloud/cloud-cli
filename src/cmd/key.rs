@@ -12,7 +12,8 @@ use crate::{
         wallet::{Account, MaybeLocked, MultiCryptoAccount},
     },
     crypto::{EthCrypto, SmCrypto},
-    utils::hex,
+    display::Display,
+    utils::{hex, parse_sk},
 };
 
 pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
@@ -62,7 +63,6 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
             ctx.wallet.save(id.into(), maybe_locked)?;
 
             println!("{output}");
-
             Ok(())
         })
 }
@@ -81,6 +81,7 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                         "address": hex(account.address()),
                         "pubkey": hex(account.public_key()),
                         "is_locked": account.is_locked(),
+                        "crypto_type": account.crypto_type(),
                     })
                 })
                 .collect::<Vec<_>>();
@@ -92,13 +93,83 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
+pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("import")
+        .about("import key")
+        .arg(
+            Arg::new("id")
+                .help("The ID of the key")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("password")
+                .help("The password to decrypt the key")
+                .short('p')
+                .long("passowrd")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("secret-key")
+                .help("The secret key")
+                .short('k')
+                .long("sk")
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("crypto-type")
+                .help("The crypto type for the generated key. [default: <current-context-crypto-type>]")
+                .long("crypto")
+                .possible_values(["SM", "ETH"])
+                .ignore_case(true)
+                .validator(CryptoType::from_str)
+        )
+        .handler(|_cmd, m, ctx| {
+            let id = m.value_of("id").unwrap();
+            let pw = m.value_of("password");
+            let sk = m.value_of("secret-key").unwrap();
+            let crypto_type = m.value_of("crypto-type")
+                .map(|s| s.parse::<CryptoType>().unwrap())
+                .unwrap_or(ctx.current_setting.crypto_type);
+
+            let account: MultiCryptoAccount = match crypto_type {
+                CryptoType::Sm => {
+                    let sk = parse_sk::<SmCrypto>(sk)
+                        .map_err(|e| anyhow!("invalid secret key for crypto type SM: {}", e))?;
+                    Account::<SmCrypto>::from_secret_key(sk).into()
+                }
+                CryptoType::Eth => {
+                    let sk = parse_sk::<EthCrypto>(sk)
+                        .map_err(|e| anyhow!("invalid secret key for crypto type ETH: {}", e))?;
+                    Account::<EthCrypto>::from_secret_key(sk).into()
+                }
+            };
+
+            let addr = hex(account.address());
+            let pubkey = hex(account.public_key());
+            let info = json!({
+                "address": addr,
+                "pubkey": pubkey,
+            });
+
+            let maybe_locked: MaybeLocked = if let Some(pw) = pw {
+                account.lock(pw.as_bytes()).into()
+            } else {
+                account.into()
+            };
+            ctx.wallet.save(id.into(), maybe_locked)?;
+
+            println!("{}", info.display());
+            Ok(())
+        })
+}
+
 pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("export")
         .about("export key")
         .arg(
             Arg::new("id")
-                .long("id")
-                .short('u')
                 .help("The ID of the key")
                 .required(true)
                 .takes_value(true),
@@ -204,6 +275,7 @@ pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         .subcommands([
             generate_key().name("generate"),
             list_key().name("list"),
+            import_key().name("import"),
             export_key().name("export"),
             unlock_key().name("unlock"),
             lock_key().name("lock"),
