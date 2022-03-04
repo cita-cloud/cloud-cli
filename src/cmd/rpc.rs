@@ -95,7 +95,7 @@ where
 
             let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
-                let tx_hash = ctx.controller.send_tx(signer, to, value, data).await?;
+                let tx_hash = ctx.controller.send_tx(signer, to, data, value).await?;
                 println!("{}", hex(tx_hash.as_slice()));
 
                 anyhow::Ok(())
