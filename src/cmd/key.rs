@@ -153,12 +153,15 @@ pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 "pubkey": pubkey,
             });
 
-            let maybe_locked: MaybeLocked = if let Some(pw) = pw {
-                account.lock(pw.as_bytes()).into()
+            if let Some(pw) = pw {
+                let pw = pw.as_bytes();
+                let locked = account.lock(pw);
+
+                ctx.wallet.save(id.into(), locked)?;
+                ctx.wallet.unlock(id, pw)?;
             } else {
-                account.into()
+                ctx.wallet.save(id.into(), account)?;
             };
-            ctx.wallet.save(id.into(), maybe_locked)?;
 
             println!("{}", info.display());
             Ok(())
