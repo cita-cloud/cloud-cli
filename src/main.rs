@@ -27,13 +27,13 @@ fn main() -> Result<()> {
         let home = home::home_dir().expect("cannot find home dir");
         home.join(".cloud-cli-v0.3.0")
     };
-    let is_first_init = !data_dir.exists();
+    let is_init = !data_dir.exists();
 
     let config = Config::open(data_dir)?;
     let mut ctx: Context<ControllerClient, ExecutorClient, EvmClient> =
         Context::from_config(config)?;
 
-    if is_first_init {
+    if is_init {
         let default_account = Account::<SmCrypto>::generate();
         ctx.wallet
             .save("default".into(), default_account)
@@ -41,16 +41,17 @@ fn main() -> Result<()> {
     }
 
     let cldi = cmd::cldi_cmd();
-
     let m = cldi.get_matches();
-    if m.subcommand().is_some() {
-        cldi.exec_with(&m, &mut ctx).map_err(|e| {
-            if let Some(e) = e.downcast_ref::<clap::Error>() {
-                e.exit();
-            }
-            e
-        })?;
-    } else {
+
+    cldi.exec_with(&m, &mut ctx).map_err(|e| {
+        if let Some(e) = e.downcast_ref::<clap::Error>() {
+            e.exit();
+        }
+        e
+    })?;
+
+    // Enter interactive mode if no subcommand provided
+    if m.subcommand().is_none() {
         // TODO: put editor into context
         let mut rl = rustyline::Editor::<()>::new();
         loop {
