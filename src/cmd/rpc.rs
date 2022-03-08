@@ -14,12 +14,12 @@ use crate::{
     utils::{hex, parse_addr, parse_data, parse_hash, parse_value},
 };
 
-pub fn call<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+pub fn call_executor<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ex: ExecutorBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("call")
-        .about("Executor call")
+    Command::<Context<Co, Ex, Ev>>::new("call-executor")
+        .about("Call executor")
         .arg(
             Arg::new("from")
                 .short('f')
@@ -55,15 +55,15 @@ where
         })
 }
 
-pub fn send<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+pub fn send_tx<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: TransactionSenderBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("send")
+    Command::<Context<Co, Ex, Ev>>::new("send-tx")
         .about("Send transaction")
         .arg(
             Arg::new("to")
-                .help("the address to send")
+                .help("the target address of this tx")
                 .short('t')
                 .long("to")
                 .takes_value(true)
@@ -72,7 +72,7 @@ where
         )
         .arg(
             Arg::new("value")
-                .help("the value to send")
+                .help("the value of this tx")
                 .short('v')
                 .long("value")
                 .takes_value(true)
@@ -81,21 +81,86 @@ where
         )
         .arg(
             Arg::new("data")
-                .help("the data of the tx")
+                .help("the data of this tx")
                 .short('d')
                 .long("data")
                 .takes_value(true)
                 .required(true)
                 .validator(parse_data),
         )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .takes_value(true)
+                .default_value("3000000")
+                .validator(str::parse::<u64>),
+        )
         .handler(|_cmd, m, ctx| {
             let to = parse_addr(m.value_of("to").unwrap())?;
             let value = parse_value(m.value_of("value").unwrap())?.to_vec();
             let data = parse_data(m.value_of("data").unwrap())?;
+            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
 
             let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
-                let tx_hash = ctx.controller.send_tx(signer, to, data, value).await?;
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(signer, to.to_vec(), data, value, quota)
+                    .await?;
+                println!("{}", hex(tx_hash.as_slice()));
+
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
+
+pub fn create_contract<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: TransactionSenderBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("create-contract")
+        .about("Create EVM contract")
+        .arg(
+            Arg::new("value")
+                .help("the value of this tx")
+                .short('v')
+                .long("value")
+                .takes_value(true)
+                .required(true)
+                .validator(parse_value),
+        )
+        .arg(
+            Arg::new("data")
+                .help("the data of this tx")
+                .short('d')
+                .long("data")
+                .takes_value(true)
+                .required(true)
+                .validator(parse_data),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .takes_value(true)
+                .default_value("3000000")
+                .validator(str::parse::<u64>),
+        )
+        .handler(|_cmd, m, ctx| {
+            let value = parse_value(m.value_of("value").unwrap())?.to_vec();
+            let data = parse_data(m.value_of("data").unwrap())?;
+            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+
+            let signer = ctx.current_account()?;
+            ctx.rt.block_on(async {
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(signer, vec![], data, value, quota)
+                    .await?;
                 println!("{}", hex(tx_hash.as_slice()));
 
                 anyhow::Ok(())
@@ -327,12 +392,16 @@ where
 
 pub fn rpc_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    Co: ControllerBehaviour,
+    Co: ControllerBehaviour + Send + Sync,
+    Ex: ExecutorBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
         .subcommand_required_else_help(true)
         .subcommands([
+            call_executor(),
+            send_tx(),
+            create_contract(),
             get_version(),
             get_system_config(),
             get_block_number(),

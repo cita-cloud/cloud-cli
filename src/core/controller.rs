@@ -6,7 +6,7 @@ use anyhow::Result;
 use prost::Message;
 use tonic::transport::Channel;
 
-use crate::crypto::{Address, ArrayLike, Hash};
+use crate::crypto::{ArrayLike, Hash};
 use crate::proto::{
     blockchain::{
         raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudNormalTransaction,
@@ -270,9 +270,11 @@ pub trait TransactionSenderBehaviour {
     async fn send_tx<S>(
         &self,
         signer: &S,
-        to: Address,
+        // Use Vec<u8> instead of Address to allow empty address for creating contract
+        to: Vec<u8>,
         data: Vec<u8>,
         value: Vec<u8>,
+        quota: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
@@ -305,9 +307,10 @@ where
     async fn send_tx<S>(
         &self,
         signer: &S,
-        to: Address,
+        to: Vec<u8>,
         data: Vec<u8>,
         value: Vec<u8>,
+        quota: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
@@ -318,11 +321,11 @@ where
 
         let raw_tx = CloudNormalTransaction {
             version: system_config.version,
-            to: to.to_vec(),
+            to,
             data,
             value,
             nonce: rand::random::<u64>().to_string(),
-            quota: 3_000_000,
+            quota,
             valid_until_block: current_block_number + 95,
             chain_id: system_config.chain_id.clone(),
         };

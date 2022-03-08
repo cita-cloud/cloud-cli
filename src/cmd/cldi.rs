@@ -114,8 +114,9 @@ where
             bench::bench_send().alias("bench"),
             bench::bench_call(),
             // re-export
-            rpc::send(),
-            rpc::call(),
+            rpc::send_tx().name("send"),
+            rpc::call_executor().name("call"),
+            rpc::create_contract().name("create"),
         ])
         .with_completions_subcmd()
 }

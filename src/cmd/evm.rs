@@ -112,14 +112,24 @@ where
                 .takes_value(true)
                 .validator(parse_data),
         )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .takes_value(true)
+                .default_value("3000000")
+                .validator(str::parse::<u64>),
+        )
         .handler(|_cmd, m, ctx| {
             let contract_addr = parse_addr(m.value_of("addr").unwrap())?;
             let abi = parse_data(m.value_of("abi").unwrap())?;
+            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
 
             let signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
-                    .store_contract_abi(signer, contract_addr, &abi)
+                    .store_contract_abi(signer, contract_addr, &abi, quota)
                     .await
             })??;
             println!("{}", hex(tx_hash.as_slice()));

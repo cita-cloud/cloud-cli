@@ -34,6 +34,7 @@ pub fn parse_hash(s: &str) -> Result<Hash> {
     Hash::try_from_slice(&input)
 }
 
+// TODO: Should we do the padding?
 pub fn parse_value(s: &str) -> Result<[u8; 32]> {
     let s = remove_0x(s);
     if s.len() > 64 {

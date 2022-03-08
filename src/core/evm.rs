@@ -109,6 +109,7 @@ pub trait EvmBehaviourExt {
         signer: &S,
         contract_addr: Address,
         abi: &[u8],
+        quota: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
@@ -125,13 +126,16 @@ where
         signer: &S,
         contract_addr: Address,
         abi: &[u8],
+        quota: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
         let abi_addr = parse_addr(constant::ABI_ADDRESS)?;
         let data = [contract_addr.as_slice(), abi].concat();
-        let tx_hash = self.send_tx(signer, abi_addr, data, vec![0; 32]).await?;
+        let tx_hash = self
+            .send_tx(signer, abi_addr.to_vec(), data, vec![0; 32], quota)
+            .await?;
 
         Ok(tx_hash)
     }
