@@ -14,21 +14,24 @@ where
     Co: ControllerBehaviour,
     Ev: EvmBehaviour,
 {
-    Command::new("get").about("Get chain info").subcommands([
-        evm::get_contract_abi().name("abi"),
-        evm::get_balance().name("balance").alias("ba"),
-        rpc::get_block().name("block").alias("b"),
-        evm::get_code().name("code"),
-        rpc::get_tx().name("tx"),
-        rpc::get_peer_count().name("peer-count").alias("pc"),
-        rpc::get_peers_info().name("peers-info").alias("pi"),
-        evm::get_tx_count().name("nonce"),
-        evm::get_receipt().name("receipt").alias("r"),
-        rpc::get_version().name("version"),
-        rpc::get_system_config().name("system-config").alias("sc"),
-        rpc::get_block_hash().name("block-hash").alias("bh"),
-        rpc::get_block_number().name("block-number").alias("bn"),
-    ])
+    Command::new("get")
+        .about("Get chain info")
+        .subcommand_required_else_help(true)
+        .subcommands([
+            evm::get_contract_abi().name("abi"),
+            evm::get_balance().name("balance").alias("ba"),
+            rpc::get_block().name("block").alias("b"),
+            evm::get_code().name("code"),
+            rpc::get_tx().name("tx"),
+            rpc::get_peer_count().name("peer-count").alias("pc"),
+            rpc::get_peers_info().name("peers-info").alias("pi"),
+            evm::get_tx_count().name("nonce"),
+            evm::get_receipt().name("receipt").alias("r"),
+            rpc::get_version().name("version"),
+            rpc::get_system_config().name("system-config").alias("sc"),
+            rpc::get_block_hash().name("block-hash").alias("bh"),
+            rpc::get_block_number().name("block-number").alias("bn"),
+        ])
 }
 
 pub fn cldi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
