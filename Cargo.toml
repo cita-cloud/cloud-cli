@@ -5,7 +5,7 @@ authors = ["Zhishi <whfuyn@outlook.com>"]
 edition = "2021"
 
 [dependencies]
-clap = "3.1"
+clap = { version = "3.1", features = ["derive"] }
 clap_complete = "3.1"
 hex = "0.4"
 tokio = { version = "1.6", features = ["full"] }
@@ -30,14 +30,20 @@ parking_lot = "0.12"
 crossbeam = "0.8"
 mockall = "0.11"
 tempfile = "3.3"
-# SM
+tracing = "0.1"
+tracing-subscriber = "0.2"
+# crypto SM
 libsm = "0.4.0"
 efficient-sm2 = "0.1.5"
-# ETH
+# crypto ETH
 aes = "0.7"
 ctr = "0.8"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 secp256k1 = { version = "0.21", features = ["rand-std", "recovery"] }
+# ethabi cli
+ethabi = "17.0"
+sha3 = "0.10"
+itertools = "0.10"
 
 [build-dependencies]
 tonic-build = "0.6"

@@ -1,7 +1,7 @@
 use clap::Arg;
 
 use crate::{
-    cmd::{admin, bench, context, evm, key, rpc, Command},
+    cmd::{admin, bench, context, ethabi, evm, key, rpc, Command},
     config::ContextSetting,
     core::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
@@ -111,6 +111,7 @@ where
             context::context_cmd(),
             evm::evm_cmd(),
             rpc::rpc_cmd(),
+            ethabi::ethabi_cmd(),
             bench::bench_send().alias("bench"),
             bench::bench_call(),
             // re-export

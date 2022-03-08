@@ -2,6 +2,7 @@ mod admin;
 mod bench;
 mod cldi;
 mod context;
+mod ethabi;
 mod evm;
 mod key;
 mod rpc;
