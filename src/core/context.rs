@@ -36,9 +36,15 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         let default_context_setting = config
             .context_settings
             .get(&config.default_context)
-            // TODO: log warning and use default context setting
-            .ok_or_else(|| anyhow!("missing default context setting"))?
-            .clone();
+            .cloned()
+            .unwrap_or_else(|| {
+                println!(
+                    "The configured default context setting `{}` is missing.",
+                    config.default_context
+                );
+                println!("Using a local default context..");
+                ContextSetting::default()
+            });
         // connect_lazy must run in async environment.
         let (controller, executor, evm) = rt.block_on(async {
             let co = Co::connect_lazy(&default_context_setting.controller_addr)?;
