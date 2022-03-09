@@ -1,5 +1,6 @@
 use anyhow::Context as _;
 use clap::Arg;
+use std::net::IpAddr;
 use tokio::try_join;
 
 use crate::{
@@ -369,21 +370,46 @@ where
     Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("add-node")
-        .about("Add new node")
+        .about("call add node rpc")
         .arg(
-            Arg::new("multiaddr")
-                .help("multi addres of the new node")
+            Arg::new("host")
+                .help("the host of the new node")
+                .required(true),
+        )
+        .arg(
+            Arg::new("port")
+                .help("the port of the new node")
+                .validator(str::parse::<u16>)
+                .required(true),
+        )
+        .arg(
+            Arg::new("tls")
+                .help("the dns name in the certificate")
                 .required(true),
         )
         .handler(|_cmd, m, ctx| {
-            let multiaddr = m.value_of("multiaddr").unwrap().into();
+            let host = m.value_of("host").unwrap();
+            let port = m.value_of("port").unwrap().parse::<u64>().unwrap();
+            let tls = m.value_of("tls").unwrap();
+
+            let ptcl = match host.parse::<std::net::IpAddr>() {
+                Ok(IpAddr::V4(_)) => "ip4",
+                Ok(IpAddr::V6(_)) => "ip6",
+                Err(_) => "dns4",
+            };
+
+            let multiaddr = format!("/{ptcl}/{host}/tcp/{port}/tls/{tls}");
+
             let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
             // https://github.com/cita-cloud/status_code
             if status == 0 {
-                println!("ok");
+                println!("Success");
             } else {
                 // I have no idea how to explain those status codes.
-                println!("status code: {}", status);
+                println!(
+                    "Failed with status code: `{}`, please check controler's log",
+                    status
+                );
             }
 
             Ok(())
