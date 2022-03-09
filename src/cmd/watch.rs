@@ -16,23 +16,32 @@ where
         .arg(
             Arg::new("begin")
                 .help("the block height starts from")
+                .short('b')
+                .long("begin")
                 .takes_value(true)
                 .validator(str::parse::<u64>),
         )
         .arg(
             Arg::new("end")
                 .help("the block height ends at")
+                .short('e')
+                .long("end")
                 .takes_value(true)
                 .validator(str::parse::<u64>),
         )
         .arg(
-            Arg::new("until-finished-txs")
-                .help("stop watching when finished txs reach the given limit")
+            Arg::new("until-finalized-txs")
+                .help("stop watching when finalized txs reach the given limit")
+                .short('t')
+                .long("until")
                 .takes_value(true)
                 .validator(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
-            ctx.rt.block_on(async {
+            let mut finalized_txs = 0;
+            let mut total_secs = 0u64;
+
+            let watch_result = ctx.rt.block_on(async {
                 let current_height = ctx.controller.get_block_number(false).await?;
 
                 let begin = m
@@ -52,9 +61,7 @@ where
 
                 let mut check_interval = tokio::time::interval(Duration::from_secs(1));
                 let mut retry_interval = tokio::time::interval(Duration::from_secs(3));
-                let mut finalized_txs = 0;
                 let mut begin_time = None;
-                let mut total_secs = 0u64;
 
             'outter:
                 while h <= end {
@@ -128,10 +135,11 @@ where
                     }
                 }
 
-                println!("{finalized_txs} txs finalized in {total_secs}, {:.2} tx/s", finalized_txs as f64 / total_secs as f64);
-
                 anyhow::Ok(())
-            })??;
+            });
+
+            println!("{finalized_txs} txs finalized in {total_secs}, {:.2} tx/s", finalized_txs as f64 / total_secs as f64);
+            watch_result??;
 
             Ok(())
         })
