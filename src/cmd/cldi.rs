@@ -2,7 +2,7 @@ use clap::Arg;
 use tonic::transport::Endpoint;
 
 use crate::{
-    cmd::{admin, bench, context, ethabi, evm, key, rpc, watch, Command},
+    cmd::{account, admin, bench, context, ethabi, evm, rpc, watch, Command},
     config::ContextSetting,
     core::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
@@ -109,7 +109,7 @@ where
         })
         .subcommands([
             admin::admin_cmd(),
-            key::key_cmd(),
+            account::account_cmd(),
             self::get_cmd(),
             context::context_cmd(),
             evm::evm_cmd(),

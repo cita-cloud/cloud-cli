@@ -16,13 +16,13 @@ use crate::{
     utils::{hex, parse_sk},
 };
 
-pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
-    Command::<Context<Co, Ex, Ev>>::new("generate-key")
+pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("generate-account")
         .aliases(&["gen", "g"])
-        .about("generate a new key")
+        .about("generate a new account")
         .arg(
-            Arg::new("id")
-                .help("The ID for the new generated key")
+            Arg::new("name")
+                .help("The name for the new generated account")
                 .required(true)
                 .takes_value(true),
         )
@@ -30,19 +30,19 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
             Arg::new("password")
                 .short('p')
                 .long("passowrd")
-                .help("The password to encrypt the key")
+                .help("The password to encrypt the account")
                 .takes_value(true),
         )
         .arg(
             Arg::new("crypto-type")
-                .help("The crypto type for the generated key. [default: <current-context-crypto-type>]")
+                .help("The crypto type for the generated account. [default: <current-context-crypto-type>]")
                 .long("crypto")
                 .possible_values(["SM", "ETH"])
                 .ignore_case(true)
                 .validator(CryptoType::from_str)
         )
         .handler(|_cmd, m, ctx| {
-            let id = m.value_of("id").unwrap();
+            let name = m.value_of("name").unwrap();
             let pw = m.value_of("password");
             let crypto_type = m.value_of("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
@@ -60,24 +60,24 @@ pub fn generate_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
             // TODO: don't display secret key
             let output = serde_json::to_string_pretty(&maybe_locked)?;
 
-            ctx.wallet.save(id.into(), maybe_locked)?;
+            ctx.wallet.save(name.into(), maybe_locked)?;
 
             println!("{output}");
             Ok(())
         })
 }
 
-pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+pub fn list_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("list")
         .aliases(&["ls", "l"])
-        .about("list keys")
+        .about("list accounts")
         .handler(|_cmd, _m, ctx| {
-            let keys = ctx
+            let accounts = ctx
                 .wallet
                 .list()
-                .map(|(id, account)| {
+                .map(|(name, account)| {
                     json!({
-                        "id": id,
+                        "name": name,
                         "address": hex(account.address()),
                         "pubkey": hex(account.public_key()),
                         "is_locked": account.is_locked(),
@@ -86,25 +86,25 @@ pub fn list_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 })
                 .collect::<Vec<_>>();
 
-            let output = serde_json::to_string_pretty(&keys)?;
+            let output = serde_json::to_string_pretty(&accounts)?;
             println!("{}", output);
 
             Ok(())
         })
 }
 
-pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+pub fn import_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("import")
-        .about("import key")
+        .about("import account")
         .arg(
-            Arg::new("id")
-                .help("The ID of the key")
+            Arg::new("name")
+                .help("The name of the account")
                 .required(true)
                 .takes_value(true),
         )
         .arg(
             Arg::new("password")
-                .help("The password to decrypt the key")
+                .help("The password to encrypt the account")
                 .short('p')
                 .long("passowrd")
                 .takes_value(true),
@@ -119,14 +119,14 @@ pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         )
         .arg(
             Arg::new("crypto-type")
-                .help("The crypto type for the generated key. [default: <current-context-crypto-type>]")
+                .help("The crypto type for the imported account. [default: <current-context-crypto-type>]")
                 .long("crypto")
                 .possible_values(["SM", "ETH"])
                 .ignore_case(true)
                 .validator(CryptoType::from_str)
         )
         .handler(|_cmd, m, ctx| {
-            let id = m.value_of("id").unwrap();
+            let name = m.value_of("name").unwrap();
             let pw = m.value_of("password");
             let sk = m.value_of("secret-key").unwrap();
             let crypto_type = m.value_of("crypto-type")
@@ -157,10 +157,10 @@ pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 let pw = pw.as_bytes();
                 let locked = account.lock(pw);
 
-                ctx.wallet.save(id.into(), locked)?;
-                ctx.wallet.unlock(id, pw)?;
+                ctx.wallet.save(name.into(), locked)?;
+                ctx.wallet.unlock(name, pw)?;
             } else {
-                ctx.wallet.save(id.into(), account)?;
+                ctx.wallet.save(name.into(), account)?;
             };
 
             println!("{}", info.display());
@@ -168,12 +168,12 @@ pub fn import_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
-pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("export")
-        .about("export key")
+        .about("export account")
         .arg(
-            Arg::new("id")
-                .help("The ID of the key")
+            Arg::new("name")
+                .help("The name of the account")
                 .required(true)
                 .takes_value(true),
         )
@@ -181,17 +181,17 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
             Arg::new("password")
                 .short('p')
                 .long("passowrd")
-                .help("The password to decrypt the key")
+                .help("The password to decrypt the account")
                 .takes_value(true),
         )
         .handler(|_cmd, m, ctx| {
-            let id = m.value_of("id").unwrap();
+            let name = m.value_of("name").unwrap();
             let pw = m.value_of("password");
 
             let maybe_locked = ctx
                 .wallet
-                .get(id)
-                .ok_or_else(|| anyhow!("account `{}` not found", id))?;
+                .get(name)
+                .ok_or_else(|| anyhow!("account `{}` not found", name))?;
 
             let json = if let Some(pw) = pw {
                 let unlocked = maybe_locked.unlock(pw.as_bytes())?;
@@ -208,22 +208,22 @@ pub fn export_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
-pub fn unlock_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
-    Command::<Context<Co, Ex, Ev>>::new("unlock-key")
-        .about("unlock a key")
+pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("unlock-account")
+        .about("unlock a account")
         .arg(
-            Arg::new("id")
-                .help("The ID of the key")
+            Arg::new("name")
+                .help("The name of the account")
                 .takes_value(true)
-                .required(true), // TODO: add validator
+                .required(true),
         )
         .arg(
             Arg::new("password")
-                .help("The password to unlock the key")
+                .help("The password to unlock the account")
                 .short('p')
                 .long("passowrd")
                 .takes_value(true)
-                .required(true), // TODO: add validator
+                .required(true),
         )
         .arg(
             Arg::new("file")
@@ -232,55 +232,55 @@ pub fn unlock_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 .long("file"),
         )
         .handler(|_cmd, m, ctx| {
-            let id = m.value_of("id").unwrap();
+            let name = m.value_of("name").unwrap();
             let pw = m.value_of("password").unwrap();
 
             if m.is_present("file") {
-                ctx.wallet.unlock(id, pw.as_bytes())?;
+                ctx.wallet.unlock(name, pw.as_bytes())?;
             } else {
-                ctx.wallet.unlock_in_keystore(id, pw.as_bytes())?;
+                ctx.wallet.unlock_in_keystore(name, pw.as_bytes())?;
             }
             Ok(())
         })
 }
 
-pub fn lock_key<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
-    Command::<Context<Co, Ex, Ev>>::new("lock-key")
-        .about("lock a key")
+pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("lock-account")
+        .about("lock a account")
         .arg(
-            Arg::new("id")
-                .help("The ID of the key")
+            Arg::new("name")
+                .help("The name of the account")
                 .takes_value(true)
-                .required(true), // TODO: add validator
+                .required(true),
         )
         .arg(
             Arg::new("password")
                 .short('p')
                 .long("passowrd")
-                .help("The password to lock the key")
+                .help("The password to lock the account")
                 .takes_value(true)
-                .required(true), // TODO: add validator
+                .required(true),
         )
         .handler(|_cmd, m, ctx| {
-            let id = m.value_of("id").unwrap();
+            let name = m.value_of("name").unwrap();
             let pw = m.value_of("password").unwrap();
 
-            ctx.wallet.lock(id, pw.as_bytes())?;
+            ctx.wallet.lock(name, pw.as_bytes())?;
 
             Ok(())
         })
 }
 
-pub fn key_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
-    Command::<Context<Co, Ex, Ev>>::new("key")
+pub fn account_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("account")
         .about("Key commands")
         .subcommand_required_else_help(true)
         .subcommands([
-            generate_key().name("generate"),
-            list_key().name("list"),
-            import_key().name("import"),
-            export_key().name("export"),
-            unlock_key().name("unlock"),
-            lock_key().name("lock"),
+            generate_account().name("generate"),
+            list_account().name("list"),
+            import_account().name("import"),
+            export_account().name("export"),
+            unlock_account().name("unlock"),
+            lock_account().name("lock"),
         ])
 }
