@@ -1,4 +1,5 @@
 use clap::Arg;
+use tonic::transport::Endpoint;
 
 use crate::{
     cmd::{admin, bench, context, ethabi, evm, key, rpc, watch, Command},
@@ -53,19 +54,21 @@ where
             Arg::new("controller-addr")
                 .help("controller address")
                 .short('r')
-                .takes_value(true), // TODO: add validator
+                .takes_value(true)
+                .validator(|s| Endpoint::from_shared(s.to_string()).map(|_| ())),
         )
         .arg(
             Arg::new("executor-addr")
                 .help("executor address")
                 .short('e')
-                .takes_value(true), // TODO: add validator
+                .takes_value(true)
+                .validator(|s| Endpoint::from_shared(s.to_string()).map(|_| ())),
         )
         .arg(
             Arg::new("account-id")
                 .help("account id")
                 .short('u')
-                .takes_value(true), // TODO: add validator
+                .takes_value(true),
         )
         .handler(|cmd, m, ctx| {
             // If a subcommand is passed, it's considered as a tmp context for that subcommand.
