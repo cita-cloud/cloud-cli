@@ -87,23 +87,23 @@ where
                         match (block.header, block.body) {
                             (Some(header), Some(body)) => {
                                 let height = header.height;
-                                let secs = {
+                                let elapsed_secs = {
                                     let t = std::time::UNIX_EPOCH + Duration::from_millis(header.timestamp);
                                     if begin_time.is_none() {
                                         begin_time.replace(t);
                                     }
                                     t.duration_since(begin_time.unwrap()).unwrap().as_secs()
                                 };
-                                total_secs += secs;
+                                total_secs = elapsed_secs;
 
                                 let cnt = body.tx_hashes.len() as u64;
                                 finalized_txs += cnt;
 
-                                if secs < 3600 {
+                                if elapsed_secs < 3600 {
                                     println!(
                                         "{:0>2}:{:0>2} block `{}` contains `{}` txs, finalized: `{}`",
-                                        secs / 60,
-                                        secs % 60,
+                                        elapsed_secs / 60,
+                                        elapsed_secs % 60,
                                         height,
                                         cnt,
                                         finalized_txs
@@ -111,9 +111,9 @@ where
                                 } else {
                                     println!(
                                         "{:0>2}:{:0>2}:{:0>2} block `{}` contains `{}` txs, finalized: `{}`",
-                                        secs / 3600,
-                                        secs / 60,
-                                        secs % 60,
+                                        elapsed_secs / 3600,
+                                        elapsed_secs / 60,
+                                        elapsed_secs % 60,
                                         height,
                                         cnt,
                                         finalized_txs
