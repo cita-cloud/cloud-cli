@@ -39,7 +39,7 @@ where
         )
         .handler(|_cmd, m, ctx| {
             let mut finalized_txs = 0;
-            let mut total_secs = 0u64;
+            let mut total_secs = 0;
 
             let watch_result = ctx.rt.block_on(async {
                 let current_height = ctx.controller.get_block_number(false).await?;
@@ -75,7 +75,7 @@ where
                         }
                     };
 
-                    while h <= current_height {
+                    while h <= std::cmp::min(current_height, end) {
                         let block = match ctx.controller.get_block_by_number(h).await {
                             Ok(block) => block,
                             Err(e) => {
