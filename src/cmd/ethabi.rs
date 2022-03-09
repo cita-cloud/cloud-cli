@@ -92,6 +92,7 @@ pub fn ethabi_encode_params_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<C
 pub fn ethabi_encode_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi-encode")
         .about("Encode ABI call.")
+        .subcommand_required_else_help(true)
         .subcommands([
             ethabi_encode_function_cmd().name("function"),
             ethabi_encode_params_cmd().name("params"),
@@ -183,6 +184,7 @@ pub fn ethabi_decode_log_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, 
 pub fn ethabi_decode_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi-encode")
         .about("Decode ABI call result.")
+        .subcommand_required_else_help(true)
         .subcommands([
             ethabi_decode_function_cmd().name("function"),
             ethabi_decode_params_cmd().name("params"),
@@ -193,6 +195,7 @@ pub fn ethabi_decode_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, 
 pub fn ethabi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi")
         .about("Ethereum ABI coder.")
+        .subcommand_required_else_help(true)
         .subcommands([
             ethabi_encode_cmd().name("encode"),
             ethabi_decode_cmd().name("decode"),
