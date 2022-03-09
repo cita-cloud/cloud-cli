@@ -54,7 +54,7 @@ where
                     .unwrap_or(u64::MAX);
 
                 let until_finalized_txs = m
-                    .value_of("until_finalized_txs")
+                    .value_of("until-finalized-txs")
                     .map(|s| s.parse::<u64>().unwrap());
 
                 let mut h = begin;
@@ -138,7 +138,8 @@ where
                 anyhow::Ok(())
             });
 
-            println!("{finalized_txs} txs finalized in {total_secs}, {:.2} tx/s", finalized_txs as f64 / total_secs as f64);
+            println!();
+            println!("`{finalized_txs}` txs finalized in `{total_secs}` secs, `{:.2}` tx/s", finalized_txs as f64 / total_secs as f64);
             watch_result??;
 
             Ok(())
