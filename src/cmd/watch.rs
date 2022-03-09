@@ -139,7 +139,14 @@ where
             });
 
             println!();
-            println!("`{finalized_txs}` txs finalized in `{total_secs}` secs, `{:.2}` tx/s", finalized_txs as f64 / total_secs as f64);
+            if total_secs > 0 {
+                println!(
+                    "`{finalized_txs}` txs finalized in `{total_secs}` secs, `{:.2}` tx/s",
+                    finalized_txs as f64 / total_secs as f64
+                );
+            } else {
+                println!("`{finalized_txs}` txs finalized");
+            }
             watch_result??;
 
             Ok(())
