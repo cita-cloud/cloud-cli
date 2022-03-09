@@ -6,6 +6,7 @@ mod ethabi;
 mod evm;
 mod key;
 mod rpc;
+mod watch;
 
 use anyhow::{anyhow, bail, Result};
 use clap::{Arg, ArgMatches};
