@@ -137,9 +137,9 @@ where
         .about("Call executor with {-c} workers over {--connections} connections")
         .arg(
             Arg::new("from")
+                .help("default to use current account address")
                 .short('f')
                 .long("from")
-                .required(true)
                 .takes_value(true)
                 .validator(parse_addr),
         )
@@ -168,7 +168,10 @@ where
                 .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
 
-            let from = parse_addr(m.value_of("from").unwrap())?;
+            let from = match m.value_of("from") {
+                Some(from) => parse_addr(from).unwrap(),
+                None => *ctx.current_account()?.address(),
+            };
             let to = parse_addr(m.value_of("to").unwrap())?;
             let data = parse_data(m.value_of("data").unwrap())?;
 
