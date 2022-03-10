@@ -61,3 +61,18 @@ cldi> -r localhost:50004
 # 仅针对这条命令应用这个配置
 cldi> -r localhost:50004 get block-number
 ```
+
+## 简写
+
+cldi提供了很多命令的简写和别名，这里列举一些：
+```plaintext
+cldi> get block-number
+cldi> get bn
+
+cldi> get system-config
+cldi> get sc
+
+cldi> context list
+cldi> ctx ls
+cldi> ctx l
+```
