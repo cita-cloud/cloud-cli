@@ -65,8 +65,8 @@ where
                 .validator(|s| Endpoint::from_shared(s.to_string()).map(|_| ())),
         )
         .arg(
-            Arg::new("account-id")
-                .help("account id")
+            Arg::new("account-name")
+                .help("account name")
                 .short('u')
                 .takes_value(true),
         )
@@ -80,7 +80,7 @@ where
                 && (m.is_present("context")
                     || m.is_present("controller-addr")
                     || m.is_present("executor-addr")
-                    || m.is_present("account-id"));
+                    || m.is_present("account-name"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
@@ -94,8 +94,8 @@ where
             if let Some(executor_addr) = m.value_of("executor-addr") {
                 current_setting.executor_addr = executor_addr.into();
             }
-            if let Some(account_id) = m.value_of("account-id") {
-                current_setting.account_id = account_id.into();
+            if let Some(account_name) = m.value_of("account-name") {
+                current_setting.account_name = account_name.into();
             }
 
             ctx.switch_context(current_setting)?;

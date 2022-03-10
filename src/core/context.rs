@@ -65,14 +65,14 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
     }
 
     pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
-        let id = &self.current_setting.account_id;
+        let name = &self.current_setting.account_name;
         let current = self
             .wallet
-            .get(id)
-            .ok_or_else(|| anyhow!("current account `{}` not found", id))?;
+            .get(name)
+            .ok_or_else(|| anyhow!("current account `{}` not found", name))?;
         current
             .unlocked()
-            .with_context(|| format!("cannot get current account `{}` ", id))
+            .with_context(|| format!("cannot get current account `{}` ", name))
     }
 
     pub fn current_controller_addr(&self) -> &str {

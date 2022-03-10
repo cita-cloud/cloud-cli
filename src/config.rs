@@ -86,7 +86,7 @@ pub struct ContextSetting {
     pub controller_addr: String,
     pub executor_addr: String,
 
-    pub account_id: String,
+    pub account_name: String,
     pub crypto_type: CryptoType,
 }
 
@@ -108,7 +108,7 @@ impl Default for ContextSetting {
         Self {
             controller_addr: "localhost:50004".into(),
             executor_addr: "localhost:50002".into(),
-            account_id: "default".into(),
+            account_name: "default".into(),
             crypto_type: CryptoType::Sm,
         }
     }
