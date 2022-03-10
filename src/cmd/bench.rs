@@ -294,7 +294,7 @@ async fn bench_fn_with_progbar<
 
     if let Err(e) = bench_res {
         println!(
-            "bench isn't completed successfully, the first reported error is {}",
+            "bench isn't completed successfully, the first reported error is `{}`",
             e
         );
     }

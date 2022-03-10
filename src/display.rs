@@ -44,6 +44,11 @@ impl Display for CallResponse {
     fn to_json(&self) -> Json {
         json!(hex(&self.value))
     }
+
+    // don't display " "
+    fn display(&self) -> String {
+        hex(&self.value)
+    }
 }
 
 impl Display for CompactBlock {

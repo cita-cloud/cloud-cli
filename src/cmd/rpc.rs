@@ -31,16 +31,12 @@ where
         )
         .arg(
             Arg::new("to")
-                .short('t')
-                .long("to")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_addr),
         )
         .arg(
             Arg::new("data")
-                .short('d')
-                .long("data")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_data),
@@ -68,11 +64,16 @@ where
         .arg(
             Arg::new("to")
                 .help("the target address of this tx")
-                .short('t')
-                .long("to")
                 .takes_value(true)
                 .required(true)
                 .validator(parse_addr),
+        )
+        .arg(
+            Arg::new("data")
+                .help("the data of this tx")
+                .takes_value(true)
+                .default_value("0x")
+                .validator(parse_data),
         )
         .arg(
             Arg::new("value")
@@ -80,17 +81,8 @@ where
                 .short('v')
                 .long("value")
                 .takes_value(true)
-                .required(true)
+                .default_value("0x0")
                 .validator(parse_value),
-        )
-        .arg(
-            Arg::new("data")
-                .help("the data of this tx")
-                .short('d')
-                .long("data")
-                .takes_value(true)
-                .required(true)
-                .validator(parse_data),
         )
         .arg(
             Arg::new("quota")
@@ -128,22 +120,20 @@ where
     Command::<Context<Co, Ex, Ev>>::new("create-contract")
         .about("Create EVM contract")
         .arg(
+            Arg::new("data")
+                .help("the data of this tx")
+                .takes_value(true)
+                .required(true)
+                .validator(parse_data),
+        )
+        .arg(
             Arg::new("value")
                 .help("the value of this tx")
                 .short('v')
                 .long("value")
                 .takes_value(true)
-                .required(true)
+                .default_value("0x0")
                 .validator(parse_value),
-        )
-        .arg(
-            Arg::new("data")
-                .help("the data of this tx")
-                .short('d')
-                .long("data")
-                .takes_value(true)
-                .required(true)
-                .validator(parse_data),
         )
         .arg(
             Arg::new("quota")
