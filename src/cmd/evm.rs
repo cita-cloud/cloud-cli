@@ -4,7 +4,7 @@ use crate::{
     cmd::Command,
     core::{context::Context, evm::EvmBehaviour, evm::EvmBehaviourExt},
     display::Display,
-    utils::{hex, parse_addr, parse_data, parse_hash},
+    utils::{hex, parse_addr, parse_hash},
 };
 
 pub fn get_receipt<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -100,18 +100,11 @@ where
         .about("Store contract ABI")
         .arg(
             Arg::new("addr")
-                .short('a')
-                .long("addr")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_addr),
         )
-        .arg(
-            Arg::new("abi")
-                .required(true)
-                .takes_value(true)
-                .validator(parse_data),
-        )
+        .arg(Arg::new("abi").required(true).takes_value(true))
         .arg(
             Arg::new("quota")
                 .help("the quota of this tx")
@@ -123,13 +116,13 @@ where
         )
         .handler(|_cmd, m, ctx| {
             let contract_addr = parse_addr(m.value_of("addr").unwrap())?;
-            let abi = parse_data(m.value_of("abi").unwrap())?;
+            let abi = m.value_of("abi").unwrap();
             let quota = m.value_of("quota").unwrap().parse::<u64>()?;
 
             let signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
-                    .store_contract_abi(signer, contract_addr, &abi, quota)
+                    .store_contract_abi(signer, contract_addr, abi.as_bytes(), quota)
                     .await
             })??;
             println!("{}", hex(tx_hash.as_slice()));
