@@ -273,7 +273,7 @@ pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
 
 pub fn account_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("account")
-        .about("Accounts commands")
+        .about("Account commands")
         .subcommand_required_else_help(true)
         .subcommands([
             generate_account().name("generate"),

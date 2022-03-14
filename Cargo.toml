@@ -19,7 +19,6 @@ lazy_static = "1.4"
 thiserror = "1.0"
 anyhow = "1.0"
 home = "0.5.3"
-rustbreak = { version = "2.0", features = ["ron_enc"] }
 indicatif = "0.16.2"
 rayon = "1.5.1"
 tentacle-multiaddr = "0.3.1"
@@ -44,6 +43,8 @@ secp256k1 = { version = "0.21", features = ["rand-std", "recovery"] }
 ethabi = "17.0"
 sha3 = "0.10"
 itertools = "0.10"
+# legacy
+rustbreak = { version = "2.0", features = ["ron_enc"] }
 
 [build-dependencies]
 tonic-build = "0.6"

@@ -3,19 +3,21 @@ mod config;
 mod core;
 mod crypto;
 mod display;
+mod legacy;
 mod proto;
 mod utils;
 
 use anyhow::Result;
-use crypto::SmCrypto;
 use rustyline::error::ReadlineError;
+use std::fs;
 
 use crate::{
-    config::Config,
+    config::{Config, CLOUD_CLI_DATA_DIR_NAME},
     core::{
         context::Context, controller::ControllerClient, evm::EvmClient, executor::ExecutorClient,
-        wallet::Account,
+        wallet::Account, wallet::Wallet,
     },
+    crypto::SmCrypto,
     utils::init_local_utc_offset,
 };
 
@@ -25,9 +27,52 @@ fn main() -> Result<()> {
 
     let data_dir = {
         let home = home::home_dir().expect("cannot find home dir");
-        home.join(".cloud-cli-v0.3.0")
+        home.join(CLOUD_CLI_DATA_DIR_NAME)
     };
     let is_init = !data_dir.exists();
+    let is_legacy = data_dir.is_file();
+
+    if is_legacy {
+        const LEGACY_FILE_BACKUP_NAME: &str = ".cloud-cli-v0.2.0-legacy";
+
+        println!("Migrating cloud-cli v0.2.0 accounts..");
+        println!(
+            "Data backup can be found in `{}/{}`.",
+            CLOUD_CLI_DATA_DIR_NAME, LEGACY_FILE_BACKUP_NAME
+        );
+
+        // Displace legacy file
+        let legacy_file = data_dir.clone();
+        let tmp_legacy_file_backup = {
+            let mut p = legacy_file.clone();
+            p.set_file_name(LEGACY_FILE_BACKUP_NAME);
+            p
+        };
+        fs::rename(&legacy_file, &tmp_legacy_file_backup)?;
+        let legacy_file_backup = data_dir.join(LEGACY_FILE_BACKUP_NAME);
+
+        // Move legacy file to data dir
+        let mut config = Config::open(&data_dir)?;
+        fs::rename(&tmp_legacy_file_backup, &legacy_file_backup)?;
+
+        // Load legacy accounts
+        let (default_account_name, accounts) =
+            legacy::load_info_from_legacy_wallet::<SmCrypto, _>(&legacy_file_backup)?;
+
+        // Import legacy accounts
+        config
+            .context_settings
+            .get_mut("default")
+            .unwrap()
+            .account_name = default_account_name;
+        config.save()?;
+        let mut wallet = Wallet::open(&data_dir)?;
+        for (name, account) in accounts {
+            wallet.save(name, account)?;
+        }
+
+        println!("Successfully migrated.");
+    }
 
     let config = Config::open(data_dir)?;
     let mut ctx: Context<ControllerClient, ExecutorClient, EvmClient> =

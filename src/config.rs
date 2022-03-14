@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::safe_save;
 
-const CLOUD_CLI_CONFIG_FILE_NAME: &str = "config.toml";
+pub const CLOUD_CLI_CONFIG_FILE_NAME: &str = "config.toml";
+pub const CLOUD_CLI_DATA_DIR_NAME: &str = ".cloud-cli";
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
@@ -58,7 +59,7 @@ impl Default for Config {
     fn default() -> Self {
         let data_dir = {
             let home = home::home_dir().expect("cannot find home dir");
-            home.join(".cloud-cli-v0.3.0")
+            home.join(CLOUD_CLI_DATA_DIR_NAME)
         };
         let default_context = "default".to_string();
         let context_settings = {

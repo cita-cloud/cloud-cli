@@ -267,42 +267,6 @@ where
         })
 }
 
-// pub fn get_tx_index<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Context<Co, Ex, Ev>>
-// where
-//     C: Crypto,
-//     Co: ControllerBehaviour,
-// {
-//     Command::<Context<Co, Ex, Ev>>::new("get-tx-index")
-//         .about("Get transaction's index by tx_hash")
-//         .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
-//         .handler(|_cmd, m, ctx| {
-//             let s = m.value_of("tx_hash").unwrap();
-//             let tx_hash = parse_hash(s)?;
-//             let tx_index = ctx.rt.block_on(ctx.controller.get_tx_index(tx_hash))??;
-//             println!("{}", tx_index);
-
-//             Ok(())
-//         })
-// }
-
-// pub fn get_tx_block_number<'help, C, Co, Ex, Ev, Wa>() -> Command<'help, Context<Co, Ex, Ev>>
-// where
-//     C: Crypto,
-//     Co: ControllerBehaviour,
-// {
-//     Command::<Context<Co, Ex, Ev>>::new("get-tx-block-height")
-//         .about("Get transaction's block height by tx_hash")
-//         .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
-//         .handler(|_cmd, m, ctx| {
-//             let s = m.value_of("tx_hash").unwrap();
-//             let tx_hash = parse_hash(s)?;
-//             let height = ctx.rt.block_on(ctx.controller.get_tx_block_number(tx_hash))??;
-//             println!("{}", height);
-
-//             Ok(())
-//         })
-// }
-
 pub fn get_peer_count<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour,
@@ -390,12 +354,7 @@ where
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
         .subcommand_required_else_help(true)
-        .subcommands([
-            call_executor().name("call"),
-            send_tx().name("send"),
-            add_node(),
-            store_contract_abi(),
-        ])
+        .subcommands([add_node(), store_contract_abi()])
 }
 
 #[cfg(test)]
