@@ -73,7 +73,7 @@ pub fn load_info_from_legacy_wallet<C: Crypto, P: AsRef<Path>>(
 
             let new_account = NewAccount::<C>::from_secret_key(sk);
             ensure!(
-                new_account.address() != addr.as_slice(),
+                new_account.address() == addr.as_slice(),
                 "failed to migrate legacy account `{}`, the recorded address `{}` mismatched with computed one `{}`", name, hex(&addr), hex(new_account.address())
             );
             Ok((name.clone(), new_account))
