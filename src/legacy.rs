@@ -27,7 +27,6 @@ use crate::{
     utils::hex,
 };
 
-// TODO: encrypt it!
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Account {
     pub addr: Vec<u8>,
