@@ -77,8 +77,9 @@ where
         .about("Send transaction")
         .arg(
             Arg::new("to")
-                .help("the target address of this tx. If not specified, It's to create a contract")
+                .help("the target address of this tx")
                 .takes_value(true)
+                .required(true)
                 .validator(parse_addr),
         )
         .arg(
@@ -108,7 +109,7 @@ where
         )
         .arg(
             Arg::new("valid-until-block")
-                .help("the tx is valid until the block ")
+                .help("this tx is valid until the given block height. `+h` prefix means `current height + h`")
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
@@ -116,11 +117,7 @@ where
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
-                let to = m
-                    .value_of("to")
-                    .map(|s| parse_addr(s).unwrap().to_vec())
-                    // Default to create contract
-                    .unwrap_or_default();
+                let to = parse_addr(m.value_of("to").unwrap())?.to_vec();
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let data = parse_data(m.value_of("data").unwrap())?;
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
@@ -150,6 +147,76 @@ where
         })
 }
 
+pub fn create_contract<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("create-contract")
+        .about("create an EVM contract")
+        .arg(
+            Arg::new("data")
+                .help("the data of this tx")
+                .takes_value(true)
+                .default_value("0x")
+                .validator(parse_data),
+        )
+        .arg(
+            Arg::new("value")
+                .help("the value of this tx")
+                .short('v')
+                .long("value")
+                .takes_value(true)
+                .default_value("0x0")
+                .validator(parse_value),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .takes_value(true)
+                .default_value("3000000")
+                .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` prefix means `current height + h`")
+                .long("until")
+                .takes_value(true)
+                .default_value("+95")
+                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
+        )
+        .handler(|_cmd, m, ctx| {
+            ctx.rt.block_on(async {
+                let to = vec![];
+                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
+                let data = parse_data(m.value_of("data").unwrap())?;
+                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                // This parser has been repeated many times and across different modules,
+                // but it seems simpler and more obvious to just repeat the code.
+                let valid_until_block = {
+                    let s = m.value_of("valid-until-block").unwrap();
+                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
+                    if s.starts_with('+') {
+                        let current_block_height = ctx.controller.get_block_number(false).await?;
+                        current_block_height + v
+                    } else {
+                        v
+                    }
+                };
+
+                let signer = ctx.current_account()?;
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(signer, to, data, value, quota, valid_until_block)
+                    .await?;
+                println!("{}", hex(tx_hash.as_slice()));
+
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
 pub fn get_version<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour,

@@ -71,12 +71,12 @@ where
         })
 }
 
-pub fn get_tx_count<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+pub fn get_account_nonce<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("get-tx-count")
-        .about("Get the transaction count of the address")
+    Command::<Context<Co, Ex, Ev>>::new("get-account-nonce")
+        .about("Get the nonce of this account")
         .arg(Arg::new("addr").required(true).validator(parse_addr))
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr(m.value_of("addr").unwrap())?;
@@ -129,6 +129,14 @@ where
                 .takes_value(true)
                 .default_value("3000000")
                 .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` prefix means `current + h`")
+                .long("until")
+                .takes_value(true)
+                .default_value("+95")
+                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
         )
         .handler(|_cmd, m, ctx| {
             let tx_hash = ctx.rt.block_on(async {

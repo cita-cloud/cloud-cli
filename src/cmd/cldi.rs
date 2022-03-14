@@ -40,7 +40,7 @@ where
             rpc::get_tx().name("tx"),
             rpc::get_peer_count().name("peer-count").alias("pc"),
             rpc::get_peers_info().name("peers-info").alias("pi"),
-            evm::get_tx_count().name("nonce"),
+            evm::get_account_nonce().name("account-nonce").alias("an"),
             evm::get_receipt().name("receipt").alias("r"),
             rpc::get_version().name("version"),
             rpc::get_system_config().name("system-config").alias("sc"),
@@ -131,9 +131,9 @@ where
             bench::bench_send().alias("bench"),
             bench::bench_call(),
             watch::watch_cmd(),
-            // re-export
             rpc::send_tx().name("send"),
             rpc::call_executor().name("call"),
+            rpc::create_contract().name("create"),
         ])
         .with_completions_subcmd()
 }
