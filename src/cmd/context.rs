@@ -9,6 +9,9 @@ use crate::{
     display::Display,
 };
 
+// TODO: consider if it's appropriate to use config internals here.
+// I think it's OK, at least for now.
+
 pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("save-context")
         .arg(Arg::new("context-name").takes_value(true).required(true))

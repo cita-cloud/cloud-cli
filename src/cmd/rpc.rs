@@ -4,7 +4,7 @@ use std::net::IpAddr;
 use tokio::try_join;
 
 use crate::{
-    cmd::Command,
+    cmd::{evm::store_contract_abi, Command},
     core::{
         context::Context,
         controller::{ControllerBehaviour, TransactionSenderBehaviour},
@@ -57,15 +57,14 @@ where
 
 pub fn send_tx<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    Co: TransactionSenderBehaviour,
+    Co: ControllerBehaviour + Send + Sync,
 {
     Command::<Context<Co, Ex, Ev>>::new("send-tx")
         .about("Send transaction")
         .arg(
             Arg::new("to")
-                .help("the target address of this tx")
+                .help("the target address of this tx. If not specified, It's to create a contract")
                 .takes_value(true)
-                .required(true)
                 .validator(parse_addr),
         )
         .arg(
@@ -93,67 +92,41 @@ where
                 .default_value("3000000")
                 .validator(str::parse::<u64>),
         )
-        .handler(|_cmd, m, ctx| {
-            let to = parse_addr(m.value_of("to").unwrap())?;
-            let value = parse_value(m.value_of("value").unwrap())?.to_vec();
-            let data = parse_data(m.value_of("data").unwrap())?;
-            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
-
-            let signer = ctx.current_account()?;
-            ctx.rt.block_on(async {
-                let tx_hash = ctx
-                    .controller
-                    .send_tx(signer, to.to_vec(), data, value, quota)
-                    .await?;
-                println!("{}", hex(tx_hash.as_slice()));
-
-                anyhow::Ok(())
-            })??;
-            Ok(())
-        })
-}
-
-pub fn create_contract<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-where
-    Co: TransactionSenderBehaviour,
-{
-    Command::<Context<Co, Ex, Ev>>::new("create-contract")
-        .about("Create EVM contract")
         .arg(
-            Arg::new("data")
-                .help("the data of this tx")
+            Arg::new("valid-until-block")
+                .help("the tx is valid until the block ")
+                .long("until")
                 .takes_value(true)
-                .required(true)
-                .validator(parse_data),
-        )
-        .arg(
-            Arg::new("value")
-                .help("the value of this tx")
-                .short('v')
-                .long("value")
-                .takes_value(true)
-                .default_value("0x0")
-                .validator(parse_value),
-        )
-        .arg(
-            Arg::new("quota")
-                .help("the quota of this tx")
-                .short('q')
-                .long("quota")
-                .takes_value(true)
-                .default_value("3000000")
-                .validator(str::parse::<u64>),
+                .default_value("+95")
+                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
         )
         .handler(|_cmd, m, ctx| {
-            let value = parse_value(m.value_of("value").unwrap())?.to_vec();
-            let data = parse_data(m.value_of("data").unwrap())?;
-            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
-
-            let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
+                let to = m
+                    .value_of("to")
+                    .map(|s| parse_addr(s).unwrap().to_vec())
+                    // Default to create contract
+                    .unwrap_or_default();
+                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
+                let data = parse_data(m.value_of("data").unwrap())?;
+                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                // This parser has been repeated many times and across different modules,
+                // but it seems simpler and more obvious to just repeat the code.
+                let valid_until_block = {
+                    let s = m.value_of("valid-until-block").unwrap();
+                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
+                    if s.starts_with('+') {
+                        let current_block_height = ctx.controller.get_block_number(false).await?;
+                        current_block_height + v
+                    } else {
+                        v
+                    }
+                };
+
+                let signer = ctx.current_account()?;
                 let tx_hash = ctx
                     .controller
-                    .send_tx(signer, vec![], data, value, quota)
+                    .send_tx(signer, to, data, value, quota, valid_until_block)
                     .await?;
                 println!("{}", hex(tx_hash.as_slice()));
 
@@ -418,18 +391,10 @@ where
         .about("RPC commands")
         .subcommand_required_else_help(true)
         .subcommands([
-            call_executor(),
-            send_tx(),
-            create_contract(),
-            get_version(),
-            get_system_config(),
-            get_block_number(),
-            get_block(),
-            get_block_hash(),
-            get_tx(),
-            get_peer_count(),
-            get_peers_info(),
+            call_executor().name("call"),
+            send_tx().name("send"),
             add_node(),
+            store_contract_abi(),
         ])
 }
 
@@ -442,19 +407,12 @@ mod tests {
     #[test]
     fn test_get_peer_count() {
         let cmd = get_peer_count();
-        let rpc_cmd = rpc_cmd();
         let cldi_cmd = cldi_cmd();
 
         let (mut ctx, _temp_dir) = context();
         ctx.controller.expect_get_peer_count().returning(|| Ok(42));
 
         cmd.exec_from(["get-peer-count"], &mut ctx).unwrap();
-        rpc_cmd
-            .exec_from(["rpc", "get-peer-count"], &mut ctx)
-            .unwrap();
-        cldi_cmd
-            .exec_from(["cldi", "rpc", "get-peer-count"], &mut ctx)
-            .unwrap();
         cldi_cmd
             .exec_from(["cldi", "get", "peer-count"], &mut ctx)
             .unwrap();

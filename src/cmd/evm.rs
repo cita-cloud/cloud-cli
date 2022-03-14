@@ -2,7 +2,9 @@ use clap::Arg;
 
 use crate::{
     cmd::Command,
-    core::{context::Context, evm::EvmBehaviour, evm::EvmBehaviourExt},
+    core::{
+        context::Context, controller::ControllerBehaviour, evm::EvmBehaviour, evm::EvmBehaviourExt,
+    },
     display::Display,
     utils::{hex, parse_addr, parse_hash},
 };
@@ -94,7 +96,7 @@ where
 
 pub fn store_contract_abi<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    Co: EvmBehaviourExt,
+    Co: ControllerBehaviour + Send + Sync,
 {
     Command::<Context<Co, Ex, Ev>>::new("store-contract-abi")
         .about("Store contract ABI")
@@ -115,35 +117,33 @@ where
                 .validator(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
-            let contract_addr = parse_addr(m.value_of("addr").unwrap())?;
-            let abi = m.value_of("abi").unwrap();
-            let quota = m.value_of("quota").unwrap().parse::<u64>()?;
-
-            let signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
+                let contract_addr = parse_addr(m.value_of("addr").unwrap())?;
+                let abi = m.value_of("abi").unwrap();
+                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let valid_until_block = {
+                    let s = m.value_of("valid-until-block").unwrap();
+                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
+                    if s.starts_with('+') {
+                        let current_block_height = ctx.controller.get_block_number(false).await?;
+                        current_block_height + v
+                    } else {
+                        v
+                    }
+                };
+
+                let signer = ctx.current_account()?;
                 ctx.controller
-                    .store_contract_abi(signer, contract_addr, abi.as_bytes(), quota)
+                    .store_contract_abi(
+                        signer,
+                        contract_addr,
+                        abi.as_bytes(),
+                        quota,
+                        valid_until_block,
+                    )
                     .await
             })??;
             println!("{}", hex(tx_hash.as_slice()));
             Ok(())
         })
-}
-
-pub fn evm_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-where
-    Co: EvmBehaviourExt,
-    Ev: EvmBehaviour,
-{
-    Command::<Context<Co, Ex, Ev>>::new("evm")
-        .about("EVM commands")
-        .subcommand_required_else_help(true)
-        .subcommands([
-            get_receipt(),
-            get_code(),
-            get_tx_count(),
-            get_balance(),
-            get_contract_abi(),
-            store_contract_abi(),
-        ])
 }

@@ -275,6 +275,7 @@ pub trait TransactionSenderBehaviour {
         data: Vec<u8>,
         value: Vec<u8>,
         quota: u64,
+        valid_until_block: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
@@ -311,13 +312,15 @@ where
         data: Vec<u8>,
         value: Vec<u8>,
         quota: u64,
+        valid_until_block: u64,
     ) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
-        let (current_block_number, system_config) =
-            tokio::try_join!(self.get_block_number(false), self.get_system_config())
-                .context("failed to fetch chain status")?;
+        let system_config = self
+            .get_system_config()
+            .await
+            .context("failed to get system config")?;
 
         let raw_tx = CloudNormalTransaction {
             version: system_config.version,
@@ -326,7 +329,7 @@ where
             value,
             nonce: rand::random::<u64>().to_string(),
             quota,
-            valid_until_block: current_block_number + 95,
+            valid_until_block,
             chain_id: system_config.chain_id.clone(),
         };
 

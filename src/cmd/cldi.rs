@@ -112,7 +112,6 @@ where
             account::account_cmd(),
             self::get_cmd(),
             context::context_cmd(),
-            evm::evm_cmd(),
             rpc::rpc_cmd(),
             ethabi::ethabi_cmd(),
             bench::bench_send().alias("bench"),
@@ -121,7 +120,6 @@ where
             // re-export
             rpc::send_tx().name("send"),
             rpc::call_executor().name("call"),
-            rpc::create_contract().name("create"),
         ])
         .with_completions_subcmd()
 }
