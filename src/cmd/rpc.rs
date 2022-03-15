@@ -118,8 +118,8 @@ where
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
                 let to = parse_addr(m.value_of("to").unwrap())?.to_vec();
-                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let data = parse_data(m.value_of("data").unwrap())?;
+                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 // This parser has been repeated many times and across different modules,
                 // but it seems simpler and more obvious to just repeat the code.
@@ -157,7 +157,7 @@ where
             Arg::new("data")
                 .help("the data of this tx")
                 .takes_value(true)
-                .default_value("0x")
+                .required(true)
                 .validator(parse_data),
         )
         .arg(
@@ -189,8 +189,8 @@ where
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
                 let to = vec![];
-                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let data = parse_data(m.value_of("data").unwrap())?;
+                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 // This parser has been repeated many times and across different modules,
                 // but it seems simpler and more obvious to just repeat the code.
