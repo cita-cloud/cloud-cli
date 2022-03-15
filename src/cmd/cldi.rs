@@ -124,7 +124,7 @@ where
         .subcommands([
             admin::admin_cmd(),
             account::account_cmd(),
-            self::get_cmd(),
+            self::get_cmd().aliases(&["ge", "g"]),
             context::context_cmd(),
             rpc::rpc_cmd(),
             ethabi::ethabi_cmd(),

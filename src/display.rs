@@ -292,6 +292,11 @@ impl Display for Nonce {
 impl Display for ByteAbi {
     fn to_json(&self) -> Json {
         // ByteAbi and bytes_abi..
-        json!(hex(&self.bytes_abi))
+        json!(String::from_utf8_lossy(&self.bytes_abi).to_string())
+    }
+
+    fn display(&self) -> String {
+        // Don't display ""
+        String::from_utf8_lossy(&self.bytes_abi).to_string()
     }
 }
