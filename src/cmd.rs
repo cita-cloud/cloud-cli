@@ -200,7 +200,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         let old_app = self
             .cmd
             .find_subcommand_mut(old)
-            .ok_or(anyhow!("subcommand not found"))?;
+            .ok_or_else(|| anyhow!("subcommand not found"))?;
         *old_app = old_app.clone().name(new);
         let old_subcmd = self.subcmds.remove(old).expect("subcommand not found");
         self.subcmds.insert(new.into(), old_subcmd.name(new));

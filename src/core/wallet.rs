@@ -192,7 +192,8 @@ impl<C: Crypto> LockedAccount<C> {
     }
 
     pub fn unlock(&self, pw: &[u8]) -> Result<Account<C>> {
-        let decrypted = C::decrypt(&self.encrypted_sk, pw).ok_or(anyhow!("invalid password"))?;
+        let decrypted =
+            C::decrypt(&self.encrypted_sk, pw).ok_or_else(|| anyhow!("invalid password"))?;
         let secret_key = C::SecretKey::try_from_slice(&decrypted)
             .map_err(|_| anyhow!("the decrypted secret key is invalid"))?;
         let public_key = C::sk2pk(&secret_key);

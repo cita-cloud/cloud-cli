@@ -102,7 +102,9 @@ pub fn remove_0x(s: &str) -> &str {
 // Safe in the sense of file integrity, not cryptography.
 pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool) -> Result<()> {
     let path = path.as_ref();
-    let dir = path.parent().ok_or(anyhow!("cannot load containing dir"))?;
+    let dir = path
+        .parent()
+        .ok_or_else(|| anyhow!("cannot load containing dir"))?;
 
     let mut tmp = NamedTempFile::new_in(dir)?;
     tmp.write_all(content)?;
