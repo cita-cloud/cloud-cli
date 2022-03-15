@@ -28,7 +28,7 @@ where
     Ev: EvmBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-receipt")
-        .about("Get receipt by tx_hash")
+        .about("Get EVM executed receipt by tx_hash")
         .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
         .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash(m.value_of("tx_hash").unwrap())?;

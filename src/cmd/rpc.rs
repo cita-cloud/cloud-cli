@@ -328,7 +328,7 @@ where
     Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-tx")
-        .about("Get transaction by hash")
+        .about("Get transaction data by tx_hash")
         .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("tx_hash").unwrap();
@@ -381,7 +381,7 @@ where
     Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("add-node")
-        .about("call add node rpc")
+        .about("call add-node rpc")
         .arg(
             Arg::new("host")
                 .help("the host of the new node")
@@ -395,7 +395,7 @@ where
         )
         .arg(
             Arg::new("tls")
-                .help("the dns name in the certificate")
+                .help("the domain name of the new node")
                 .required(true),
         )
         .handler(|_cmd, m, ctx| {
