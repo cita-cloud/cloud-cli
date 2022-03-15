@@ -67,6 +67,16 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self
     }
 
+    pub fn version<S: Into<&'help str>>(mut self, ver: S) -> Self {
+        self.cmd = self.cmd.version(ver);
+        self
+    }
+
+    pub fn author<S: Into<&'help str>>(mut self, author: S) -> Self {
+        self.cmd = self.cmd.author(author);
+        self
+    }
+
     // https://docs.rs/clap/3.1.2/clap/enum.AppSettings.html#variant.SubcommandRequiredElseHelp
     pub fn subcommand_required_else_help(mut self, yes: bool) -> Self {
         self.cmd = self

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use clap::Arg;
+use clap::{crate_authors, crate_version, Arg};
 use tonic::transport::Endpoint;
 
 use crate::{
@@ -56,7 +56,9 @@ where
     Ev: EvmBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
 {
     Command::<Context<Co, Ex, Ev>>::new("cldi")
-        .about("The command line interface to interact with `CITA-Cloud v6.3.0`")
+        .about("The command line interface to interact with CITA-Cloud")
+        .author(crate_authors!())
+        .version(crate_version!())
         .arg(
             Arg::new("context")
                 .help("context setting")
