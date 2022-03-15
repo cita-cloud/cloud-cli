@@ -109,7 +109,7 @@ where
         )
         .arg(
             Arg::new("valid-until-block")
-                .help("this tx is valid until the given block height. `+h` prefix means `current height + h`")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
@@ -180,7 +180,7 @@ where
         )
         .arg(
             Arg::new("valid-until-block")
-                .help("this tx is valid until the given block height. `+h` prefix means `current height + h`")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")

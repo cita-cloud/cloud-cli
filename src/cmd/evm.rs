@@ -28,7 +28,7 @@ where
     Ev: EvmBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-receipt")
-        .about("Get EVM executed receipt by tx_hash")
+        .about("Get EVM execution receipt by tx_hash")
         .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
         .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash(m.value_of("tx_hash").unwrap())?;
@@ -132,7 +132,7 @@ where
         )
         .arg(
             Arg::new("valid-until-block")
-                .help("this tx is valid until the given block height. `+h` prefix means `current + h`")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
