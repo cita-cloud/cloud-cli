@@ -19,6 +19,8 @@ use tonic::transport::Endpoint;
 
 use super::{controller::ControllerClient, evm::EvmClient, executor::ExecutorClient};
 
+const TCP_KEEPALIVE: Duration = Duration::from_secs(60);
+
 #[tonic::async_trait]
 pub trait GrpcClientBehaviour: Sized {
     fn from_channel(ch: Channel) -> Self;
@@ -33,13 +35,19 @@ pub trait GrpcClientBehaviour: Sized {
     // Endpoint::connect_lazy, although no async fn, does require running in a async runtime
     fn connect_lazy(addr: &str) -> Result<Self> {
         let addr = format!("http://{addr}");
-        let ch = Endpoint::from_shared(addr)?.connect_lazy();
+        let ch = Endpoint::from_shared(addr)?
+            .tcp_keepalive(TCP_KEEPALIVE.into())
+            .connect_lazy();
         Ok(Self::from_channel(ch))
     }
 
     async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> {
         let addr = format!("http://{addr}");
-        let ch = Endpoint::from_shared(addr)?.timeout(dur).connect().await?;
+        let ch = Endpoint::from_shared(addr)?
+            .tcp_keepalive(TCP_KEEPALIVE.into())
+            .timeout(dur)
+            .connect()
+            .await?;
         Ok(Self::from_channel(ch))
     }
 }
