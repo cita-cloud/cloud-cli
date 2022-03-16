@@ -193,7 +193,7 @@ where
                     connector,
                     workload_builder,
                     worker_fn,
-                    "Preparing connections and transactions",
+                    "Preparing connections and transactions..",
                     "Sending transactions..",
                 )
                 .await;
@@ -285,8 +285,8 @@ where
                     connector,
                     workload_builder,
                     worker_fn,
-                    "Preparing connections and transactions",
-                    "Sending transactions..",
+                    "Preparing connections and call requests..",
+                    "Sending call requests..",
                 )
                 .await;
 
