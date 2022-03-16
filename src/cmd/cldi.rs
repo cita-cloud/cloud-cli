@@ -40,7 +40,7 @@ where
             rpc::get_tx().name("tx"),
             rpc::get_peer_count().name("peer-count").alias("pc"),
             rpc::get_peers_info().name("peers-info").alias("pi"),
-            evm::get_account_nonce().name("account-nonce").alias("an"),
+            evm::get_account_nonce().name("nonce"),
             evm::get_receipt().name("receipt").alias("r"),
             rpc::get_version().name("version").alias("ver"),
             rpc::get_system_config().name("system-config").alias("sc"),
