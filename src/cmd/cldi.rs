@@ -59,7 +59,7 @@ where
         .about("The command line interface to interact with CITA-Cloud")
         .author(crate_authors!())
         .version(crate_version!())
-        .color(ColorChoice::Always)
+        .color(ColorChoice::Auto)
         .arg(
             Arg::new("context")
                 .help("context setting")
