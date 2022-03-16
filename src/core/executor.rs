@@ -44,6 +44,6 @@ impl ExecutorBehaviour for ExecutorClient {
         ExecutorClient::call(&mut self.clone(), req)
             .await
             .map(|resp| resp.into_inner())
-            .context("failed to do executor gRpc call")
+            .context("failed to do executor gRPC call")
     }
 }
