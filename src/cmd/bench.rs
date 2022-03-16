@@ -44,7 +44,6 @@ fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 .short('c')
                 .long("concurrency")
                 .takes_value(true)
-                .required(false)
                 .validator(str::parse::<u64>),
         )
         .arg(
@@ -82,12 +81,16 @@ where
         .arg(
             Arg::new("to")
                 .help("the target address of this tx. Default to random")
+                .short('t')
+                .long("to")
                 .takes_value(true)
                 .validator(parse_addr),
         )
         .arg(
             Arg::new("data")
                 .help("the data of this tx. Default to random 32 bytes")
+                .short('d')
+                .long("data")
                 .takes_value(true)
                 .validator(parse_data),
         )
@@ -210,7 +213,7 @@ where
         .about("Call executor with {-c} workers over {--connections} connections")
         .arg(
             Arg::new("from")
-                .help("default to use current account address")
+                .help("Default to use current account address")
                 .short('f')
                 .long("from")
                 .takes_value(true)
@@ -218,17 +221,17 @@ where
         )
         .arg(
             Arg::new("to")
+                .help("the target contract address to call. Default to random")
                 .short('t')
                 .long("to")
-                .required(true)
                 .takes_value(true)
                 .validator(parse_addr),
         )
         .arg(
             Arg::new("data")
+                .help("the data for the call request. Default to random 32 bytes")
                 .short('d')
                 .long("data")
-                .required(true)
                 .takes_value(true)
                 .validator(parse_data),
         )
@@ -243,12 +246,20 @@ where
 
             ctx.rt.block_on(async {
                 // Workload builder
+                let mut rng = thread_rng();
+
                 let from = match m.value_of("from") {
                     Some(from) => parse_addr(from).unwrap(),
                     None => *ctx.current_account()?.address(),
                 };
-                let to = parse_addr(m.value_of("to").unwrap())?;
-                let data = parse_data(m.value_of("data").unwrap())?;
+                let to = match m.value_of("to") {
+                    Some(to) => parse_addr(to).unwrap(),
+                    None => rng.gen(),
+                };
+                let data = match m.value_of("data") {
+                    Some(to) => parse_data(to).unwrap(),
+                    None => rng.gen::<[u8; 32]>().to_vec(),
+                };
 
                 let workload_builder = || (from, to, data);
 
