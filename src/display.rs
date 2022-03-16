@@ -18,6 +18,7 @@ use serde_json::Value as Json;
 use tentacle_multiaddr::{Multiaddr, Protocol};
 
 use crate::{
+    crypto::{Address, Hash},
     proto::{
         blockchain::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
@@ -51,6 +52,26 @@ impl Display for Json {
 impl<T: Display> Display for &T {
     fn to_json(&self) -> Json {
         (**self).to_json()
+    }
+}
+
+impl Display for Address {
+    fn to_json(&self) -> Json {
+        json!(hex(self.as_slice()))
+    }
+
+    fn display(&self) -> String {
+        hex(self.as_slice())
+    }
+}
+
+impl Display for Hash {
+    fn to_json(&self) -> Json {
+        json!(hex(self.as_slice()))
+    }
+
+    fn display(&self) -> String {
+        hex(self.as_slice())
     }
 }
 
@@ -275,17 +296,29 @@ impl Display for ByteCode {
     fn to_json(&self) -> Json {
         json!(hex(&self.byte_code))
     }
+
+    fn display(&self) -> String {
+        hex(&self.byte_code)
+    }
 }
 
 impl Display for Balance {
     fn to_json(&self) -> Json {
         json!(hex(&self.value))
     }
+
+    fn display(&self) -> String {
+        hex(&self.value)
+    }
 }
 
 impl Display for Nonce {
     fn to_json(&self) -> Json {
         json!(hex(&self.nonce))
+    }
+
+    fn display(&self) -> String {
+        hex(&self.nonce)
     }
 }
 

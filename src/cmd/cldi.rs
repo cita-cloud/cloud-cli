@@ -42,7 +42,7 @@ where
             rpc::get_peers_info().name("peers-info").alias("pi"),
             evm::get_account_nonce().name("account-nonce").alias("an"),
             evm::get_receipt().name("receipt").alias("r"),
-            rpc::get_version().name("version"),
+            rpc::get_version().name("version").alias("ver"),
             rpc::get_system_config().name("system-config").alias("sc"),
             rpc::get_block_hash().name("block-hash").alias("bh"),
             rpc::get_block_number().name("block-number").alias("bn"),

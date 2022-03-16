@@ -20,7 +20,7 @@ use crate::{
         context::Context, controller::ControllerBehaviour, evm::EvmBehaviour, evm::EvmBehaviourExt,
     },
     display::Display,
-    utils::{hex, parse_addr, parse_hash},
+    utils::{parse_addr, parse_hash},
 };
 
 pub fn get_receipt<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -29,7 +29,12 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-receipt")
         .about("Get EVM execution receipt by tx_hash")
-        .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
+        .arg(
+            Arg::new("tx_hash")
+                .takes_value(true)
+                .required(true)
+                .validator(parse_hash),
+        )
         .handler(|_cmd, m, ctx| {
             let tx_hash = parse_hash(m.value_of("tx_hash").unwrap())?;
 
@@ -45,7 +50,12 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-code")
         .about("Get code by contract address")
-        .arg(Arg::new("addr").required(true).validator(parse_addr))
+        .arg(
+            Arg::new("addr")
+                .takes_value(true)
+                .required(true)
+                .validator(parse_addr),
+        )
         .handler(|_cmd, m, ctx| {
             let addr = parse_addr(m.value_of("addr").unwrap())?;
 
@@ -61,9 +71,17 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-balance")
         .about("Get balance by account address")
-        .arg(Arg::new("addr").required(true).validator(parse_addr))
+        .arg(
+            Arg::new("addr")
+                .help("Account address, default to current account")
+                .takes_value(true)
+                .validator(parse_addr),
+        )
         .handler(|_cmd, m, ctx| {
-            let addr = parse_addr(m.value_of("addr").unwrap())?;
+            let addr = match m.value_of("addr") {
+                Some(s) => parse_addr(s).unwrap(),
+                None => *ctx.current_account()?.address(),
+            };
 
             let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))??;
             println!("{}", balance.display());
@@ -77,12 +95,20 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-account-nonce")
         .about("Get the nonce of this account")
-        .arg(Arg::new("addr").required(true).validator(parse_addr))
+        .arg(
+            Arg::new("addr")
+                .help("Account address, default to current account")
+                .takes_value(true)
+                .validator(parse_addr),
+        )
         .handler(|_cmd, m, ctx| {
-            let addr = parse_addr(m.value_of("addr").unwrap())?;
+            let addr = match m.value_of("addr") {
+                Some(s) => parse_addr(s).unwrap(),
+                None => *ctx.current_account()?.address(),
+            };
 
-            let count = ctx.rt.block_on(ctx.evm.get_tx_count(addr))??;
-            println!("{}", count.display());
+            let nonce = ctx.rt.block_on(ctx.evm.get_tx_count(addr))??;
+            println!("{}", nonce.display());
             Ok(())
         })
 }
@@ -108,12 +134,12 @@ where
         })
 }
 
-pub fn store_contract_abi<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+pub fn store_abi<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour + Send + Sync,
 {
-    Command::<Context<Co, Ex, Ev>>::new("store-contract-abi")
-        .about("Store contract ABI")
+    Command::<Context<Co, Ex, Ev>>::new("store-abi")
+        .about("Store EVM contract ABI")
         .arg(
             Arg::new("addr")
                 .required(true)
@@ -165,7 +191,7 @@ where
                     )
                     .await
             })??;
-            println!("{}", hex(tx_hash.as_slice()));
+            println!("{}", tx_hash.display());
             Ok(())
         })
 }

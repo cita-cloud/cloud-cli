@@ -18,7 +18,7 @@ use std::net::IpAddr;
 use tokio::try_join;
 
 use crate::{
-    cmd::{evm::store_contract_abi, Command},
+    cmd::{evm::store_abi, Command},
     core::{
         context::Context,
         controller::{ControllerBehaviour, TransactionSenderBehaviour},
@@ -26,7 +26,7 @@ use crate::{
     },
     crypto::ArrayLike,
     display::Display,
-    utils::{hex, parse_addr, parse_data, parse_hash, parse_value},
+    utils::{parse_addr, parse_data, parse_hash, parse_value},
 };
 
 pub fn call_executor<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -139,7 +139,7 @@ where
                     .controller
                     .send_tx(signer, to, data, value, quota, valid_until_block)
                     .await?;
-                println!("{}", hex(tx_hash.as_slice()));
+                println!("{}", tx_hash.display());
 
                 anyhow::Ok(())
             })??;
@@ -210,7 +210,7 @@ where
                     .controller
                     .send_tx(signer, to, data, value, quota, valid_until_block)
                     .await?;
-                println!("{}", hex(tx_hash.as_slice()));
+                println!("{}", tx_hash.display());
 
                 anyhow::Ok(())
             })??;
@@ -317,7 +317,7 @@ where
         .handler(|_cmd, m, ctx| {
             let height = m.value_of("height").unwrap().parse()?;
             let hash = ctx.rt.block_on(ctx.controller.get_block_hash(height))??;
-            println!("{}", hex(hash.as_slice()));
+            println!("{}", hash.display());
 
             Ok(())
         })
@@ -435,7 +435,7 @@ where
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("RPC commands")
         .subcommand_required_else_help(true)
-        .subcommands([add_node(), store_contract_abi()])
+        .subcommands([add_node(), store_abi()])
 }
 
 #[cfg(test)]

@@ -19,7 +19,8 @@ use crate::{
     cmd::Command,
     core::{admin::AdminBehaviour, context::Context},
     crypto::Address,
-    utils::{hex, parse_addr},
+    display::Display,
+    utils::parse_addr,
 };
 
 pub fn update_admin<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -42,7 +43,7 @@ where
                     .update_admin(old_admin_signer, new_admin_addr)
                     .await
             })??;
-            println!("tx_hash: {}", hex(tx_hash.as_slice()));
+            println!("{}", tx_hash.display());
             Ok(())
         })
 }
@@ -71,7 +72,7 @@ where
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller.update_validators(admin_signer, &validators).await
             })??;
-            println!("tx_hash: {}", hex(tx_hash.as_slice()));
+            println!("{}", tx_hash.display());
             Ok(())
         })
 }
@@ -96,7 +97,7 @@ where
                     .set_block_interval(admin_signer, block_interval)
                     .await
             })??;
-            println!("tx_hash: {}", hex(tx_hash.as_slice()));
+            println!("{}", tx_hash.display());
             Ok(())
         })
 }
@@ -119,7 +120,7 @@ where
             let tx_hash = ctx
                 .rt
                 .block_on(async { ctx.controller.emergency_brake(admin_signer, switch).await })??;
-            println!("tx_hash: {}", hex(tx_hash.as_slice()));
+            println!("{}", tx_hash.display());
             Ok(())
         })
 }
