@@ -29,7 +29,7 @@ use crate::{
         controller::{ControllerBehaviour, SignerBehaviour},
     },
     proto::blockchain::Transaction,
-    utils::{parse_addr, parse_data},
+    utils::{parse_addr, parse_data, parse_valid_until_block, parse_value},
 };
 
 fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
@@ -79,7 +79,44 @@ where
     bench_basic::<Co, Ex, Ev>()
         .name("bench-send")
         .about("Send transactions with {-c} workers over {--connections} connections")
-        // TODO: add args to allow customized transaction
+        .arg(
+            Arg::new("to")
+                .help("the target address of this tx. Default to random")
+                .takes_value(true)
+                .validator(parse_addr),
+        )
+        .arg(
+            Arg::new("data")
+                .help("the data of this tx. Default to random 32 bytes")
+                .takes_value(true)
+                .validator(parse_data),
+        )
+        .arg(
+            Arg::new("value")
+                .help("the value of this tx")
+                .short('v')
+                .long("value")
+                .takes_value(true)
+                .default_value("0x0")
+                .validator(parse_value),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .takes_value(true)
+                .default_value("3000000")
+                .validator(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
+                .long("until")
+                .takes_value(true)
+                .default_value("+95")
+                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
+        )
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
@@ -89,9 +126,51 @@ where
                 .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
 
-            let controller_addr = ctx.current_controller_addr();
-            let signer = ctx.current_account()?;
             ctx.rt.block_on(async {
+                // Workload builder
+                let mut rng = thread_rng();
+
+                let to = match m.value_of("to") {
+                    Some(to) => parse_addr(to).unwrap(),
+                    None => rng.gen(),
+                }.to_vec();
+                let data = match m.value_of("data") {
+                    Some(to) => parse_data(to).unwrap(),
+                    None => rng.gen::<[u8; 32]>().to_vec(),
+                };
+                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
+                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let valid_until_block = {
+                    let s = m.value_of("valid-until-block").unwrap();
+                    parse_valid_until_block(&ctx.controller, s).await?
+                };
+
+                let system_config = ctx.controller.get_system_config().await
+                    .context("failed to fetch chain status")?;
+
+                let signer = ctx.current_account()?;
+                let workload_builder = || {
+                    let nonce = {
+                        // Nonce must be different to avoid dup tx,
+                        // and workload builder may be passed to other threads.
+                        let mut rng = thread_rng();
+                        rng.gen::<u64>().to_string()
+                    };
+                    let raw_tx = Transaction {
+                        to,
+                        data,
+                        value,
+                        nonce,
+                        quota,
+                        valid_until_block,
+                        chain_id: system_config.chain_id.clone(),
+                        version: system_config.version,
+                    };
+                    signer.sign_raw_tx(raw_tx)
+                };
+
+                // Connection builder
+                let controller_addr = ctx.current_controller_addr();
                 let connector = || async {
                     if timeout > 0 {
                         Co::connect_timeout(controller_addr, Duration::from_secs(timeout)).await
@@ -100,27 +179,7 @@ where
                     }
                 };
 
-                let (current_block_number, system_config) = tokio::try_join!(
-                    ctx.controller.get_block_number(false),
-                    ctx.controller.get_system_config()
-                )
-                .context("failed to fetch chain status")?;
-
-                let workload_builder = || {
-                    let mut rng = thread_rng();
-                    let raw_tx = Transaction {
-                        to: rng.gen::<[u8; 20]>().to_vec(),
-                        data: rng.gen::<[u8; 32]>().to_vec(),
-                        value: rng.gen::<[u8; 32]>().to_vec(),
-                        nonce: rng.gen::<u64>().to_string(),
-                        quota: 3_000_000,
-                        valid_until_block: current_block_number + 95,
-                        chain_id: system_config.chain_id.clone(),
-                        version: system_config.version,
-                    };
-                    signer.sign_raw_tx(raw_tx)
-                };
-
+                // Work
                 let worker_fn =
                     |client: Co, raw| async move { client.send_raw(raw).await.map(|_| ()) };
 
@@ -182,15 +241,19 @@ where
                 .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
 
-            let from = match m.value_of("from") {
-                Some(from) => parse_addr(from).unwrap(),
-                None => *ctx.current_account()?.address(),
-            };
-            let to = parse_addr(m.value_of("to").unwrap())?;
-            let data = parse_data(m.value_of("data").unwrap())?;
-
-            let executor_addr = ctx.current_executor_addr();
             ctx.rt.block_on(async {
+                // Workload builder
+                let from = match m.value_of("from") {
+                    Some(from) => parse_addr(from).unwrap(),
+                    None => *ctx.current_account()?.address(),
+                };
+                let to = parse_addr(m.value_of("to").unwrap())?;
+                let data = parse_data(m.value_of("data").unwrap())?;
+
+                let workload_builder = || (from, to, data);
+
+                // Connection builder
+                let executor_addr = ctx.current_executor_addr();
                 let connector = || async {
                     if timeout > 0 {
                         Ex::connect_timeout(executor_addr, Duration::from_secs(timeout)).await
@@ -199,8 +262,7 @@ where
                     }
                 };
 
-                let workload_builder = || (from, to, data);
-
+                // Work
                 let worker_fn = |client: Ex, (from, to, data)| async move {
                     client.call(from, to, data).await.map(|_| ())
                 };

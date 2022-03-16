@@ -20,7 +20,7 @@ use crate::{
         context::Context, controller::ControllerBehaviour, evm::EvmBehaviour, evm::EvmBehaviourExt,
     },
     display::Display,
-    utils::{parse_addr, parse_hash},
+    utils::{parse_addr, parse_hash, parse_valid_until_block},
 };
 
 pub fn get_receipt<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -171,13 +171,7 @@ where
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 let valid_until_block = {
                     let s = m.value_of("valid-until-block").unwrap();
-                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
-                    if s.starts_with('+') {
-                        let current_block_height = ctx.controller.get_block_number(false).await?;
-                        current_block_height + v
-                    } else {
-                        v
-                    }
+                    parse_valid_until_block(&ctx.controller, s).await?
                 };
 
                 let signer = ctx.current_account()?;

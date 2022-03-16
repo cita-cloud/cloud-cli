@@ -22,7 +22,10 @@ use crossbeam::atomic::AtomicCell;
 use tempfile::NamedTempFile;
 use time::UtcOffset;
 
-use crate::crypto::{Address, ArrayLike, Crypto, Hash};
+use crate::{
+    core::controller::ControllerBehaviour,
+    crypto::{Address, ArrayLike, Crypto, Hash},
+};
 
 // Use an Option because UtcOffset::from_hms returns a Result
 // that cannot be unwraped in constant expr...
@@ -63,6 +66,18 @@ pub fn parse_value(s: &str) -> Result<[u8; 32]> {
 
 pub fn parse_data(s: &str) -> Result<Vec<u8>> {
     hex::decode(remove_0x(s)).context("invalid hex input")
+}
+
+pub async fn parse_valid_until_block<Co: ControllerBehaviour>(
+    controller: &Co,
+    s: &str,
+) -> Result<u64> {
+    let mut v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
+    if s.starts_with('+') {
+        let current_block_height = controller.get_block_number(false).await?;
+        v += current_block_height;
+    }
+    Ok(v)
 }
 
 pub fn hex(data: &[u8]) -> String {

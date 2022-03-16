@@ -26,7 +26,7 @@ use crate::{
     },
     crypto::ArrayLike,
     display::Display,
-    utils::{parse_addr, parse_data, parse_hash, parse_value},
+    utils::{parse_addr, parse_data, parse_hash, parse_valid_until_block, parse_value},
 };
 
 pub fn call_executor<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -121,17 +121,9 @@ where
                 let data = parse_data(m.value_of("data").unwrap())?;
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
-                // This parser has been repeated many times and across different modules,
-                // but it seems simpler and more obvious to just repeat the code.
                 let valid_until_block = {
                     let s = m.value_of("valid-until-block").unwrap();
-                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
-                    if s.starts_with('+') {
-                        let current_block_height = ctx.controller.get_block_number(false).await?;
-                        current_block_height + v
-                    } else {
-                        v
-                    }
+                    parse_valid_until_block(&ctx.controller, s).await?
                 };
 
                 let signer = ctx.current_account()?;
@@ -192,17 +184,9 @@ where
                 let data = parse_data(m.value_of("data").unwrap())?;
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
-                // This parser has been repeated many times and across different modules,
-                // but it seems simpler and more obvious to just repeat the code.
                 let valid_until_block = {
                     let s = m.value_of("valid-until-block").unwrap();
-                    let v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
-                    if s.starts_with('+') {
-                        let current_block_height = ctx.controller.get_block_number(false).await?;
-                        current_block_height + v
-                    } else {
-                        v
-                    }
+                    parse_valid_until_block(&ctx.controller, s).await?
                 };
 
                 let signer = ctx.current_account()?;
@@ -217,6 +201,7 @@ where
             Ok(())
         })
 }
+
 pub fn get_version<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour,
