@@ -23,7 +23,7 @@ mod rpc;
 mod watch;
 
 use anyhow::{anyhow, bail, Result};
-use clap::{Arg, ArgMatches};
+use clap::{Arg, ArgMatches, ColorChoice};
 use std::collections::HashMap;
 use std::ffi::OsString;
 
@@ -74,6 +74,11 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
 
     pub fn author<S: Into<&'help str>>(mut self, author: S) -> Self {
         self.cmd = self.cmd.author(author);
+        self
+    }
+
+    pub fn color(mut self, color: ColorChoice) -> Self {
+        self.cmd = self.cmd.color(color);
         self
     }
 

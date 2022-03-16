@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use clap::{crate_authors, crate_version, Arg};
+use clap::{crate_authors, crate_version, Arg, ColorChoice};
 use tonic::transport::Endpoint;
 
 use crate::{
@@ -59,6 +59,7 @@ where
         .about("The command line interface to interact with CITA-Cloud")
         .author(crate_authors!())
         .version(crate_version!())
+        .color(ColorChoice::Always)
         .arg(
             Arg::new("context")
                 .help("context setting")
