@@ -30,18 +30,20 @@ where
         .about("Watch blocks")
         .arg(
             Arg::new("begin")
-                .help("the block height starts from")
+                .help("the block height starts from. You can use +/- prefix to seek from current height")
                 .short('b')
                 .long("begin")
                 .takes_value(true)
+                .allow_hyphen_values(true)
                 .validator(parse_position),
         )
         .arg(
             Arg::new("end")
-                .help("the block height ends at")
+                .help("the block height ends at. You can use +/- prefix to seek from current height")
                 .short('e')
                 .long("end")
                 .takes_value(true)
+                .allow_hyphen_values(true)
                 .validator(parse_position),
         )
         .arg(

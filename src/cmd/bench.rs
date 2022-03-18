@@ -129,7 +129,7 @@ where
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
-                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
+                .validator(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
