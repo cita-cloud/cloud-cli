@@ -148,8 +148,7 @@ where
             admin::admin_cmd(),
             rpc::rpc_cmd(),
             ethabi::ethabi_cmd(),
-            bench::bench_send().alias("bench"),
-            bench::bench_call(),
+            bench::bench_cmd(),
             watch::watch_cmd(),
         ])
         .with_completions_subcmd()

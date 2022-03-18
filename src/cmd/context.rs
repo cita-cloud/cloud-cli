@@ -93,7 +93,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("context")
         .alias("ctx")
-        .about("context commands")
+        .about("Context commands")
         .subcommand_required_else_help(true)
         .subcommands([
             save().name("save"),

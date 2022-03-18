@@ -418,7 +418,7 @@ where
     Ex: ExecutorBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
-        .about("RPC commands")
+        .about("Other RPC commands")
         .subcommand_required_else_help(true)
         .subcommands([add_node(), store_abi()])
 }

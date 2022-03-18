@@ -32,6 +32,17 @@ use crate::{
     utils::{parse_addr, parse_data, parse_valid_until_block, parse_value},
 };
 
+pub fn bench_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+    Ex: ExecutorBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
+{
+    Command::<Context<Co, Ex, Ev>>::new("bench")
+        .about("Simple benchmarks")
+        .subcommand_required_else_help(true)
+        .subcommands([bench_send().name("send"), bench_call().name("call")])
+}
+
 fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("bench-basic")
         .arg(
