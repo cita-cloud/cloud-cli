@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use clap::{crate_authors, crate_version, Arg, ColorChoice};
+use clap::{crate_authors, crate_version, AppSettings, Arg, ColorChoice};
+use std::str::FromStr;
 use tonic::transport::Endpoint;
 
 use crate::{
     cmd::{account, admin, bench, context, ethabi, evm, rpc, watch, Command},
-    config::ContextSetting,
+    config::{ContextSetting, CryptoType},
     core::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
         evm::EvmBehaviour, executor::ExecutorBehaviour,
@@ -30,7 +31,7 @@ where
     Ev: EvmBehaviour,
 {
     Command::new("get")
-        .about("Get chain info")
+        .about("Get data from chain")
         .subcommand_required_else_help(true)
         .subcommands([
             evm::get_contract_abi().name("abi"),
@@ -60,6 +61,7 @@ where
         .author(crate_authors!())
         .version(crate_version!())
         .color(ColorChoice::Auto)
+        .global_setting(AppSettings::DeriveDisplayOrder)
         .arg(
             Arg::new("context")
                 .help("context setting")
@@ -87,6 +89,14 @@ where
                 .short('u')
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("crypto-type")
+                .help("The crypto type of the target chain")
+                .long("crypto")
+                .possible_values(["SM", "ETH"])
+                .ignore_case(true)
+                .validator(CryptoType::from_str),
+        )
         .handler(|cmd, m, ctx| {
             // If a subcommand is passed, it's considered as a tmp context for that subcommand.
             // Otherwise modify the current context.
@@ -97,7 +107,8 @@ where
                 && (m.is_present("context")
                     || m.is_present("controller-addr")
                     || m.is_present("executor-addr")
-                    || m.is_present("account-name"));
+                    || m.is_present("account-name")
+                    || m.is_present("crypto-type"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
@@ -114,6 +125,9 @@ where
             if let Some(account_name) = m.value_of("account-name") {
                 current_setting.account_name = account_name.into();
             }
+            if let Some(crypto_type) = m.value_of("crypto-type") {
+                current_setting.crypto_type = crypto_type.parse().unwrap();
+            }
 
             ctx.switch_context(current_setting)?;
             let ret = cmd.dispatch_subcmd(m, ctx);
@@ -125,18 +139,18 @@ where
             ret
         })
         .subcommands([
-            admin::admin_cmd(),
-            account::account_cmd(),
             self::get_cmd().aliases(&["ge", "g"]),
+            rpc::send_tx().name("send"),
+            rpc::call_executor().name("call"),
+            rpc::create_contract().name("create"),
             context::context_cmd(),
+            account::account_cmd(),
+            admin::admin_cmd(),
             rpc::rpc_cmd(),
             ethabi::ethabi_cmd(),
             bench::bench_send().alias("bench"),
             bench::bench_call(),
             watch::watch_cmd(),
-            rpc::send_tx().name("send"),
-            rpc::call_executor().name("call"),
-            rpc::create_contract().name("create"),
         ])
         .with_completions_subcmd()
 }

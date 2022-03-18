@@ -26,7 +26,7 @@ where
     Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("watch")
-        .about("watch")
+        .about("Watch blocks")
         .arg(
             Arg::new("begin")
                 .help("the block height starts from")

@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::anyhow;
-use anyhow::Context as _;
-use anyhow::Result;
+use anyhow::{anyhow, ensure, Context as _, Result};
 use std::future::Future;
 
 use super::{
@@ -79,14 +77,23 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
     }
 
     pub fn current_account(&self) -> Result<&MultiCryptoAccount> {
-        let name = &self.current_setting.account_name;
+        let current_name = &self.current_setting.account_name;
         let current = self
             .wallet
-            .get(name)
-            .ok_or_else(|| anyhow!("current account `{}` not found", name))?;
+            .get(current_name)
+            .ok_or_else(|| anyhow!("current account `{}` not found", current_name))?;
+
+        ensure!(
+            current.crypto_type() == self.current_setting.crypto_type,
+            "current account `{}`'s crypto type `{}` mismatched with target chain's crypto type `{}`",
+            current_name,
+            current.crypto_type(),
+            self.current_setting.crypto_type,
+        );
+
         current
             .unlocked()
-            .with_context(|| format!("cannot get current account `{}` ", name))
+            .with_context(|| format!("cannot get current account `{}` ", current_name))
     }
 
     pub fn current_controller_addr(&self) -> &str {

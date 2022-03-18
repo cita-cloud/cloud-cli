@@ -128,3 +128,12 @@ impl Default for ContextSetting {
         }
     }
 }
+
+impl std::fmt::Display for CryptoType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Eth => write!(f, "ETH"),
+            Self::Sm => write!(f, "SM"),
+        }
+    }
+}

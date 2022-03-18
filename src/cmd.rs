@@ -23,7 +23,7 @@ mod rpc;
 mod watch;
 
 use anyhow::{anyhow, bail, Result};
-use clap::{Arg, ArgMatches, ColorChoice};
+use clap::{AppSettings, Arg, ArgMatches, ColorChoice};
 use std::collections::HashMap;
 use std::ffi::OsString;
 
@@ -79,6 +79,17 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
 
     pub fn color(mut self, color: ColorChoice) -> Self {
         self.cmd = self.cmd.color(color);
+        self
+    }
+
+    pub fn global_setting(mut self, setting: AppSettings) -> Self {
+        self.cmd = self.cmd.global_setting(setting);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn display_order(mut self, ord: usize) -> Self {
+        self.cmd = self.cmd.display_order(ord);
         self
     }
 
