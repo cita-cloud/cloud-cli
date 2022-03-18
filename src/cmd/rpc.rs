@@ -26,7 +26,7 @@ use crate::{
     },
     crypto::ArrayLike,
     display::Display,
-    utils::{parse_addr, parse_data, parse_hash, parse_valid_until_block, parse_value},
+    utils::{get_block_height_at, parse_addr, parse_data, parse_hash, parse_position, parse_value},
 };
 
 pub fn call_executor<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -113,7 +113,7 @@ where
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
-                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
+                .validator(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
@@ -122,8 +122,8 @@ where
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 let valid_until_block = {
-                    let s = m.value_of("valid-until-block").unwrap();
-                    parse_valid_until_block(&ctx.controller, s).await?
+                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    get_block_height_at(&ctx.controller, pos).await?
                 };
 
                 let signer = ctx.current_account()?;
@@ -176,7 +176,7 @@ where
                 .long("until")
                 .takes_value(true)
                 .default_value("+95")
-                .validator(|s| str::parse::<u64>(s.strip_prefix('+').unwrap_or(s))),
+                .validator(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
@@ -185,8 +185,8 @@ where
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 let valid_until_block = {
-                    let s = m.value_of("valid-until-block").unwrap();
-                    parse_valid_until_block(&ctx.controller, s).await?
+                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    get_block_height_at(&ctx.controller, pos).await?
                 };
 
                 let signer = ctx.current_account()?;

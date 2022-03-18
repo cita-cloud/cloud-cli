@@ -68,16 +68,70 @@ pub fn parse_data(s: &str) -> Result<Vec<u8>> {
     hex::decode(remove_0x(s)).context("invalid hex input")
 }
 
-pub async fn parse_valid_until_block<Co: ControllerBehaviour>(
-    controller: &Co,
-    s: &str,
-) -> Result<u64> {
-    let mut v = s.strip_prefix('+').unwrap_or(s).parse::<u64>().unwrap();
-    if s.starts_with('+') {
-        let current_block_height = controller.get_block_number(false).await?;
-        v += current_block_height;
+#[derive(Debug, Clone, Copy)]
+pub enum Position {
+    // v
+    Absolute(u64),
+    // current + v
+    FromCurrent(u64),
+    // current - v
+    ToCurrent(u64),
+}
+
+impl Position {
+    pub fn with_current(self, current: u64) -> u64 {
+        match self {
+            Self::Absolute(v) => v,
+            Self::FromCurrent(v) => current.saturating_add(v),
+            Self::ToCurrent(v) => current.saturating_sub(v),
+        }
     }
-    Ok(v)
+}
+
+impl Default for Position {
+    fn default() -> Self {
+        Position::FromCurrent(0)
+    }
+}
+
+impl PartialEq for Position {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Absolute(a), Self::Absolute(b)) => a == b,
+            (Self::FromCurrent(a), Self::FromCurrent(b)) => a == b,
+            (Self::ToCurrent(a), Self::ToCurrent(b)) => a == b,
+            (Self::FromCurrent(0), Self::ToCurrent(0)) => true,
+            (Self::ToCurrent(0), Self::FromCurrent(0)) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Position {}
+
+pub fn parse_position(s: &str) -> Result<Position> {
+    let v = s.strip_prefix(['+', '-']).unwrap_or(s).parse::<u64>()?;
+    let pos = if s.starts_with('+') {
+        Position::FromCurrent(v)
+    } else if s.starts_with('-') {
+        Position::ToCurrent(v)
+    } else {
+        Position::Absolute(v)
+    };
+
+    Ok(pos)
+}
+
+pub async fn get_block_height_at<Co: ControllerBehaviour>(
+    controller: &Co,
+    pos: Position,
+) -> Result<u64> {
+    if let Position::Absolute(v) = pos {
+        Ok(v)
+    } else {
+        let current = controller.get_block_number(false).await?;
+        Ok(pos.with_current(current))
+    }
 }
 
 pub fn hex(data: &[u8]) -> String {
@@ -132,4 +186,33 @@ pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool
     f.flush()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_position() -> Result<()> {
+        assert_eq!(parse_position("100")?, Position::Absolute(100));
+        assert_eq!(parse_position("+100")?, Position::FromCurrent(100));
+        assert_eq!(parse_position("-100")?, Position::ToCurrent(100));
+        assert_eq!(parse_position("-0")?, Position::ToCurrent(0));
+        assert_eq!(parse_position("+0")?, Position::FromCurrent(0));
+
+        let current = 100u64;
+        assert_eq!(parse_position("+1")?.with_current(current), 101);
+        assert_eq!(parse_position("-1")?.with_current(current), 99);
+        assert_eq!(parse_position("+0")?.with_current(current), 100);
+        assert_eq!(parse_position("-0")?.with_current(current), 100);
+        assert_eq!(parse_position("0")?.with_current(current), 0);
+        assert_eq!(parse_position("-100")?.with_current(current), 0);
+        assert_eq!(parse_position("-101")?.with_current(current), 0);
+        assert_eq!(
+            parse_position(&format!("+{}", u64::MAX))?.with_current(current),
+            u64::MAX,
+        );
+
+        Ok(())
+    }
 }

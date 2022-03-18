@@ -29,7 +29,7 @@ use crate::{
         controller::{ControllerBehaviour, SignerBehaviour},
     },
     proto::blockchain::Transaction,
-    utils::{parse_addr, parse_data, parse_valid_until_block, parse_value},
+    utils::{get_block_height_at, parse_addr, parse_data, parse_position, parse_value},
 };
 
 pub fn bench_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -75,9 +75,9 @@ fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         )
         .arg(
             Arg::new("total")
-                .help("Number of transactions to send")
+                .help("Number of tasks in the benchmark")
                 .takes_value(true)
-                .required(true)
+                .default_value("1")
                 .validator(str::parse::<u32>),
         )
 }
@@ -155,8 +155,8 @@ where
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
                 let valid_until_block = {
-                    let s = m.value_of("valid-until-block").unwrap();
-                    parse_valid_until_block(&ctx.controller, s).await?
+                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    get_block_height_at(&ctx.controller, pos).await?
                 };
 
                 let system_config = ctx.controller.get_system_config().await

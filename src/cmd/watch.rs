@@ -19,6 +19,7 @@ use std::time::Duration;
 use crate::{
     cmd::Command,
     core::{context::Context, controller::ControllerBehaviour},
+    utils::parse_position,
 };
 
 pub fn watch_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -33,7 +34,7 @@ where
                 .short('b')
                 .long("begin")
                 .takes_value(true)
-                .validator(str::parse::<u64>),
+                .validator(parse_position),
         )
         .arg(
             Arg::new("end")
@@ -41,7 +42,7 @@ where
                 .short('e')
                 .long("end")
                 .takes_value(true)
-                .validator(str::parse::<u64>),
+                .validator(parse_position),
         )
         .arg(
             Arg::new("until-finalized-txs")
@@ -60,11 +61,11 @@ where
 
                 let begin = m
                     .value_of("begin")
-                    .map(|s| s.parse::<u64>().unwrap())
+                    .map(|s| parse_position(s).unwrap().with_current(current_height))
                     .unwrap_or(current_height);
                 let end = m
                     .value_of("end")
-                    .map(|s| s.parse::<u64>().unwrap())
+                    .map(|s| parse_position(s).unwrap().with_current(current_height))
                     .unwrap_or(u64::MAX);
 
                 let until_finalized_txs = m
