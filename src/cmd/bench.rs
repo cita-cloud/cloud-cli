@@ -349,8 +349,8 @@ async fn bench_fn_with_progbar<
         );
         Arc::new(progbar)
     };
-    let mut t = None;
 
+    let mut t = None;
     let before_preparing = || println!("{preparing_info}");
     let before_working = || {
         println!("{working_info}");
@@ -381,11 +381,13 @@ async fn bench_fn_with_progbar<
 
     progbar.finish_at_current_pos();
 
-    println!(
-        "`{}` tasks finished in `{}` ms",
-        total,
-        t.unwrap().elapsed().as_millis()
-    );
+    if let Some(t) = t {
+        println!(
+            "`{}` tasks finished in `{}` ms",
+            total,
+            t.elapsed().as_millis()
+        );
+    }
     let success = progbar.position();
     let failure = total - success;
     println!("`{}` success, `{}` failure", success, failure);
