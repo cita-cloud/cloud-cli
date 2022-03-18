@@ -378,15 +378,11 @@ where
                 .validator(str::parse::<u16>)
                 .required(true),
         )
-        .arg(
-            Arg::new("tls")
-                .help("the domain name of the new node")
-                .required(true),
-        )
+        .arg(Arg::new("tls").help("the domain name of the new node"))
         .handler(|_cmd, m, ctx| {
             let host = m.value_of("host").unwrap();
             let port = m.value_of("port").unwrap().parse::<u64>().unwrap();
-            let tls = m.value_of("tls").unwrap();
+            let tls = m.value_of("tls");
 
             let ptcl = match host.parse::<std::net::IpAddr>() {
                 Ok(IpAddr::V4(_)) => "ip4",
@@ -394,7 +390,11 @@ where
                 Err(_) => "dns4",
             };
 
-            let multiaddr = format!("/{ptcl}/{host}/tcp/{port}/tls/{tls}");
+            let multiaddr = if let Some(tls) = tls {
+                format!("/{ptcl}/{host}/tcp/{port}/tls/{tls}")
+            } else {
+                format!("/{ptcl}/{host}/tcp/{port}")
+            };
 
             let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
             // https://github.com/cita-cloud/status_code
