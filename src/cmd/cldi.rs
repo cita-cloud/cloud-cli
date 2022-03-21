@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::ensure;
 use clap::{crate_authors, crate_version, AppSettings, Arg, ColorChoice};
 use std::str::FromStr;
 use tonic::transport::Endpoint;
@@ -123,6 +124,11 @@ where
                 current_setting.executor_addr = executor_addr.into();
             }
             if let Some(account_name) = m.value_of("account-name") {
+                ensure!(
+                    ctx.wallet.get(account_name).is_some(),
+                    "account `{}` not found",
+                    account_name
+                );
                 current_setting.account_name = account_name.into();
             }
             if let Some(crypto_type) = m.value_of("crypto-type") {
