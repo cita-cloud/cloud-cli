@@ -43,7 +43,7 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
         .arg(
             Arg::new("password")
                 .short('p')
-                .long("passowrd")
+                .long("password")
                 .help("The password to encrypt the account")
                 .takes_value(true),
         )
