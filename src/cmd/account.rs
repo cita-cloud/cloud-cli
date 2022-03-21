@@ -57,7 +57,7 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
         )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").map(str::to_string);
-            let pw = m.value_of("password");
+            let pw = m.value_of("password").map(str::as_bytes);
             let crypto_type = m.value_of("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
                 .unwrap_or(ctx.current_setting.crypto_type);
@@ -67,7 +67,7 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
             };
 
             let maybe_locked: MaybeLocked = if let Some(pw) = pw {
-                account.lock(pw.as_bytes()).into()
+                account.lock(pw).into()
             } else {
                 account.into()
             };
@@ -75,7 +75,11 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
             let output = serde_json::to_string_pretty(&maybe_locked)?;
 
             let name = name.unwrap_or_else(|| hex(maybe_locked.address()));
-            ctx.wallet.save(name, maybe_locked)?;
+            ctx.wallet.save(name.clone(), maybe_locked)?;
+            // Make generated account usable without having to unlock it.
+            if let Some(pw) = pw {
+                ctx.wallet.unlock(&name, pw)?;
+            }
 
             println!("{output}");
             Ok(())
@@ -140,7 +144,7 @@ pub fn import_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").map(str::to_string);
-            let pw = m.value_of("password");
+            let pw = m.value_of("password").map(str::as_bytes);
             let sk = m.value_of("secret-key").unwrap();
             let crypto_type = m.value_of("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
@@ -168,7 +172,6 @@ pub fn import_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 
             let name = name.unwrap_or(addr);
             if let Some(pw) = pw {
-                let pw = pw.as_bytes();
                 let locked = account.lock(pw);
 
                 ctx.wallet.save(name.clone(), locked)?;
@@ -200,7 +203,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password");
+            let pw = m.value_of("password").map(str::as_bytes);
 
             let maybe_locked = ctx
                 .wallet
@@ -208,7 +211,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
                 .ok_or_else(|| anyhow!("account `{}` not found", name))?;
 
             let json = if let Some(pw) = pw {
-                let unlocked = maybe_locked.unlock(pw.as_bytes())?;
+                let unlocked = maybe_locked.unlock(pw)?;
                 json!(unlocked)
             } else {
                 let unlocked = maybe_locked.unlocked()?;
@@ -247,12 +250,12 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password").unwrap();
+            let pw = m.value_of("password").unwrap().as_bytes();
 
             if m.is_present("file") {
-                ctx.wallet.unlock(name, pw.as_bytes())?;
+                ctx.wallet.unlock(name, pw)?;
             } else {
-                ctx.wallet.unlock_in_keystore(name, pw.as_bytes())?;
+                ctx.wallet.unlock_in_keystore(name, pw)?;
             }
             Ok(())
         })
@@ -277,9 +280,9 @@ pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
         )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password").unwrap();
+            let pw = m.value_of("password").unwrap().as_bytes();
 
-            ctx.wallet.lock(name, pw.as_bytes())?;
+            ctx.wallet.lock(name, pw)?;
 
             Ok(())
         })
