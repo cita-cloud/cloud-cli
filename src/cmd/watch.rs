@@ -129,7 +129,7 @@ where
                                     println!(
                                         "{:0>2}:{:0>2}:{:0>2} block `{}` contains `{}` txs, finalized: `{}`",
                                         elapsed_secs / 3600,
-                                        elapsed_secs / 60,
+                                        (elapsed_secs % 3600) / 60,
                                         elapsed_secs % 60,
                                         height,
                                         cnt,
