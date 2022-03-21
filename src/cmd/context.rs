@@ -71,15 +71,21 @@ pub fn list<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         })
 }
 
-pub fn default<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+pub fn default<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: GrpcClientBehaviour,
+    Ex: GrpcClientBehaviour,
+    Ev: GrpcClientBehaviour,
+{
     Command::<Context<Co, Ex, Ev>>::new("default-context")
-        .about("set a context as default")
+        .about("set a context as default and switch current context to it")
         .arg(Arg::new("context-name").takes_value(true).required(true))
         .handler(|_cmd, m, ctx| {
             let context_name = m.value_of("context-name").unwrap();
-            ctx.get_context_setting(context_name)?;
+            let setting = ctx.get_context_setting(context_name)?.clone();
             ctx.config.default_context = context_name.into();
             ctx.config.save()?;
+            ctx.switch_context(setting)?;
 
             Ok(())
         })
