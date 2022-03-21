@@ -1,38 +1,38 @@
 # cloud-cli
 
-cloud-cli(简称cldi)是CITA-Cloud命令行工具。它封装了CITA-Cloud构建的链提供的gRPC接口，并提供了一些辅助功能，方便用户与链进行交互。
-
+`cloud-cli`（简称`cldi`）是CITA-Cloud命令行工具。它封装了CITA-Cloud构建的链提供的gRPC接口，并提供了一些辅助功能，方便用户与链进行交互。
 
 ```plaintext
 $ cldi help
-cldi
-The command line interface to interact with `CITA-Cloud v6.3.0`
+cldi 0.3.0
+Rivtower Technologies <contact@rivtower.com>
+The command line interface to interact with CITA-Cloud
 
 USAGE:
     cldi [OPTIONS] [SUBCOMMAND]
 
 OPTIONS:
-    -c, --context <context>     context setting
-    -e <executor-addr>          executor address
-    -h, --help                  Print help information
-    -r <controller-addr>        controller address
-    -u <account-id>             account id
+    -c, --context <context>       context setting
+    -r <controller-addr>          controller address
+    -e <executor-addr>            executor address
+    -u <account-name>             account name
+        --crypto <crypto-type>    The crypto type of the target chain [possible values: SM, ETH]
+    -h, --help                    Print help information
+    -V, --version                 Print version information
 
 SUBCOMMANDS:
-    account        Key commands
-    admin          The admin commands for managing chain
-    bench-call     Call executor with {-c} workers over {--connections} connections
-    bench-send     Send transactions with {-c} workers over {--connections} connections
+    get            Get data from chain
+    send           Send transaction
     call           Call executor
+    create         create an EVM contract
+    context        Context commands
+    account        Account commands
+    admin          The admin commands for managing chain
+    rpc            Other RPC commands
+    ethabi         Ethereum ABI coder.
+    bench          Simple benchmarks
+    watch          Watch blocks
     completions    Generate completions for current shell. Add the output script to `.profile`
                        or `.bashrc` etc. to make it effective.
-    context        context commands
-    create         Create EVM contract
-    ethabi         Ethereum ABI coder.
-    evm            EVM commands
-    get            Get chain info
     help           Print this message or the help of the given subcommand(s)
-    rpc            RPC commands
-    send           Send transaction
-    watch          watch
 ```
