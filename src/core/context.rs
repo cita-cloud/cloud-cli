@@ -32,7 +32,7 @@ pub struct Context<Co, Ex, Ev> {
     pub config: Config,
     pub current_setting: ContextSetting,
 
-    pub rt: CancelableRuntime,
+    pub rt: CtrlCSignalCapturedRuntime,
 }
 
 impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
@@ -42,7 +42,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ex: GrpcClientBehaviour,
         Ev: GrpcClientBehaviour,
     {
-        let rt = CancelableRuntime(tokio::runtime::Runtime::new()?);
+        let rt = CtrlCSignalCapturedRuntime(tokio::runtime::Runtime::new()?);
         let wallet = Wallet::open(&config.data_dir)?;
 
         let default_context_setting = config
@@ -140,9 +140,9 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
 #[error("Canceled")]
 pub struct Canceled;
 
-pub struct CancelableRuntime(tokio::runtime::Runtime);
+pub struct CtrlCSignalCapturedRuntime(tokio::runtime::Runtime);
 
-impl CancelableRuntime {
+impl CtrlCSignalCapturedRuntime {
     pub fn block_on<F: Future>(&self, future: F) -> Result<F::Output, Canceled> {
         self.0.block_on(async {
             tokio::select! {

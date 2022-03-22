@@ -24,7 +24,8 @@ use crate::{
 };
 
 // TODO: consider if it's appropriate to use config internals here.
-// I think it's OK, at least for now.
+// I think it's OK, at least for now. If it gets complicated, we should
+// use methods provided by Context instead of depending on its internals.
 
 pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("save-context")
