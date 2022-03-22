@@ -14,14 +14,15 @@
 
 use std::{future::Future, sync::Arc, time::Duration};
 
-use anyhow::{Context as _, Result};
+use anyhow::{bail, Context as _, Result};
 use clap::Arg;
+use crossbeam::atomic::AtomicCell;
 use parking_lot::Mutex;
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 
 use crate::{
-    cmd::Command,
+    cmd::{watch, Command},
     core::executor::ExecutorBehaviour,
     core::{
         client::GrpcClientBehaviour,
@@ -131,6 +132,11 @@ where
                 .default_value("+95")
                 .validator(parse_position),
         )
+        .arg(
+            Arg::new("disable-watch")
+                .help("don't watch blocks")
+                .long("disable-watch")
+        )
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
@@ -139,6 +145,9 @@ where
                 .value_of("concurrency")
                 .map(|s| s.parse::<u64>().unwrap())
                 .unwrap_or(total);
+
+            let watch_blocks = !m.is_present("disable-watch");
+            let watch_begin = Arc::new(AtomicCell::new(Option::<u64>::None));
 
             ctx.rt.block_on(async {
                 // Workload builder
@@ -197,6 +206,25 @@ where
                 let worker_fn =
                     |client: Co, raw| async move { client.send_raw(raw).await.map(|_| ()) };
 
+                // before fns
+                let before_preparing = || async {
+                    println!("Preparing connections and transactions..");
+                    anyhow::Ok(())
+                };
+
+                let watch_begin = watch_begin.clone();
+                let controller = ctx.controller.clone();
+                let before_working = || async {
+                    if watch_blocks {
+                        let current_block_height = controller.get_block_number(false).await
+                            .context("cannot get current block height for watch begin")?;
+                        watch_begin.store(Some(current_block_height));
+                    }
+
+                    println!("Sending transactions..");
+                    anyhow::Ok(())
+                };
+
                 bench_fn_with_progbar(
                     total,
                     connections,
@@ -204,14 +232,29 @@ where
                     connector,
                     workload_builder,
                     worker_fn,
-                    "Preparing connections and transactions..",
-                    "Sending transactions..",
+                    before_preparing,
+                    before_working,
                 )
-                .await;
-
-                anyhow::Ok(())
+                .await
             })??;
-            Ok(())
+
+            if watch_blocks {
+                let watch_begin = watch_begin.load()
+                    .expect("if bench has succeeded, watch begin should always exist. This is a bug, please contact with maintainers");
+                watch::watch_cmd()
+                    .exec_from(
+                        [
+                        "watch",
+                        "--begin",
+                        &watch_begin.to_string(),
+                        "--until",
+                        &total.to_string(),
+                        ],
+                        ctx
+                    )
+            } else {
+                Ok(())
+            }
         })
 }
 
@@ -289,6 +332,16 @@ where
                     client.call(from, to, data).await.map(|_| ())
                 };
 
+                // before fns
+                let before_preparing = || async {
+                    println!("Preparing connections and call requests..");
+                    anyhow::Ok(())
+                };
+                let before_working = || async {
+                    println!("Sending call requests..");
+                    anyhow::Ok(())
+                };
+
                 bench_fn_with_progbar(
                     total,
                     connections,
@@ -296,10 +349,10 @@ where
                     connector,
                     workload_builder,
                     worker_fn,
-                    "Preparing connections and call requests..",
-                    "Sending call requests..",
+                    before_preparing,
+                    before_working,
                 )
-                .await;
+                .await?;
 
                 anyhow::Ok(())
             })??;
@@ -316,6 +369,10 @@ async fn bench_fn_with_progbar<
     WorkloadBuilder,
     WorkResultFut,
     Worker,
+    BeforePreparing,
+    BeforePreparingResultFut,
+    BeforeWorking,
+    BeforeWorkingResultFut,
 >(
     total: u64,
     connections: u64,
@@ -325,9 +382,10 @@ async fn bench_fn_with_progbar<
     workload_builder: WorkloadBuilder,
     worker_fn: Worker,
 
-    preparing_info: &str,
-    working_info: &str,
-) where
+    before_preparing: BeforePreparing,
+    before_working: BeforeWorking,
+) -> Result<()>
+where
     Connection: Clone + Send + Sync + 'static,
     ConnectionResultFut: Future<Output = Result<Connection>>,
     Connector: FnOnce() -> ConnectionResultFut + Clone,
@@ -337,6 +395,11 @@ async fn bench_fn_with_progbar<
 
     WorkResultFut: Future<Output = Result<()>> + Send,
     Worker: FnOnce(Connection, Workload) -> WorkResultFut + Clone + Send + Sync + 'static,
+
+    BeforePreparing: FnOnce() -> BeforePreparingResultFut,
+    BeforePreparingResultFut: Future<Output = Result<()>>,
+    BeforeWorking: FnOnce() -> BeforeWorkingResultFut,
+    BeforeWorkingResultFut: Future<Output = Result<()>>,
 {
     let progbar = {
         let progbar = indicatif::ProgressBar::new(total);
@@ -351,11 +414,11 @@ async fn bench_fn_with_progbar<
     };
 
     let mut t = None;
-    let before_preparing = || println!("{preparing_info}");
-    let before_working = || {
-        println!("{working_info}");
+    let before_working = || async {
+        before_working().await?;
         // start the timer
         t.replace(std::time::Instant::now());
+        anyhow::Ok(())
     };
 
     let progbar_cloned = Arc::clone(&progbar);
@@ -397,6 +460,10 @@ async fn bench_fn_with_progbar<
             "bench isn't completed successfully, the first reported error is `{:?}`",
             e
         );
+        // Don't repeat the error msg.
+        bail!("bench failed")
+    } else {
+        Ok(())
     }
 }
 
@@ -411,7 +478,9 @@ async fn bench_fn<
     WorkResultFut,
     Worker,
     BeforePreparing,
+    BeforePreparingResultFut,
     BeforeWorking,
+    BeforeWorkingResultFut,
 >(
     total: u64,
     connections: u64,
@@ -435,10 +504,12 @@ where
     WorkResultFut: Future<Output = Result<()>> + Send,
     Worker: FnOnce(Connection, Workload) -> WorkResultFut + Clone + Send + Sync + 'static,
 
-    BeforePreparing: FnOnce(),
-    BeforeWorking: FnOnce(),
+    BeforePreparing: FnOnce() -> BeforePreparingResultFut,
+    BeforePreparingResultFut: Future<Output = Result<()>>,
+    BeforeWorking: FnOnce() -> BeforeWorkingResultFut,
+    BeforeWorkingResultFut: Future<Output = Result<()>>,
 {
-    before_preparing();
+    before_preparing().await?;
     let conns = {
         let mut conns = Vec::with_capacity(connections as usize);
         for _ in 0..connections {
@@ -446,7 +517,7 @@ where
             conns.push(
                 connector_fn()
                     .await
-                    .context("preparing connection failed")?,
+                    .context("preparing connections failed")?,
             );
         }
         conns
@@ -503,7 +574,7 @@ where
         })
         .collect::<Vec<(Connection, Vec<Vec<Workload>>)>>();
 
-    before_working();
+    before_working().await?;
 
     let mut first_reported_error: Arc<Mutex<Option<anyhow::Error>>> = Arc::new(Mutex::new(None));
     let hs = conn_workloads
