@@ -78,7 +78,7 @@ fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
             Arg::new("total")
                 .help("Number of tasks in the benchmark")
                 .takes_value(true)
-                .default_value("1")
+                .default_value("10000")
                 .validator(str::parse::<u32>),
         )
 }
