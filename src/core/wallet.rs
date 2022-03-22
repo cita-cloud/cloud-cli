@@ -651,6 +651,7 @@ impl Wallet {
             .remove_entry(account_name)
             .ok_or_else(|| anyhow!("account `{}` not found", account_name))?;
         let locked: MaybeLocked = maybe_locked.lock(pw).into();
+        // FIXME: It's not secure. we should erase the original secret key file.
         self.save_override(name, locked)?;
 
         Ok(())
