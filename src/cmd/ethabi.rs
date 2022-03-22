@@ -193,7 +193,16 @@ pub fn ethabi_decode_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, 
 }
 
 pub fn ethabi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    let version = "17.0.0";
+    let author = concat!(
+        "Parity Technologies <admin@parity.io>\n",
+        "Artem Vorotnikov <artem@vorotnikov.me>\n",
+        "Nicholas Rodrigues Lordello <nlordell@gmail.com>\n",
+    );
+
     Command::<Context<Co, Ex, Ev>>::new("ethabi")
+        .version(version)
+        .author(author)
         .about("Ethereum ABI coder.")
         .subcommand_required_else_help(true)
         .subcommands([
@@ -201,6 +210,8 @@ pub fn ethabi_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
             ethabi_decode_cmd().name("decode"),
         ])
 }
+
+// The following code is from `ethabi-cli`.
 
 fn load_function(path: &str, name_or_signature: &str) -> anyhow::Result<Function> {
     let file = File::open(path)?;
