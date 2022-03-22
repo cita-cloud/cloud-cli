@@ -87,7 +87,7 @@ cldi> account g --name Alice
 ### 1.生成账户
 如果需要更好的安全性，请加上`-p <password>`为私钥进行加密。
 有密码的账户在硬盘上会进行加密存储，并且不会在生成时显示明文私钥。
-每次启动时需要通过unlock解锁后才能使用。
+加密后的账户在每次启动时需要通过`account unlock`解锁后才能使用。
 ```plaintext
 cldi> account generate --name Alice
 {
