@@ -1,10 +1,11 @@
 name: Deploy Github Pages
 on:
   push:
-    paths:
-      - 'book/**'
     branches:
       - master
+      - main
+    paths:
+      - 'book/**'
   workflow_dispatch:
 
 jobs:
