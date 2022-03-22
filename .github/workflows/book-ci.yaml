@@ -2,7 +2,7 @@ name: Book CI
 on:
   push:
     paths:
-      - 'book'
+      - 'book/**'
   workflow_dispatch:
 
 jobs:

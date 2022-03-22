@@ -5,6 +5,12 @@ on:
       - master
       - main
       - 'v*'
+    paths-ignore:
+      - 'book/**'
+      - README.md
+      - README-CN.md
+      - LICENSE
+      - .gitignore
   workflow_dispatch:
 jobs:
   build:

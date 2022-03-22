@@ -2,7 +2,7 @@ name: Deploy Github Pages
 on:
   push:
     paths:
-      - book
+      - 'book/**'
     branches:
       - master
   workflow_dispatch:
