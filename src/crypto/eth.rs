@@ -12,190 +12,124 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file is from kms_eth, and I made some modifications.
-#![allow(unused)]
-
-use ctr::cipher::{generic_array::GenericArray, NewCipher, StreamCipher};
-
-type Aes128Ctr = ctr::Ctr128BE<aes::Aes128>;
-
-fn aes(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
-    let mut data = data;
-
-    let key = password_hash[0..16].to_owned();
-    let nonce = password_hash[16..32].to_owned();
-
-    let key = GenericArray::from_slice(&key);
-    let nonce = GenericArray::from_slice(&nonce);
-
-    let mut cipher = Aes128Ctr::new(key, nonce);
-
-    cipher.apply_keystream(&mut data);
-
-    data
-}
-
-pub fn encrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
-    aes(password_hash, data)
-}
-
-pub fn decrypt(password_hash: &[u8], data: Vec<u8>) -> Vec<u8> {
-    aes(password_hash, data)
-}
-
+/// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
+/// This crypto impl must be compatible with `kms_eth` to work with it.
 use tiny_keccak::{Hasher, Keccak};
 
-pub const HASH_BYTES_LEN: usize = 32;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::Message;
+use secp256k1::PublicKey as RawPublicKey;
+use secp256k1::Secp256k1;
+use secp256k1::SecretKey as RawSecretKey;
 
-fn keccak_hash(input: &[u8]) -> [u8; HASH_BYTES_LEN] {
-    let mut result = [0u8; HASH_BYTES_LEN];
+use ctr::cipher::{NewCipher, StreamCipher};
 
-    let mut keccak = Keccak::v256();
-    keccak.update(input);
-    keccak.finalize(&mut result);
-    result
-}
+use super::{Address, Crypto, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
 
-const SECP256K1_PUBKEY_BYTES_LEN: usize = 64;
-const SECP256K1_PRIVKEY_BYTES_LEN: usize = 32;
-pub const SECP256K1_SIGNATURE_BYTES_LEN: usize = 65;
+pub const PUBLIC_KEY_BYTES_LEN: usize = 64;
+pub type PublicKey = [u8; PUBLIC_KEY_BYTES_LEN];
+
+pub const SECRET_KEY_BYTES_LEN: usize = 32;
+pub type SecretKey = [u8; SECRET_KEY_BYTES_LEN];
+
+pub const SIGNATURE_BYTES_LEN: usize = 65;
+pub type Signature = [u8; SIGNATURE_BYTES_LEN];
 
 lazy_static::lazy_static! {
-    pub static ref SECP256K1: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+    pub static ref SECP256K1: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
 
-fn secp256k1_gen_keypair() -> (
-    [u8; SECP256K1_PUBKEY_BYTES_LEN],
-    [u8; SECP256K1_PRIVKEY_BYTES_LEN],
-) {
-    use secp256k1::rand::rngs::OsRng;
+fn keccak_hash(input: &[u8]) -> Hash {
+    let mut hasher = Keccak::v256();
+    hasher.update(input);
 
-    let context = &SECP256K1;
-    let mut rng = OsRng::new().expect("can't get rng");
-    let (seckey, pubkey) = context.generate_keypair(&mut rng);
+    let mut output = [0u8; HASH_BYTES_LEN];
+    hasher.finalize(&mut output);
 
-    let serialized = pubkey.serialize_uncompressed();
-    let mut pubkey = [0u8; SECP256K1_PUBKEY_BYTES_LEN];
-    pubkey.copy_from_slice(&serialized[1..65]);
-
-    let mut privkey = [0u8; SECP256K1_PRIVKEY_BYTES_LEN];
-    privkey.copy_from_slice(&seckey[0..32]);
-
-    (pubkey, privkey)
+    output
 }
 
-fn secp256k1_sign(privkey: &[u8], msg: &[u8]) -> [u8; SECP256K1_SIGNATURE_BYTES_LEN] {
-    let context = &SECP256K1;
-    // no way to create from raw byte array.
-    let sec = secp256k1::SecretKey::from_slice(privkey).unwrap();
-    let s = context.sign_recoverable(&secp256k1::Message::from_slice(msg).unwrap(), &sec);
-    let (rec_id, data) = s.serialize_compact();
-    let mut data_arr = [0; SECP256K1_SIGNATURE_BYTES_LEN];
+fn aes(data: &[u8], pw: &[u8]) -> Vec<u8> {
+    type Aes128Ctr = ctr::Ctr128BE<aes::Aes128>;
 
-    // no need to check if s is low, it always is
-    data_arr[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]
-        .copy_from_slice(&data[0..SECP256K1_SIGNATURE_BYTES_LEN - 1]);
-    data_arr[SECP256K1_SIGNATURE_BYTES_LEN - 1] = rec_id.to_i32() as u8;
-    data_arr
+    let mut output = data.to_vec();
+
+    let pw_hash = keccak_hash(pw);
+    let (key, nonce) = pw_hash.split_at(16);
+
+    let mut cipher = Aes128Ctr::new(key.into(), nonce.into());
+    cipher.apply_keystream(&mut output);
+
+    output
 }
 
-fn secp256k1_recover(signature: &[u8], message: &[u8]) -> Option<Vec<u8>> {
-    let context = &SECP256K1;
-    if let Ok(rid) = secp256k1::recovery::RecoveryId::from_i32(i32::from(
-        signature[SECP256K1_SIGNATURE_BYTES_LEN - 1],
-    )) {
-        if let Ok(rsig) = secp256k1::recovery::RecoverableSignature::from_compact(
-            &signature[0..SECP256K1_SIGNATURE_BYTES_LEN - 1],
-            rid,
-        ) {
-            if let Ok(publ) =
-                context.recover(&secp256k1::Message::from_slice(message).unwrap(), &rsig)
-            {
-                let serialized = publ.serialize_uncompressed();
-                return Some(serialized[1..65].to_vec());
-            }
-        }
-    }
-    None
+fn secp256k1_generate_secret_key() -> SecretKey {
+    let mut rng = OsRng::new().expect("failed to get OsRng");
+    let raw_sk = RawSecretKey::new(&mut rng);
+    raw_sk.serialize_secret()
 }
 
-pub fn generate_keypair() -> (Vec<u8>, Vec<u8>) {
-    let (pk, sk) = secp256k1_gen_keypair();
-    (pk.to_vec(), sk.to_vec())
+fn secp256k1_sk2pk(sk: &SecretKey) -> PublicKey {
+    let raw_sk = RawSecretKey::from_slice(sk).unwrap();
+    let raw_pk = RawPublicKey::from_secret_key(&SECP256K1, &raw_sk);
+    raw_pk.serialize_uncompressed()[1..65].try_into().unwrap()
 }
 
-pub fn hash_data(data: &[u8]) -> Vec<u8> {
-    keccak_hash(data).to_vec()
+fn secp256k1_pk2addr(pk: &PublicKey) -> Address {
+    keccak_hash(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..]
+        .try_into()
+        .unwrap()
 }
 
-pub fn verify_data_hash(data: &[u8], hash: &[u8]) -> bool {
-    if hash.len() != HASH_BYTES_LEN {
-        false
-    } else {
-        hash == hash_data(&data)
-    }
+fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
+    let hashed_msg = keccak_hash(msg);
+    let raw_sk = RawSecretKey::from_slice(sk).unwrap();
+    let raw_sig =
+        SECP256K1.sign_ecdsa_recoverable(&Message::from_slice(&hashed_msg).unwrap(), &raw_sk);
+    let (recovery_id, sig) = raw_sig.serialize_compact();
+
+    // [<sig><recovery_id>]
+    let mut output = [0u8; SIGNATURE_BYTES_LEN];
+    output[..SIGNATURE_BYTES_LEN - 1].copy_from_slice(&sig);
+    output[SIGNATURE_BYTES_LEN - 1] = recovery_id.to_i32() as u8;
+
+    output
 }
 
-pub const ADDR_BYTES_LEN: usize = 20;
+#[derive(Debug)]
+pub struct EthCrypto;
 
-pub fn pk2address(pk: &[u8]) -> Vec<u8> {
-    hash_data(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec()
-}
+impl Crypto for EthCrypto {
+    type PublicKey = PublicKey;
+    type SecretKey = SecretKey;
 
-pub fn sign_message(_pubkey: &[u8], privkey: &[u8], msg: &[u8]) -> Vec<u8> {
-    secp256k1_sign(&privkey, &msg).to_vec()
-}
+    type Signature = Signature;
 
-pub fn recover_signature(msg: Vec<u8>, signature: Vec<u8>) -> Option<Vec<u8>> {
-    if signature.len() != SECP256K1_SIGNATURE_BYTES_LEN || msg.len() != HASH_BYTES_LEN {
-        None
-    } else {
-        secp256k1_recover(&signature, &msg)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn aes_test() {
-        let pwd_hash = &keccak_hash(b"password");
-        let data = vec![1u8, 2, 3, 4, 5, 6, 7];
-
-        let cipher_message = aes(pwd_hash, data.clone());
-        let decrypted_message = aes(pwd_hash, cipher_message);
-        assert_eq!(data, decrypted_message);
+    fn hash(msg: &[u8]) -> Hash {
+        keccak_hash(msg)
     }
 
-    #[test]
-    fn keccak_test() {
-        let hash_empty: [u8; HASH_BYTES_LEN] = [
-            0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7,
-            0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04,
-            0x5d, 0x85, 0xa4, 0x70,
-        ];
-        assert_eq!(keccak_hash(&[]), hash_empty);
+    fn encrypt(plaintext: &[u8], pw: &[u8]) -> Vec<u8> {
+        aes(plaintext, pw)
     }
 
-    #[test]
-    fn test_data_hash() {
-        let data = vec![1u8, 2, 3, 4, 5, 6, 7];
-        let hash = hash_data(&data);
-        assert!(verify_data_hash(&data, &hash));
+    fn decrypt(ciphertext: &[u8], pw: &[u8]) -> Option<Vec<u8>> {
+        Some(aes(ciphertext, pw))
     }
 
-    #[test]
-    fn test_signature() {
-        // message must be 32 bytes
-        let data: [u8; HASH_BYTES_LEN] = [
-            0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7,
-            0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04,
-            0x5d, 0x85, 0xa4, 0x70,
-        ];
+    fn generate_secret_key() -> Self::SecretKey {
+        secp256k1_generate_secret_key()
+    }
 
-        let (pubkey, privkey) = generate_keypair();
-        let signature = sign_message(&pubkey, &privkey, &data);
-        assert_eq!(recover_signature(data.to_vec(), signature), Some(pubkey));
+    fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature {
+        secp256k1_sign(msg, sk)
+    }
+
+    fn pk2addr(pk: &Self::PublicKey) -> Address {
+        secp256k1_pk2addr(pk)
+    }
+
+    fn sk2pk(sk: &Self::SecretKey) -> Self::PublicKey {
+        secp256k1_sk2pk(sk)
     }
 }

@@ -18,17 +18,18 @@ use serde_json::Value as Json;
 use tentacle_multiaddr::{Multiaddr, Protocol};
 
 use crate::{
+    crypto::{Address, Hash},
     proto::{
         blockchain::{
             raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
             UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
-        common::NodeInfo,
+        common::{NodeInfo, TotalNodeInfo},
         controller::SystemConfig,
-        evm::{Log, Receipt},
+        evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
+        executor::CallResponse,
     },
     utils::{display_time, hex},
-    wallet::Account,
 };
 
 pub trait Display {
@@ -38,19 +39,50 @@ pub trait Display {
     }
 }
 
+impl Display for Json {
+    fn to_json(&self) -> Json {
+        self.clone()
+    }
+
+    fn display(&self) -> String {
+        serde_json::to_string_pretty(&self).unwrap()
+    }
+}
+
 impl<T: Display> Display for &T {
     fn to_json(&self) -> Json {
         (**self).to_json()
     }
 }
 
-impl Display for Account {
+impl Display for Address {
     fn to_json(&self) -> Json {
-        json!({
-            "account_addr": hex(&self.addr),
-            "public_key": hex(&self.keypair.0),
-            "private_key": hex(&self.keypair.1),
-        })
+        json!(hex(self.as_slice()))
+    }
+
+    fn display(&self) -> String {
+        hex(self.as_slice())
+    }
+}
+
+impl Display for Hash {
+    fn to_json(&self) -> Json {
+        json!(hex(self.as_slice()))
+    }
+
+    fn display(&self) -> String {
+        hex(self.as_slice())
+    }
+}
+
+impl Display for CallResponse {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.value))
+    }
+
+    // don't display " "
+    fn display(&self) -> String {
+        hex(&self.value)
     }
 }
 
@@ -159,18 +191,22 @@ impl Display for Witness {
     }
 }
 
-impl Display for RawTransaction {
+impl Display for (RawTransaction, u64, u64) {
     fn to_json(&self) -> Json {
-        match &self.tx {
+        match &self.0.tx {
             Some(Tx::NormalTx(tx)) => {
                 json!({
                     "type": "Normal",
+                    "height": self.1,
+                    "index": self.2,
                     "transaction": tx.to_json()
                 })
             }
             Some(Tx::UtxoTx(utxo)) => {
                 json!({
                     "type": "Utxo",
+                    "height": self.1,
+                    "index": self.2,
                     "transaction": utxo.to_json()
                 })
             }
@@ -210,7 +246,13 @@ impl Display for NodeInfo {
     }
 }
 
-#[cfg(feature = "evm")]
+impl Display for TotalNodeInfo {
+    fn to_json(&self) -> Json {
+        let nodes: Vec<Json> = self.nodes.iter().map(Display::to_json).collect();
+        json!({ "nodes": nodes })
+    }
+}
+
 impl Display for Log {
     fn to_json(&self) -> Json {
         json!({
@@ -228,7 +270,6 @@ impl Display for Log {
     }
 }
 
-#[cfg(feature = "evm")]
 impl Display for Receipt {
     fn to_json(&self) -> Json {
         let logs = self.logs.iter().map(Log::to_json).collect::<Vec<_>>();
@@ -248,5 +289,47 @@ impl Display for Receipt {
             "logs_bloom": hex(&self.logs_bloom),
             "error_msg": self.error_message,
         })
+    }
+}
+
+impl Display for ByteCode {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.byte_code))
+    }
+
+    fn display(&self) -> String {
+        hex(&self.byte_code)
+    }
+}
+
+impl Display for Balance {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.value))
+    }
+
+    fn display(&self) -> String {
+        hex(&self.value)
+    }
+}
+
+impl Display for Nonce {
+    fn to_json(&self) -> Json {
+        json!(hex(&self.nonce))
+    }
+
+    fn display(&self) -> String {
+        hex(&self.nonce)
+    }
+}
+
+impl Display for ByteAbi {
+    fn to_json(&self) -> Json {
+        // ByteAbi and bytes_abi..
+        json!(String::from_utf8_lossy(&self.bytes_abi).to_string())
+    }
+
+    fn display(&self) -> String {
+        // Don't display ""
+        String::from_utf8_lossy(&self.bytes_abi).to_string()
     }
 }

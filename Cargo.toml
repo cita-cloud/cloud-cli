@@ -1,23 +1,12 @@
 [package]
 name = "cldi"
-version = "0.2.0"
-authors = ["Zhishi <whfuyn@outlook.com>"]
+version = "0.3.0"
+authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
-[features]
-default = ["evm", "crypto_sm"]
-# default = ["evm", "crypto_eth"]
-
-evm = []
-chaincode = [] # unimplemented yet
-
-crypto_sm = ["libsm", "efficient-sm2"]
-crypto_eth = ["aes", "ctr", "tiny-keccak", "secp256k1"]
-
-
 [dependencies]
-clap = "3.0.5"
-clap_complete = "3.0.2"
+clap = { version = "3.1", features = ["cargo"] }
+clap_complete = "3.1"
 hex = "0.4"
 tokio = { version = "1.6", features = ["full"] }
 rand = "0.8"
@@ -26,23 +15,34 @@ prost = "0.9"
 time = { version = "0.3.5", features = ["formatting", "local-offset"] }
 serde = "1.0"
 serde_json = "1.0"
-lazy_static = "1.4.0"
+lazy_static = "1.4"
+thiserror = "1.0"
 anyhow = "1.0"
 home = "0.5.3"
-rustbreak = { version = "2.0", features = ["ron_enc"] }
 indicatif = "0.16.2"
 rayon = "1.5.1"
 tentacle-multiaddr = "0.3.1"
-
-# crypto_sm
-libsm = { version = "0.4.0", optional = true }
-efficient-sm2 = { version = "0.1.5", optional = true }
-
-# crypto_eth
-aes = { version = "0.7", optional = true }
-ctr = { version = "0.7", optional = true }
-tiny-keccak = { version = "2.0", features = ["keccak"], optional = true }
-secp256k1 = { version = "0.20", features = ["rand-std", "recovery"], optional = true }
+toml = "0.5"
+rustyline = "9.1"
+shell-words = "1.0"
+parking_lot = "0.12"
+crossbeam = "0.8"
+mockall = "0.11"
+tempfile = "3.3"
+# crypto SM
+libsm = "0.4.0"
+efficient-sm2 = "0.1.5"
+# crypto ETH
+aes = "0.7"
+ctr = "0.8"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+secp256k1 = { version = "0.21", features = ["rand-std", "recovery"] }
+# ethabi cli
+ethabi = "17.0"
+sha3 = "0.10"
+itertools = "0.10"
+# legacy
+rustbreak = { version = "2.0", features = ["ron_enc"] }
 
 [build-dependencies]
 tonic-build = "0.6"

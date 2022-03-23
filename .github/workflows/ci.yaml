@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - master
+      - main
+    paths-ignore:
+      - 'book/**'
+      - README.md
+      - README-CN.md
+      - LICENSE
+      - Dockerfile
+      - .gitignore
+      - .dockerignore
   workflow_dispatch:
 env:
   RUSTFLAGS: -Dwarnings
