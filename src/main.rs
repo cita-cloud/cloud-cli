@@ -132,7 +132,7 @@ fn main() -> Result<()> {
                     }
                 }
                 Err(ReadlineError::Eof) => break,
-                Err(ReadlineError::Interrupted) => println!("press CTRL+D to exit"),
+                Err(ReadlineError::Interrupted) => println!("press CTRL-D to exit"),
                 Err(e) => {
                     println!("readline error {}", e);
                     break;
