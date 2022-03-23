@@ -1,4 +1,4 @@
-FROM rust:1.57 AS builder
+FROM rust:1.59 AS builder
 RUN rustup component add rustfmt
 WORKDIR /build
 COPY . /build
