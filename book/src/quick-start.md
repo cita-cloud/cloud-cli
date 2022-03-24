@@ -53,10 +53,10 @@ $ cldi get block-number
 $ cldi
 cldi> get block-number
 ```
-在交互模式下，用户可以通过`-c`, `-r` `-e`来改变Context配置。
+在交互模式下，用户可以通过`-c`, `-r` `-e`来改变当前会话的Context配置。
 
 ```bash
-# 修改当前全局配置
+# 修改当前会话的全局配置
 cldi> -r localhost:50004
 # 仅针对这条命令应用这个配置
 cldi> -r localhost:50004 get block-number
@@ -66,9 +66,9 @@ Q: How to quit cldi?<br>
 <del>A: :q</del><br>
 A: CTRL-D
 
-## 简写
+## 缩写
 
-cldi提供了很多命令的简写和别名，这里列举一些：
+cldi提供了很多命令的缩写，这里列举一些：
 ```plaintext
 cldi> get block-number
 cldi> get bn
@@ -90,6 +90,8 @@ cldi> b send
 cldi> watch
 cldi> w
 ```
+
+这些缩写仅为方便用户操作，不作稳定性保证，不建议在脚本中使用。
 
 ## 命令行模式下的补全
 
