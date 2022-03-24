@@ -227,7 +227,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 
 pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("unlock-account")
-        .about("unlock a account")
+        .about("unlock account")
         .arg(
             Arg::new("name")
                 .help("The name of the account")
@@ -263,7 +263,7 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 
 pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("lock-account")
-        .about("lock a account")
+        .about("lock account")
         .arg(
             Arg::new("name")
                 .help("The name of the account")
