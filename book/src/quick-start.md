@@ -62,6 +62,10 @@ cldi> -r localhost:50004
 cldi> -r localhost:50004 get block-number
 ```
 
+Q: How to quit cldi?<br>
+<del>A: :q</del><br>
+A: CTRL-D
+
 ## 简写
 
 cldi提供了很多命令的简写和别名，这里列举一些：
@@ -79,7 +83,23 @@ cldi> ctx l
 cldi> account generate --name Alice
 cldi> account gen --name Alice
 cldi> account g --name Alice
+
+cldi> bench send
+cldi> b send
+
+cldi> watch
+cldi> w
 ```
+
+## 命令行模式下的补全
+
+`cldi completions <shell-name>`命令会输出补全脚本，需要添加到, 例如`.profile`, `.bashrc`里才能生效。目前支持的shell有：`bash`, `zsh`, `powershell`, `fish`, `elvish`。
+
+以bash为例，将下列脚本添加到`.bashrc`里即可。
+```bash
+source <(cldi completions bash)
+```
+
 
 ## 使用示例
 

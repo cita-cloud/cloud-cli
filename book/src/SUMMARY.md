@@ -19,5 +19,5 @@
     - [watch](cmd/watch.md)
     - [completions](cmd/completions.md)
     - [help](cmd/help.md)
-
+- [设计架构](architecture.md)
 - [错误排查](trouble-shooting.md)

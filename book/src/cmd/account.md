@@ -25,3 +25,7 @@ SUBCOMMANDS:
     help        Print this message or the help of the given subcommand(s)
 ```
 当前使用的账户可以在`context list`展示的的current setting中查看。
+
+如果需要删除账户，可以在`$HOME/.cloud-cli/accounts`下找到账户名对应的toml文件，使用带有防止恢复功能的删除工具删除（粉碎文件）。
+
+TODO: 加入安全删除账户的功能
