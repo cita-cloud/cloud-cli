@@ -253,9 +253,9 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
             let pw = m.value_of("password").unwrap().as_bytes();
 
             if m.is_present("file") {
-                ctx.wallet.unlock(name, pw)?;
-            } else {
                 ctx.wallet.unlock_in_keystore(name, pw)?;
+            } else {
+                ctx.wallet.unlock(name, pw)?;
             }
             Ok(())
         })
