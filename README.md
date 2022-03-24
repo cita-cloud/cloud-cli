@@ -1,4 +1,7 @@
 # cloud-cli
+[![CI](https://github.com/whfuyn/cloud-cli/actions/workflows/ci.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/ci.yaml)
+[![Book CI](https://github.com/whfuyn/cloud-cli/actions/workflows/book-ci.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/book-ci.yaml)
+[![Security Audit](https://github.com/whfuyn/cloud-cli/actions/workflows/audit.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/audit.yaml)
 
 `CITA-Cloud`命令行工具。
 
