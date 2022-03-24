@@ -20,8 +20,8 @@ SUBCOMMANDS:
     list        list accounts
     import      import account
     export      export account
-    unlock      unlock a account
-    lock        lock a account
+    unlock      unlock account
+    lock        lock account
     help        Print this message or the help of the given subcommand(s)
 ```
 当前使用的账户可以在`context list`展示的的current setting中查看。
