@@ -53,7 +53,7 @@ $ cargo install --path cloud-cli
 ### 验证安装
 ```plaintext
 $ cldi --version
-cldi 0.3.0
+cldi 0.4.0
 ```
 
 ## 快速入门

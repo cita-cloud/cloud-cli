@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::ensure;
 use clap::{crate_authors, crate_version, AppSettings, Arg, ColorChoice};
 use std::str::FromStr;
 use tonic::transport::Endpoint;
@@ -91,6 +90,12 @@ where
                 .takes_value(true),
         )
         .arg(
+            Arg::new("password")
+                .help("password to unlock the account")
+                .short('p')
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("crypto-type")
                 .help("The crypto type of the target chain")
                 .long("crypto")
@@ -99,7 +104,7 @@ where
                 .validator(CryptoType::from_str),
         )
         .handler(|cmd, m, ctx| {
-            // If a subcommand is passed, it's considered as a tmp context for that subcommand.
+            // If a subcommand is present, context modifiers(e.g. -r) will construct a tmp context for that subcommand.
             // Otherwise modify the current context.
             let mut previous_setting: Option<ContextSetting> = None;
             let mut current_setting = ctx.current_setting.clone();
@@ -109,10 +114,13 @@ where
                     || m.is_present("controller-addr")
                     || m.is_present("executor-addr")
                     || m.is_present("account-name")
+                    || m.is_present("password")
                     || m.is_present("crypto-type"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
+            // (account_name, password) for restoring previous account lock status if it's in tmp context.
+            let mut relock_info: Option<(String, String)> = None;
 
             if let Some(setting_name) = m.value_of("context") {
                 current_setting = ctx.get_context_setting(setting_name)?.clone();
@@ -124,12 +132,19 @@ where
                 current_setting.executor_addr = executor_addr.into();
             }
             if let Some(account_name) = m.value_of("account-name") {
-                ensure!(
-                    ctx.wallet.get(account_name).is_some(),
-                    "account `{}` not found",
-                    account_name
-                );
+                // Check if the account exists.
+                ctx.wallet.get(account_name)?;
                 current_setting.account_name = account_name.into();
+            }
+            if let Some(pw) = m.value_of("password") {
+                let account_name = m
+                    .value_of("account-name")
+                    .unwrap_or(&ctx.current_setting.account_name);
+                let was_locked = ctx.wallet.get(account_name)?.is_locked();
+                ctx.wallet.unlock(account_name, pw.as_bytes())?;
+                if is_tmp_ctx && was_locked {
+                    relock_info.replace((account_name.into(), pw.into()));
+                }
             }
             if let Some(crypto_type) = m.value_of("crypto-type") {
                 current_setting.crypto_type = crypto_type.parse().unwrap();
@@ -137,6 +152,11 @@ where
 
             ctx.switch_context(current_setting)?;
             let ret = cmd.dispatch_subcmd(m, ctx);
+
+            // Restore previous lock status and context setting if it's in tmp context.
+            if let Some((account_name, pw)) = relock_info {
+                ctx.wallet.lock_in_memory(&account_name, pw.as_bytes())?;
+            }
             if let Some(previous) = previous_setting {
                 ctx.switch_context(previous)
                     .expect("cannot restore previous context");
@@ -150,7 +170,7 @@ where
             rpc::call_executor().name("call"),
             rpc::create_contract().name("create"),
             context::context_cmd(),
-            account::account_cmd(),
+            account::account_cmd().alias("a"),
             admin::admin_cmd(),
             rpc::rpc_cmd(),
             ethabi::ethabi_cmd(),

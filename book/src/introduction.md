@@ -4,7 +4,7 @@
 
 ```plaintext
 $ cldi help
-cldi 0.3.0
+cldi 0.4.0
 Rivtower Technologies <contact@rivtower.com>
 The command line interface to interact with CITA-Cloud
 
@@ -16,6 +16,7 @@ OPTIONS:
     -r <controller-addr>          controller address
     -e <executor-addr>            executor address
     -u <account-name>             account name
+    -p <password>                 password to unlock the account
         --crypto <crypto-type>    The crypto type of the target chain [possible values: SM, ETH]
     -h, --help                    Print help information
     -V, --version                 Print version information
@@ -33,6 +34,6 @@ SUBCOMMANDS:
     bench          Simple benchmarks
     watch          Watch blocks
     completions    Generate completions for current shell. Add the output script to `.profile`
-                       or `.bashrc` etc. to make it effective.
+                   or `.bashrc` etc. to make it effective.
     help           Print this message or the help of the given subcommand(s)
 ```

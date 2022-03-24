@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use anyhow::{anyhow, ensure, Context as _, Result};
+use rustyline::Editor;
 use std::future::Future;
 
 use super::{
@@ -32,6 +33,8 @@ pub struct Context<Co, Ex, Ev> {
     pub config: Config,
     pub current_setting: ContextSetting,
 
+    // rustyline::Editor, used for interactive cmd.
+    pub editor: Editor<()>,
     pub rt: CtrlCSignalCapturedRuntime,
 }
 
@@ -43,6 +46,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ev: GrpcClientBehaviour,
     {
         let rt = CtrlCSignalCapturedRuntime(tokio::runtime::Runtime::new()?);
+        let editor = rustyline::Editor::<()>::new();
         let wallet = Wallet::open(&config.data_dir)?;
 
         let default_context_setting = config
@@ -72,6 +76,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
             wallet,
             config,
             current_setting: default_context_setting,
+            editor,
             rt,
         })
     }
@@ -81,7 +86,8 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         let current = self
             .wallet
             .get(current_name)
-            .ok_or_else(|| anyhow!("current account `{}` not found", current_name))?;
+            // Specify that it's the **current** account not found
+            .map_err(|_| anyhow!("current account `{}` not found", current_name))?;
 
         ensure!(
             current.crypto_type() == self.current_setting.crypto_type,

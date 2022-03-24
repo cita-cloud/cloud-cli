@@ -169,7 +169,7 @@ pub fn remove_0x(s: &str) -> &str {
 }
 
 // Safe in the sense of file integrity, not cryptography.
-pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool) -> Result<()> {
+pub fn safe_save(path: impl AsRef<Path>, content: &[u8], overwrite_existing: bool) -> Result<()> {
     let path = path.as_ref();
     let dir = path
         .parent()
@@ -178,7 +178,7 @@ pub fn safe_save(path: impl AsRef<Path>, content: &[u8], override_existing: bool
     let mut tmp = NamedTempFile::new_in(dir)?;
     tmp.write_all(content)?;
 
-    let mut f = if override_existing {
+    let mut f = if overwrite_existing {
         tmp.persist(path)?
     } else {
         tmp.persist_noclobber(path)?
