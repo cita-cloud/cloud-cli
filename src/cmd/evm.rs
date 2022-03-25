@@ -31,6 +31,7 @@ where
         .about("Get EVM execution receipt by tx_hash")
         .arg(
             Arg::new("tx_hash")
+                .help("Transaction hash")
                 .takes_value(true)
                 .required(true)
                 .validator(parse_hash),
@@ -52,6 +53,7 @@ where
         .about("Get code by contract address")
         .arg(
             Arg::new("addr")
+                .help("Contract address")
                 .takes_value(true)
                 .required(true)
                 .validator(parse_addr),
@@ -121,6 +123,7 @@ where
         .about("Get the specific contract ABI")
         .arg(
             Arg::new("addr")
+                .help("Contract address")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_addr),

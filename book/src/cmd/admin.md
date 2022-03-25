@@ -22,3 +22,7 @@ SUBCOMMANDS:
 ```
 
 这些命令必须以链的管理员账号发送，否则链上会返回错误。具体来说，当前账户的地址必须和链配置的管理员地址一致。
+
+admin下的所有命令都是通过向链发送UTXO交易来完成的。请参考[相关的RFC](https://github.com/cita-cloud/rfcs/blob/master/rfcs/0002-technology/0002-technology.md#%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE)。
+
+UTXO交易的数据格式是controller内部定义的，最早来自[tools](https://github.com/cita-cloud/tools)，cldi只是参照tools实现。

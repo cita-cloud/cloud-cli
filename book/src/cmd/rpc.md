@@ -1,5 +1,7 @@
 # rpc
 
+未分类的rpc命令。
+
 ```plaintext
 $ cldi help rpc
 cldi-rpc

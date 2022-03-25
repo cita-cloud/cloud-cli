@@ -40,7 +40,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ rustup update
 ```
 
-可以通过通过GitHub安装。
+可以通过GitHub安装。
 
 ```bash
 $ cargo install --git https://github.com/whfuyn/cloud-cli --branch main
@@ -84,7 +84,7 @@ cldi在第一次使用的时候会创建一个名为`default`的默认账户，�
 # 同样地，-u必须在子命令之前
 $ cldi -u Alice send --to <to> --value <value> --data <data>
 ```
-创建和导入账户相关的命令请参见TODO。
+创建和导入账户相关的命令请参见[account](cmd/account.md)。
 
 ### 使用Context管理配置
 
@@ -144,6 +144,7 @@ cldi> ctx l
 cldi> account generate --name Alice
 cldi> account gen --name Alice
 cldi> account g --name Alice
+cldi> a g --name Alice
 
 cldi> bench send
 cldi> b send
@@ -166,11 +167,10 @@ source <(cldi completions bash)
 
 ### 使用示例
 
-
 #### 1.生成账户
 如果需要更好的安全性，请加上`-p <password>`为私钥进行加密。
 有密码的账户在硬盘上会进行加密存储，并且不会在生成时显示明文私钥。
-加密后的账户在每次启动时需要通过`account unlock`解锁后才能使用。
+加密后的账户需要经过`-p <password>`解密才能使用。
 ```plaintext
 cldi> account generate --name Alice
 {
@@ -182,7 +182,7 @@ cldi> account generate --name Alice
 ```
 
 #### 2.创建环境配置
-```plaintext
+```bash
 cldi> -r localhost:50004 -e localhost:50002 -u Alice context save Wonderland
 # 设为默认环境
 cldi> context default Wonderland

@@ -45,12 +45,14 @@ where
         )
         .arg(
             Arg::new("to")
+                .help("the target contract address")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_addr),
         )
         .arg(
             Arg::new("data")
+                .help("the data of this call request")
                 .required(true)
                 .takes_value(true)
                 .validator(parse_data),

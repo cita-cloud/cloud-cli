@@ -33,7 +33,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ rustup update
 ```
 
-可以通过通过GitHub安装。
+可以通过GitHub安装。
 
 ```bash
 $ cargo install --git https://github.com/whfuyn/cloud-cli --branch main

@@ -29,6 +29,7 @@ use crate::{
 
 pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("save-context")
+        .about("save context")
         .arg(Arg::new("context-name").takes_value(true).required(true))
         .handler(|_cmd, m, ctx| {
             let context_name = m.value_of("context-name").unwrap();
@@ -44,6 +45,7 @@ pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
 
 pub fn delete<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("delete-context")
+        .about("delete context")
         .arg(Arg::new("context-name").takes_value(true).required(true))
         .handler(|_cmd, m, ctx| {
             let context_name = m.value_of("context-name").unwrap();

@@ -464,7 +464,9 @@ impl MaybeLocked {
     pub fn unlocked(&self) -> Result<&MultiCryptoAccount> {
         match self {
             Self::Unlocked(ac) => Ok(ac),
-            Self::Locked(_) => bail!("account is locked, please unlock it first"),
+            Self::Locked(_) => bail!(
+                "account is locked, please unlock it first(e.g. `cldi -p <password> [subcommand]`)"
+            ),
         }
     }
 
