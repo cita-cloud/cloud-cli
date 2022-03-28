@@ -38,7 +38,7 @@ cldi> get block-number
 cldi> g bn
 ```
 
-获取尚未确认的块高
+获取尚未确认的块高。
 ```bash
 cldi> get block-number -p
 ```

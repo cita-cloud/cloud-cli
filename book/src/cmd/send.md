@@ -2,7 +2,7 @@
 
 发送交易。
 
-注意和`cita-cli`不同，<to>是必传参数，如果想要创建合约，请使用create命令。
+注意和`cita-cli`不同，`<to>`是必传参数，如果想要创建合约，请使用create命令。
 
 ```plaintext
 $ cldi help send
