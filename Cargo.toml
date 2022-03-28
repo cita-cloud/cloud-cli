@@ -27,7 +27,6 @@ rustyline = "9.1"
 shell-words = "1.0"
 parking_lot = "0.12"
 crossbeam = "0.8"
-mockall = "0.11"
 tempfile = "3.3"
 # crypto SM
 libsm = "0.4.0"
@@ -46,6 +45,9 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 
 [build-dependencies]
 tonic-build = "0.6"
+
+[dev-dependencies]
+mockall = "0.11"
 
 [profile.release]
 lto = true

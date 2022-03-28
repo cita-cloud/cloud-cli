@@ -335,3 +335,28 @@ pub fn account_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 .aliases(&["del", "rm", "remove"]),
         ])
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    fn test_account_subcmds() {
+        let cldi_cmd = cldi_cmd();
+        let (mut ctx, _temp_dir) = context();
+
+        cldi_cmd
+            .exec_from(["cldi", "account", "list"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "generate", "--name", "test"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "export", "test"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "delete", "test", "--yes"], &mut ctx)
+            .unwrap();
+    }
+}

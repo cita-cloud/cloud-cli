@@ -115,7 +115,6 @@ impl EvmBehaviour for EvmClient {
     }
 }
 
-// TODO: better name and should I add the EvmBehaviour<C> trait bound?
 #[tonic::async_trait]
 pub trait EvmBehaviourExt {
     async fn store_contract_abi<S>(

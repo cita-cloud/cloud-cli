@@ -139,3 +139,61 @@ where
             emergency_brake(),
         ])
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+    use crate::crypto::Hash;
+    use crate::proto::controller::SystemConfig;
+
+    #[test]
+    fn test_admin_subcmds() {
+        let cldi_cmd = cldi_cmd();
+
+        let (mut ctx, _temp_dir) = context();
+        ctx.controller
+            .expect_get_system_config()
+            .returning(|| Ok(SystemConfig::default()));
+        ctx.controller
+            .expect_send_raw()
+            .returning(|_utxo| Ok(Hash::default()));
+
+        cldi_cmd
+            .exec_from(["cldi", "admin", "emergency-brake", "on"], &mut ctx)
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(["cldi", "admin", "emergency-brake", "off"], &mut ctx)
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(["cldi", "admin", "set-block-interval", "6"], &mut ctx)
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "admin",
+                    "update-admin",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "admin",
+                    "update-validators",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "0x51219f84f5ff1cc54f9b52867fbbfb6d3196ff25",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+    }
+}
