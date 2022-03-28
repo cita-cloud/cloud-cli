@@ -44,7 +44,7 @@ OPTIONS:
 ## bench-send
 
 ```plaintext
-cldi> bench send -h
+$ cldi bench send -h
 cldi-bench-send
 Send transactions with {-c} workers over {--connections} connections
 
@@ -68,5 +68,31 @@ OPTIONS:
         --until <valid-until-block>    this tx is valid until the given block height. `+h` means
                                        `<current-height> + h` [default: +95]
         --disable-watch                don't watch blocks
+    -h, --help                         Print help information
+```
+
+## bench-call
+
+```plaintext
+$ cldi bench call -h
+cldi-bench-call
+Call executor with {-c} workers over {--connections} connections
+
+USAGE:
+    cldi bench call [OPTIONS] [total]
+
+ARGS:
+    <total>    Number of tasks in the benchmark [default: 10000]
+
+OPTIONS:
+    -c, --concurrency <concurrency>    Number of request workers to run concurrently. Workers will
+                                       be distributed evenly among all the connections. [default:
+                                       the same as total]
+        --connections <connections>    Number of connections connects to server [default: 1]
+        --timeout <timeout>            Timeout for each request (in seconds). 0 means no timeout
+                                       [default: 0]
+    -f, --from <from>                  Default to use current account address
+    -t, --to <to>                      the target contract address to call. Default to random
+    -d, --data <data>                  the data for the call request. Default to random 32 bytes
     -h, --help                         Print help information
 ```
