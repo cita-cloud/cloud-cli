@@ -23,3 +23,11 @@ OPTIONS:
                                        `<current-height> + h` [default: +95]
     -h, --help                         Print help information
 ```
+
+`valid_until_block`用来限制交易的有效范围，即在多少高度之前可以被打包，可以指定一个确定的高度（例如100），也可以指定为当前高度加多少（例如+95）。
+
+## 示例
+
+```plaintext
+cldi> send 0xf064e32407b6cc412fe33f6ba55f578ac413ecdc 0x4f2be91f
+```

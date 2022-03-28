@@ -20,3 +20,9 @@ OPTIONS:
     -f, --from <from>    default to use current account address
     -h, --help           Print help information
 ```
+
+## 示例
+
+```plaintext
+cldi> call 0xf064e32407b6cc412fe33f6ba55f578ac413ecdc 0x06661abd
+```

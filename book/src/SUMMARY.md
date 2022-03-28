@@ -18,6 +18,6 @@
     - [bench](cmd/bench.md)
     - [watch](cmd/watch.md)
     - [completions](cmd/completions.md)
-    - [help](cmd/help.md)
 - [设计架构](architecture.md)
+- [开发指南](dev-guide.md)
 - [错误排查](trouble-shooting.md)
