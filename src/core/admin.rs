@@ -33,6 +33,9 @@ pub trait AdminBehaviour {
     async fn emergency_brake<S>(&self, admin_signer: &S, switch: bool) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
+    async fn set_package_limit<S>(&self, admin_signer: &S, package_limit: u64) -> Result<Hash>
+        where
+            S: SignerBehaviour + Send + Sync;
 }
 
 #[tonic::async_trait]
@@ -87,5 +90,14 @@ where
         self.send_utxo(admin_signer, output, UtxoType::EmergencyBrake)
             .await
             .context("failed to send `emergency_brake` utxo")
+    }
+
+    async fn set_package_limit<S>(&self, admin_signer: &S, package_limit: u64) -> Result<Hash>
+    where
+        S: SignerBehaviour + Send + Sync {
+        let output = package_limit.to_be_bytes().to_vec();
+        self.send_utxo(admin_signer, output, UtxoType::PackageLimit)
+            .await
+            .context("failed to send `set_package_limit` utxo")
     }
 }

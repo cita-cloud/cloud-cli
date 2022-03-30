@@ -107,7 +107,7 @@ where
     Co: AdminBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("emergency-brake")
-        .about("Send emergency brake cmd to chain")
+        .about("Set package limit")
         .arg(
             Arg::new("switch")
                 .help("turn on/off")
@@ -125,6 +125,31 @@ where
         })
 }
 
+pub fn set_package_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+    where
+        Co: AdminBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("set-package-limit")
+        .about("Set package limit")
+        .arg(
+            Arg::new("package_limit")
+                .help("new package limit")
+                .required(true)
+                .validator(str::parse::<u64>),
+        )
+        .handler(|_cmd, m, ctx| {
+            let package_limit = m.value_of("package_limit").unwrap().parse::<u64>()?;
+            let admin_signer = ctx.current_account()?;
+            let tx_hash = ctx.rt.block_on(async {
+                ctx.controller
+                    .set_package_limit(admin_signer, package_limit)
+                    .await
+            })??;
+            println!("{}", tx_hash.display());
+            Ok(())
+        })
+}
+
 pub fn admin_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: AdminBehaviour,
@@ -137,5 +162,9 @@ where
             update_validators(),
             set_block_interval(),
             emergency_brake(),
+            set_package_limit(),
         ])
 }
+
+
+

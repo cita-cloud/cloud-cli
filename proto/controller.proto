@@ -26,6 +26,10 @@ message SystemConfig {
     bytes block_interval_pre_hash = 10;
     bytes validators_pre_hash = 11;
     bytes emergency_brake_pre_hash = 12;
+    uint32 package_limit = 13;
+    bytes package_limit_pre_hash = 14;
+    uint32 block_limit = 15;
+    bytes block_limit_pre_hash = 16;
 }
 
 message SoftwareVersion {
