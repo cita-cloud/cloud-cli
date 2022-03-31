@@ -18,6 +18,8 @@ SUBCOMMANDS:
     update-validators     Update validators of the chain
     set-block-interval    Set block interval
     emergency-brake       Send emergency brake cmd to chain
+    set-package-limit     Set package limit
+    set-block-limit       Set block limit
     help                  Print this message or the help of the given subcommand(s)
 ```
 
