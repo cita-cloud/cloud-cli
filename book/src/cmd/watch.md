@@ -34,4 +34,6 @@ cldi> watch --until 100
 cldi> watch --begin 0 --end 10
 # 从当前块高-10到当前块高+10
 cldi> watch --begin -10 --end +10
+# 使用缩写
+cldi> w --begin -10 --end +10 --until 100
 ```

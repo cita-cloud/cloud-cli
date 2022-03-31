@@ -29,3 +29,24 @@ SUBCOMMANDS:
     block-number     Get block number
     help             Print this message or the help of the given subcommand(s)
 ```
+
+## blcok-number
+
+获取节点当前已确认的块高。
+```bash
+cldi> get block-number
+cldi> g bn
+```
+
+获取尚未确认的块高。
+```bash
+cldi> get block-number -p
+```
+
+## receipt
+
+获取EVM执行后的交易回执，注意它和get-tx不同，get-tx获取的是交易数据。
+```bash
+cldi> get receipt 0x8efa5acafdb1a48de23231444d7f28c64d22ebe17a5889a08aeeb3bdd7303197
+cldi> g r 0x8efa5acafdb1a48de23231444d7f28c64d22ebe17a5889a08aeeb3bdd7303197
+```

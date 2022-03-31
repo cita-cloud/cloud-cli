@@ -464,7 +464,9 @@ impl MaybeLocked {
     pub fn unlocked(&self) -> Result<&MultiCryptoAccount> {
         match self {
             Self::Unlocked(ac) => Ok(ac),
-            Self::Locked(_) => bail!("account is locked, please unlock it first"),
+            Self::Locked(_) => bail!(
+                "account is locked, please unlock it first(e.g. `cldi -p <password> [subcommand]`)"
+            ),
         }
     }
 
@@ -604,59 +606,114 @@ impl Wallet {
         Ok(())
     }
 
-    fn save_to_keystore(
-        wallet_dir: impl AsRef<Path>,
-        account_name: &str,
-        maybe_locked: &MaybeLocked,
-        override_existing: bool,
-    ) -> Result<()> {
-        let wallet_dir = wallet_dir.as_ref();
-        let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
-        let account_file = accounts_dir.join(format!("{account_name}.toml"));
-
-        let content = toml::to_string_pretty(&maybe_locked)?;
-        safe_save(account_file, content.as_bytes(), override_existing)?;
-        Ok(())
+    pub fn get(&self, account_name: &str) -> Result<&MaybeLocked> {
+        self.accounts
+            .get(account_name)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_name))
     }
 
+    pub fn list(&self) -> impl Iterator<Item = (&String, &MaybeLocked)> {
+        self.accounts.iter()
+    }
+
+    /// Save account both in memory and to keystore.
+    /// Return error if the account file already exists.
     pub fn save(
         &mut self,
         account_name: String,
         maybe_locked: impl Into<MaybeLocked>,
     ) -> Result<()> {
         let maybe_locked = maybe_locked.into();
-        Self::save_to_keystore(&self.wallet_dir, &account_name, &maybe_locked, false)?;
+        Self::save_account_to_keystore(&self.wallet_dir, &account_name, &maybe_locked, false)?;
         self.accounts.insert(account_name, maybe_locked);
         Ok(())
     }
 
-    pub fn save_override(
+    /// Same as [`save_to_keystore`], but overwrites existing account file.
+    pub fn save_overwrite(
         &mut self,
         account_name: String,
         maybe_locked: impl Into<MaybeLocked>,
     ) -> Result<()> {
         let maybe_locked = maybe_locked.into();
-        Self::save_to_keystore(&self.wallet_dir, &account_name, &maybe_locked, true)?;
+        Self::save_account_to_keystore(&self.wallet_dir, &account_name, &maybe_locked, true)?;
         self.accounts.insert(account_name, maybe_locked);
         Ok(())
     }
 
-    pub fn get(&self, account_name: &str) -> Option<&MaybeLocked> {
-        self.accounts.get(account_name)
+    /// Save account in memory without writing to keystore.
+    /// If an account with the same name exists, that will be replaced.
+    /// Use [`save`] or [`save_overwrite`] if you want to save account to keystore.
+    pub fn save_in_memory(&mut self, account_name: String, maybe_locked: impl Into<MaybeLocked>) {
+        let maybe_locked = maybe_locked.into();
+        self.accounts.insert(account_name, maybe_locked);
     }
 
-    pub fn lock(&mut self, account_name: &str, pw: &[u8]) -> Result<()> {
-        let (name, maybe_locked) = self
-            .accounts
-            .remove_entry(account_name)
-            .ok_or_else(|| anyhow!("account `{}` not found", account_name))?;
-        let locked: MaybeLocked = maybe_locked.lock(pw).into();
-        // FIXME: It's not secure. we should erase the original secret key file.
-        self.save_override(name, locked)?;
+    fn save_account_to_keystore(
+        wallet_dir: impl AsRef<Path>,
+        account_name: &str,
+        maybe_locked: &MaybeLocked,
+        overwrite_existing: bool,
+    ) -> Result<()> {
+        let wallet_dir = wallet_dir.as_ref();
+        let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
+        let account_file = accounts_dir.join(format!("{account_name}.toml"));
+
+        let content = toml::to_string_pretty(&maybe_locked)?;
+        safe_save(account_file, content.as_bytes(), overwrite_existing)?;
+        Ok(())
+    }
+
+    /// Remove account from both memory and keystore.
+    pub fn remove(&mut self, account_name: &str) -> Result<()> {
+        self.get(account_name)?;
+        Self::remove_account_from_keystore(&self.wallet_dir, account_name)?;
+        self.accounts.remove(account_name).unwrap();
 
         Ok(())
     }
 
+    // FIXME: It's not secure, secret key data may be still in the disk.
+    fn remove_account_from_keystore(
+        wallet_dir: impl AsRef<Path>,
+        account_name: &str,
+    ) -> Result<()> {
+        let wallet_dir = wallet_dir.as_ref();
+        let accounts_dir = wallet_dir.join(Self::ACCOUNTS_DIR);
+        let account_file = accounts_dir.join(format!("{account_name}.toml"));
+
+        fs::remove_file(account_file)?;
+        Ok(())
+    }
+
+    /// Lock the account in both memory and keystore.
+    pub fn lock(&mut self, account_name: &str, pw: &[u8]) -> Result<()> {
+        let (account_name, maybe_locked) = self
+            .accounts
+            .remove_entry(account_name)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_name))?;
+        let locked: MaybeLocked = maybe_locked.lock(pw).into();
+        self.save_overwrite(account_name, locked)?;
+
+        Ok(())
+    }
+
+    /// Lock the account in memory.
+    pub fn lock_in_memory(&mut self, account_name: &str, pw: &[u8]) -> Result<()> {
+        let (account_name, maybe_locked) = self
+            .accounts
+            .remove_entry(account_name)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_name))?;
+        let locked: MaybeLocked = maybe_locked.lock(pw).into();
+        self.save_in_memory(account_name, locked);
+
+        Ok(())
+    }
+
+    /// Unlock the account in memory. File in keystore is unchanged.
+    /// Usually wallet modification operations without in_memory suffix affects keystore,
+    /// but in common use cases, unlock is intended to unlock the account in memory.
+    /// So this is the only exception.
     pub fn unlock(&mut self, account_name: &str, pw: &[u8]) -> Result<()> {
         let maybe_locked = self
             .accounts
@@ -667,13 +724,14 @@ impl Wallet {
         Ok(())
     }
 
+    /// Unlock the account in both memory and keystore.
     pub fn unlock_in_keystore(&mut self, account_name: &str, pw: &[u8]) -> Result<()> {
-        self.unlock(account_name, pw)?;
-        let unlocked = self.accounts.get(account_name).unwrap();
-        Self::save_to_keystore(&self.wallet_dir, account_name, unlocked, true)
-    }
+        let maybe_locked = self
+            .accounts
+            .get_mut(account_name)
+            .ok_or_else(|| anyhow!("account `{}` not found", account_name))?;
+        *maybe_locked = maybe_locked.unlock(pw)?.into();
 
-    pub fn list(&self) -> impl Iterator<Item = (&String, &MaybeLocked)> {
-        self.accounts.iter()
+        Self::save_account_to_keystore(&self.wallet_dir, account_name, maybe_locked, true)
     }
 }

@@ -32,7 +32,6 @@ use crate::{
 
 pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("generate-account")
-        .aliases(&["gen", "g"])
         .about("generate a new account")
         .arg(
             Arg::new("name")
@@ -88,7 +87,6 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
 
 pub fn list_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("list")
-        .aliases(&["ls", "l"])
         .about("list accounts")
         .handler(|_cmd, _m, ctx| {
             let accounts = ctx
@@ -205,10 +203,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
             let name = m.value_of("name").unwrap();
             let pw = m.value_of("password").map(str::as_bytes);
 
-            let maybe_locked = ctx
-                .wallet
-                .get(name)
-                .ok_or_else(|| anyhow!("account `{}` not found", name))?;
+            let maybe_locked = ctx.wallet.get(name)?;
 
             let json = if let Some(pw) = pw {
                 let unlocked = maybe_locked.unlock(pw)?;
@@ -227,7 +222,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
 
 pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("unlock-account")
-        .about("unlock a account")
+        .about("unlock account in keystore")
         .arg(
             Arg::new("name")
                 .help("The name of the account")
@@ -236,34 +231,25 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         )
         .arg(
             Arg::new("password")
-                .help("The password to unlock the account")
+                .help("The password of the account")
                 .short('p')
                 .long("password")
                 .takes_value(true)
                 .required(true),
         )
-        .arg(
-            Arg::new("file")
-                .help("Unlock the account file in keystore")
-                .short('f')
-                .long("file"),
-        )
         .handler(|_cmd, m, ctx| {
             let name = m.value_of("name").unwrap();
             let pw = m.value_of("password").unwrap().as_bytes();
 
-            if m.is_present("file") {
-                ctx.wallet.unlock(name, pw)?;
-            } else {
-                ctx.wallet.unlock_in_keystore(name, pw)?;
-            }
+            ctx.wallet.unlock_in_keystore(name, pw)?;
+
             Ok(())
         })
 }
 
 pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("lock-account")
-        .about("lock a account")
+        .about("lock account in keystore")
         .arg(
             Arg::new("name")
                 .help("The name of the account")
@@ -288,16 +274,89 @@ pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
         })
 }
 
+pub fn delete_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
+    Command::<Context<Co, Ex, Ev>>::new("delete-account")
+        .about("delete account")
+        .arg(
+            Arg::new("name")
+                .help("The name of the account")
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("yes")
+                .help("Don't ask for confirmation")
+                .short('y')
+                .long("yes"),
+        )
+        .handler(|_cmd, m, ctx| {
+            let name = m.value_of("name").unwrap();
+            // If account doesn't exit, report it now.
+            ctx.wallet.get(name)?;
+            if !m.is_present("yes") {
+                let prompt = format!("Are you sure to delete the account `{name}`? (y/n) ");
+                loop {
+                    match ctx
+                        .editor
+                        .readline(&prompt)
+                        .map(|s| s.trim().to_ascii_lowercase())
+                    {
+                        Ok(s) if s == "yes" || s == "y" => break,
+                        Ok(s) if s == "no" || s == "n" => return Ok(()),
+                        // Ask again.
+                        Ok(_) => (),
+                        // Exits silently.
+                        _ => return Ok(()),
+                    };
+                }
+            }
+            ctx.wallet.remove(name)?;
+            println!("account `{name}` deleted");
+
+            Ok(())
+        })
+}
+
 pub fn account_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("account")
         .about("Account commands")
         .subcommand_required_else_help(true)
         .subcommands([
-            generate_account().name("generate"),
-            list_account().name("list"),
+            generate_account()
+                .name("generate")
+                .aliases(&["gen", "g", "create"]),
+            list_account().name("list").aliases(&["ls", "l"]),
             import_account().name("import"),
             export_account().name("export"),
             unlock_account().name("unlock"),
             lock_account().name("lock"),
+            delete_account()
+                .name("delete")
+                .aliases(&["del", "rm", "remove"]),
         ])
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    fn test_account_subcmds() {
+        let cldi_cmd = cldi_cmd();
+        let (mut ctx, _temp_dir) = context();
+
+        cldi_cmd
+            .exec_from(["cldi", "account", "list"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "generate", "--name", "test"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "export", "test"], &mut ctx)
+            .unwrap();
+        cldi_cmd
+            .exec_from(["cldi", "account", "delete", "test", "--yes"], &mut ctx)
+            .unwrap();
+    }
 }

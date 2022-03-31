@@ -112,12 +112,11 @@ fn main() -> Result<()> {
     // Enter interactive mode if no subcommand provided
     if m.subcommand().is_none() {
         // TODO: put editor into context
-        let mut rl = rustyline::Editor::<()>::new();
         loop {
-            let line = rl.readline("cldi> ");
+            let line = ctx.editor.readline("cldi> ");
             match line {
                 Ok(line) => {
-                    rl.add_history_entry(&line);
+                    ctx.editor.add_history_entry(&line);
 
                     let args = match shell_words::split(&line) {
                         Ok(args) => args,
