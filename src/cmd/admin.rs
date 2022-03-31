@@ -107,7 +107,7 @@ where
     Co: AdminBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("emergency-brake")
-        .about("Set package limit")
+        .about("Send emergency brake cmd to chain")
         .arg(
             Arg::new("switch")
                 .help("turn on/off")
@@ -126,8 +126,8 @@ where
 }
 
 pub fn set_package_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-    where
-        Co: AdminBehaviour,
+where
+    Co: AdminBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("set-package-limit")
         .about("Set package limit")
@@ -150,8 +150,8 @@ pub fn set_package_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, 
         })
 }
 pub fn set_block_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-    where
-        Co: AdminBehaviour,
+where
+    Co: AdminBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("set-block-limit")
         .about("Set block limit")
@@ -189,6 +189,3 @@ where
             set_block_limit(),
         ])
 }
-
-
-
