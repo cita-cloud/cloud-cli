@@ -1,7 +1,7 @@
 # cloud-cli
-[![CI](https://github.com/whfuyn/cloud-cli/actions/workflows/ci.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/ci.yaml)
-[![Book CI](https://github.com/whfuyn/cloud-cli/actions/workflows/book-ci.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/book-ci.yaml)
-[![Security Audit](https://github.com/whfuyn/cloud-cli/actions/workflows/audit.yaml/badge.svg)](https://github.com/whfuyn/cloud-cli/actions/workflows/audit.yaml)
+[![CI](https://github.com/cita-cloud/cloud-cli/actions/workflows/ci.yaml/badge.svg)](https://github.com/cita-cloud/cloud-cli/actions/workflows/ci.yaml)
+[![Book CI](https://github.com/cita-cloud/cloud-cli/actions/workflows/book-ci.yaml/badge.svg)](https://github.com/cita-cloud/cloud-cli/actions/workflows/book-ci.yaml)
+[![Security Audit](https://github.com/cita-cloud/cloud-cli/actions/workflows/audit.yaml/badge.svg)](https://github.com/cita-cloud/cloud-cli/actions/workflows/audit.yaml)
 
 `CITA-Cloud`命令行工具。
 
@@ -12,7 +12,7 @@
 ### 直接下载预编译的二进制文件
 
 cldi有预编译好的二进制可执行文件，可以根据使用环境下载对应的文件。
-https://github.com/whfuyn/cloud-cli/releases
+https://github.com/cita-cloud/cloud-cli/releases
 
 如果你不知道如何选择，那么一般来说:
 - cldi-x86_64-pc-windows-msvc.zip，如果你是在Windows下
@@ -265,3 +265,5 @@ cldi> send 0xf064e32407b6cc412fe33f6ba55f578ac413ecdc 0x4f2be91f
 cldi> call 0xf064e32407b6cc412fe33f6ba55f578ac413ecdc 0x06661abd
 0x0000000000000000000000000000000000000000000000000000000000000001
 ```
+
+更详细的文档参见[cloud-cli book](https://cita-cloud.github.io/cloud-cli/)。
