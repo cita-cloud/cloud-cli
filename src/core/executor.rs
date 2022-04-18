@@ -38,7 +38,7 @@ impl ExecutorBehaviour for ExecutorClient {
             // `executor_chaincode` uses args[0] for payload.
             // But since no one uses chaincode, we may just use the evm's convention.
             method: data,
-            args: vec![],
+            args: Vec::new(),
         };
 
         ExecutorClient::call(&mut self.clone(), req)

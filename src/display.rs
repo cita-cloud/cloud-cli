@@ -21,8 +21,8 @@ use crate::{
     crypto::{Address, Hash},
     proto::{
         blockchain::{
-            raw_transaction::Tx, CompactBlock, RawTransaction, Transaction, UnverifiedTransaction,
-            UnverifiedUtxoTransaction, UtxoTransaction, Witness,
+            raw_transaction::Tx, Block, CompactBlock, RawTransaction, Transaction,
+            UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction, Witness,
         },
         common::{NodeInfo, TotalNodeInfo},
         controller::SystemConfig,
@@ -90,7 +90,7 @@ impl Display for CompactBlock {
     fn to_json(&self) -> Json {
         let tx_hashes = match self.body.as_ref() {
             Some(body) => body.tx_hashes.iter().map(|h| hex(h)).collect(),
-            None => vec![],
+            None => Vec::new(),
         };
 
         match &self.header {
@@ -101,6 +101,31 @@ impl Display for CompactBlock {
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": tx_hashes.len(),
                     "tx_hashes": tx_hashes,
+                    "timestamp": display_time(header.timestamp),
+                    "transaction_root": hex(&header.transactions_root),
+                    "proposer": hex(&header.proposer),
+                })
+            }
+            None => json!({}),
+        }
+    }
+}
+
+impl Display for Block {
+    fn to_json(&self) -> Json {
+        let raw_transactions = match self.body.as_ref() {
+            Some(body) => body.body.iter().map(|t| t.to_json()).collect(),
+            None => Vec::new(),
+        };
+
+        match &self.header {
+            Some(header) => {
+                json!({
+                    "version": self.version,
+                    "height": header.height,
+                    "prev_hash": hex(&header.prevhash),
+                    "tx_count": raw_transactions.len(),
+                    "raw_transactions": raw_transactions,
                     "timestamp": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
@@ -192,6 +217,26 @@ impl Display for Witness {
             "signature": hex(&self.signature),
             "sender": hex(&self.sender),
         })
+    }
+}
+
+impl Display for RawTransaction {
+    fn to_json(&self) -> Json {
+        match &self.tx {
+            Some(Tx::NormalTx(tx)) => {
+                json!({
+                    "type": "Normal",
+                    "transaction": tx.to_json()
+                })
+            }
+            Some(Tx::UtxoTx(utxo)) => {
+                json!({
+                    "type": "Utxo",
+                    "transaction": utxo.to_json()
+                })
+            }
+            None => json!({}),
+        }
     }
 }
 

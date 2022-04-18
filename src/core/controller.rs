@@ -23,9 +23,9 @@ use tonic::transport::Channel;
 use crate::crypto::{ArrayLike, Hash};
 use crate::proto::{
     blockchain::{
-        raw_transaction::Tx, CompactBlock, RawTransaction, Transaction as CloudNormalTransaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction as CloudUtxoTransaction,
-        Witness,
+        raw_transaction::Tx, Block, CompactBlock, RawTransaction,
+        Transaction as CloudNormalTransaction, UnverifiedTransaction, UnverifiedUtxoTransaction,
+        UtxoTransaction as CloudUtxoTransaction, Witness,
     },
     common::{Empty, Hash as CloudHash, NodeNetInfo, TotalNodeInfo},
     controller::{BlockNumber, Flag, SystemConfig},
@@ -47,6 +47,9 @@ pub trait ControllerBehaviour {
 
     async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
     async fn get_block_by_hash(&self, hash: Hash) -> Result<CompactBlock>;
+
+    async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
+    async fn get_block_detail_by_hash(&self, hash: Hash) -> Result<Block>;
 
     async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
     async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64>;
@@ -117,6 +120,25 @@ impl ControllerBehaviour for ControllerClient {
             hash: hash.to_vec(),
         };
         let resp = ControllerClient::get_block_by_hash(&mut self.clone(), hash)
+            .await?
+            .into_inner();
+
+        Ok(resp)
+    }
+
+    async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block> {
+        let block_number = BlockNumber { block_number };
+        let resp = ControllerClient::get_block_detail_by_number(&mut self.clone(), block_number)
+            .await?
+            .into_inner();
+
+        Ok(resp)
+    }
+
+    async fn get_block_detail_by_hash(&self, hash: Hash) -> Result<Block> {
+        let block_number = self.get_block_by_hash(hash).await?.header.unwrap().height;
+        let block_number = BlockNumber { block_number };
+        let resp = ControllerClient::get_block_detail_by_number(&mut self.clone(), block_number)
             .await?
             .into_inner();
 

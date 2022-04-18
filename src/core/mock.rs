@@ -21,7 +21,7 @@ use crate::{
     core::wallet::Account,
     crypto::{Address, Hash, SmCrypto},
     proto::{
-        blockchain::{CompactBlock, RawTransaction},
+        blockchain::{Block, CompactBlock, RawTransaction},
         common::TotalNodeInfo,
         controller::SystemConfig,
         evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
@@ -50,6 +50,9 @@ mock! {
 
         async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
         async fn get_block_by_hash(&self, hash: Hash) -> Result<CompactBlock>;
+
+        async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
+        async fn get_block_detail_by_hash(&self, hash: Hash) -> Result<Block>;
 
         async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
         async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64>;
