@@ -20,15 +20,15 @@ use crate::{
     config::Config,
     core::wallet::Account,
     crypto::{Address, Hash, SmCrypto},
-    proto::{
-        blockchain::{Block, CompactBlock, RawTransaction},
-        common::TotalNodeInfo,
-        controller::SystemConfig,
-        evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
-        executor::CallResponse,
-    },
 };
 use anyhow::Result;
+use cita_cloud_proto::{
+    blockchain::{Block, CompactBlock, RawTransaction},
+    common::TotalNodeInfo,
+    controller::SystemConfig,
+    evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
+    executor::CallResponse,
+};
 use mockall::mock;
 use std::time::Duration;
 use tempfile::tempdir;

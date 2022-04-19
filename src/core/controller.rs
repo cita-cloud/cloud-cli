@@ -21,7 +21,7 @@ use prost::Message;
 use tonic::transport::Channel;
 
 use crate::crypto::{ArrayLike, Hash};
-use crate::proto::{
+use cita_cloud_proto::{
     blockchain::{
         raw_transaction::Tx, Block, CompactBlock, RawTransaction,
         Transaction as CloudNormalTransaction, UnverifiedTransaction, UnverifiedUtxoTransaction,
@@ -31,7 +31,8 @@ use crate::proto::{
     controller::{BlockNumber, Flag, SystemConfig},
 };
 
-pub type ControllerClient = crate::proto::controller::rpc_service_client::RpcServiceClient<Channel>;
+pub type ControllerClient =
+    cita_cloud_proto::controller::rpc_service_client::RpcServiceClient<Channel>;
 
 #[tonic::async_trait]
 pub trait ControllerBehaviour {

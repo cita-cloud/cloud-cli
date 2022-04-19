@@ -12,25 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::{
+    crypto::{Address, Hash},
+    utils::{display_time, hex},
+};
+use cita_cloud_proto::{
+    blockchain::{
+        raw_transaction::Tx, Block, CompactBlock, RawTransaction, Transaction,
+        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction, Witness,
+    },
+    common::{NodeInfo, TotalNodeInfo},
+    controller::SystemConfig,
+    evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
+    executor::CallResponse,
+};
 use serde_json::json;
 use serde_json::map::Map;
 use serde_json::Value as Json;
 use tentacle_multiaddr::{Multiaddr, Protocol};
-
-use crate::{
-    crypto::{Address, Hash},
-    proto::{
-        blockchain::{
-            raw_transaction::Tx, Block, CompactBlock, RawTransaction, Transaction,
-            UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction, Witness,
-        },
-        common::{NodeInfo, TotalNodeInfo},
-        controller::SystemConfig,
-        evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
-        executor::CallResponse,
-    },
-    utils::{display_time, hex},
-};
 
 pub trait Display {
     fn to_json(&self) -> Json;

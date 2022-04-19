@@ -19,11 +19,11 @@ use tonic::transport::Channel;
 use super::controller::{SignerBehaviour, TransactionSenderBehaviour};
 use crate::{
     crypto::{Address, ArrayLike, Hash},
-    proto::{
-        common::{Address as CloudAddress, Hash as CloudHash},
-        evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
-    },
     utils::parse_addr,
+};
+use cita_cloud_proto::{
+    common::{Address as CloudAddress, Hash as CloudHash},
+    evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
 };
 
 // TODO: use constant array for these constant to avoid runtime parsing.
@@ -47,7 +47,7 @@ mod constant {
     pub const AMEND_BALANCE: &str = "0x05";
 }
 
-pub type EvmClient = crate::proto::evm::rpc_service_client::RpcServiceClient<Channel>;
+pub type EvmClient = cita_cloud_proto::evm::rpc_service_client::RpcServiceClient<Channel>;
 
 #[tonic::async_trait]
 pub trait EvmBehaviour {
