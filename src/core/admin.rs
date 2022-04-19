@@ -73,7 +73,7 @@ where
         S: SignerBehaviour + Send + Sync,
     {
         let output = {
-            let mut output = vec![];
+            let mut output = Vec::new();
             validators
                 .iter()
                 .for_each(|v| output.extend_from_slice(v.as_slice()));
@@ -89,7 +89,7 @@ where
     where
         S: SignerBehaviour + Send + Sync,
     {
-        let output = if switch { vec![0] } else { vec![] };
+        let output = if switch { vec![0] } else { Vec::new() };
         self.send_utxo(admin_signer, output, UtxoType::EmergencyBrake)
             .await
             .context("failed to send `emergency_brake` utxo")

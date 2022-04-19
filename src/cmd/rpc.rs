@@ -182,7 +182,7 @@ where
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
-                let to = vec![];
+                let to = Vec::new();
                 let data = parse_data(m.value_of("data").unwrap())?;
                 let value = parse_value(m.value_of("value").unwrap())?.to_vec();
                 let quota = m.value_of("quota").unwrap().parse::<u64>()?;
@@ -236,6 +236,7 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-block")
         .about("Get block by block height or hash(0x)")
+        .arg(Arg::new("detail").long("detail").short('d').help("with transaction details"))
         .arg(
             Arg::new("height_or_hash")
                 .help("plain decimal number or hash with `0x` prefix")
@@ -252,15 +253,28 @@ where
         )
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("height_or_hash").unwrap();
-            let block = if s.starts_with("0x") {
-                let hash = parse_hash(s)?;
-                ctx.rt.block_on(ctx.controller.get_block_by_hash(hash))??
-            } else {
-                let height = s.parse()?;
-                ctx.rt.block_on(ctx.controller.get_block_by_number(height))??
-            };
+            let d = m.is_present("detail");
+            if d {
+                let block = if s.starts_with("0x") {
+                    let hash = parse_hash(s)?;
+                    ctx.rt.block_on(ctx.controller.get_block_detail_by_hash(hash))??
+                } else {
+                    let height = s.parse()?;
+                    ctx.rt.block_on(ctx.controller.get_block_detail_by_number(height))??
+                };
 
-            println!("{}", block.display());
+                println!("{}", block.display());
+            }  else {
+                let block = if s.starts_with("0x") {
+                    let hash = parse_hash(s)?;
+                    ctx.rt.block_on(ctx.controller.get_block_by_hash(hash))??
+                } else {
+                    let height = s.parse()?;
+                    ctx.rt.block_on(ctx.controller.get_block_by_number(height))??
+                };
+
+                println!("{}", block.display());
+            }
             Ok(())
         })
 }
