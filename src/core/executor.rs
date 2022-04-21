@@ -15,13 +15,11 @@
 use anyhow::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::{
-    crypto::{Address, ArrayLike},
-    proto::executor::{CallRequest, CallResponse},
-};
+use crate::crypto::{Address, ArrayLike};
+use cita_cloud_proto::executor::{CallRequest, CallResponse};
 
 pub type ExecutorClient =
-    crate::proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
+    cita_cloud_proto::executor::executor_service_client::ExecutorServiceClient<Channel>;
 
 #[tonic::async_trait]
 pub trait ExecutorBehaviour {

@@ -37,7 +37,8 @@ pub trait GrpcClientBehaviour: Sized {
         let addr = format!("http://{addr}");
         let ch = Endpoint::from_shared(addr)?
             .tcp_keepalive(TCP_KEEPALIVE.into())
-            .connect_lazy();
+            .connect_lazy()
+            .unwrap();
         Ok(Self::from_channel(ch))
     }
 

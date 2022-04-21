@@ -29,9 +29,9 @@ use crate::{
         context::Context,
         controller::{ControllerBehaviour, SignerBehaviour},
     },
-    proto::blockchain::Transaction,
     utils::{get_block_height_at, parse_addr, parse_data, parse_position, parse_value},
 };
+use cita_cloud_proto::blockchain::Transaction;
 
 pub fn bench_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where

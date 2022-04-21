@@ -195,7 +195,7 @@ mod tests {
     use crate::cmd::cldi_cmd;
     use crate::core::mock::context;
     use crate::crypto::Hash;
-    use crate::proto::controller::SystemConfig;
+    use cita_cloud_proto::controller::SystemConfig;
 
     #[test]
     fn test_admin_subcmds() {

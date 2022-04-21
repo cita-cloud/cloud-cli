@@ -18,7 +18,6 @@ mod core;
 mod crypto;
 mod display;
 mod legacy;
-mod proto;
 mod utils;
 
 use anyhow::Result;
