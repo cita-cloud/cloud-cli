@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
-/// This crypto impl must be compatible with `kms_eth` to work with it.
-use tiny_keccak::{Hasher, Keccak};
-
+use super::{Address, Crypto, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
+use ctr::cipher::{KeyIvInit, StreamCipher};
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::Message;
 use secp256k1::PublicKey as RawPublicKey;
 use secp256k1::Secp256k1;
 use secp256k1::SecretKey as RawSecretKey;
-
-use ctr::cipher::{NewCipher, StreamCipher};
-
-use super::{Address, Crypto, Hash, ADDR_BYTES_LEN, HASH_BYTES_LEN};
+/// Please refer to [kms_eth](https://github.com/cita-cloud/kms_eth).
+/// This crypto impl must be compatible with `kms_eth` to work with it.
+///
+use tiny_keccak::{Hasher, Keccak};
 
 pub const PUBLIC_KEY_BYTES_LEN: usize = 64;
 pub type PublicKey = [u8; PUBLIC_KEY_BYTES_LEN];
@@ -66,7 +64,7 @@ fn aes(data: &[u8], pw: &[u8]) -> Vec<u8> {
 fn secp256k1_generate_secret_key() -> SecretKey {
     let mut rng = OsRng::new().expect("failed to get OsRng");
     let raw_sk = RawSecretKey::new(&mut rng);
-    raw_sk.serialize_secret()
+    raw_sk.secret_bytes()
 }
 
 fn secp256k1_sk2pk(sk: &SecretKey) -> PublicKey {

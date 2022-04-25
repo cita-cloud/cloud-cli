@@ -32,10 +32,10 @@ tempfile = "3.3"
 libsm = "0.4.0"
 efficient-sm2 = "0.1.5"
 # crypto ETH
-aes = "0.7"
-ctr = "0.8"
+aes = "0.8"
+ctr = "0.9"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.21", features = ["rand-std", "recovery"] }
+secp256k1 = { version = "0.22", features = ["rand-std", "recovery"] }
 # ethabi cli
 ethabi = "17.0"
 sha3 = "0.10"
