@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
@@ -29,7 +29,7 @@ parking_lot = "0.12"
 crossbeam = "0.8"
 tempfile = "3.3"
 # crypto SM
-libsm = "0.4.0"
+libsm = "0.5.0"
 efficient-sm2 = "0.1.5"
 # crypto ETH
 aes = "0.8"

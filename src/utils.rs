@@ -15,16 +15,14 @@
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::anyhow;
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{anyhow, bail, Context, Result};
 use crossbeam::atomic::AtomicCell;
 use tempfile::NamedTempFile;
 use time::UtcOffset;
 
 use crate::{
     core::controller::ControllerBehaviour,
-    crypto::{Address, ArrayLike, Crypto, Hash},
+    crypto::{Address, ArrayLike, Crypto, Hash, ADDR_BYTES_LEN, BLS_ADDR_BYTES_LEN},
 };
 
 // Use an Option because UtcOffset::from_hms returns a Result
@@ -34,6 +32,15 @@ static LOCAL_UTC_OFFSET: AtomicCell<Option<UtcOffset>> = AtomicCell::new(None);
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
     Address::try_from_slice(&input)
+}
+
+pub fn parse_validator_addr(s: &str) -> Result<Vec<u8>> {
+    let input = parse_data(s)?;
+    if input.len() == BLS_ADDR_BYTES_LEN || input.len() == ADDR_BYTES_LEN {
+        Ok(input)
+    } else {
+        bail!("Invalid length of validator address: {}", input.len());
+    }
 }
 
 pub fn parse_pk<C: Crypto>(s: &str) -> Result<C::PublicKey> {

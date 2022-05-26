@@ -43,18 +43,17 @@ pub fn sm3_hash(input: &[u8]) -> Hash {
 pub fn sm4_encrypt(plaintext: &[u8], password: &[u8]) -> Vec<u8> {
     let pw_hash = sm3_hash(password);
     let (key, iv) = pw_hash.split_at(16);
-    let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb);
+    let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb).unwrap();
 
-    cipher.encrypt(plaintext, iv)
+    cipher.encrypt(plaintext, iv).unwrap()
 }
 
 pub fn sm4_decrypt(ciphertext: &[u8], password: &[u8]) -> Option<Vec<u8>> {
     let pw_hash = sm3_hash(password);
     let (key, iv) = pw_hash.split_at(16);
-    let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb);
+    let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb).unwrap();
 
-    // This will panic on a wrong password, so catch it.
-    std::panic::catch_unwind(|| cipher.decrypt(ciphertext, iv)).ok()
+    cipher.decrypt(ciphertext, iv).ok()
 }
 
 pub fn sm2_generate_secret_key() -> SecretKey {
