@@ -18,9 +18,8 @@ use clap::Arg;
 use crate::{
     cmd::Command,
     core::{admin::AdminBehaviour, context::Context},
-    crypto::Address,
     display::Display,
-    utils::parse_addr,
+    utils::{parse_addr, parse_validator_addr},
 };
 
 pub fn update_admin<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -59,14 +58,14 @@ where
                 .help("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
                 .multiple_values(true)
-                .validator(parse_addr)
+                .validator(parse_validator_addr)
         )
         .handler(|_cmd, m, ctx| {
             let validators = m
                 .values_of("validators")
                 .unwrap()
-                .map(parse_addr)
-                .collect::<Result<Vec<Address>>>()?;
+                .map(parse_validator_addr)
+                .collect::<Result<Vec<Vec<u8>>>>()?;
 
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {

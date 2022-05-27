@@ -27,7 +27,7 @@ pub trait AdminBehaviour {
     async fn set_block_interval<S>(&self, admin_signer: &S, block_interval: u32) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
-    async fn update_validators<S>(&self, admin_signer: &S, validators: &[Address]) -> Result<Hash>
+    async fn update_validators<S>(&self, admin_signer: &S, validators: &[Vec<u8>]) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
     async fn emergency_brake<S>(&self, admin_signer: &S, switch: bool) -> Result<Hash>
@@ -68,7 +68,7 @@ where
             .context("failed to send `set_block_interval` utxo")
     }
 
-    async fn update_validators<S>(&self, admin_signer: &S, validators: &[Address]) -> Result<Hash>
+    async fn update_validators<S>(&self, admin_signer: &S, validators: &[Vec<u8>]) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
