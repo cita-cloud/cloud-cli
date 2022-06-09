@@ -57,7 +57,7 @@ ARGS:
     <abi>
 
 OPTIONS:
-    -q, --quota <quota>                the quota of this tx [default: 3000000]
+    -q, --quota <quota>                the quota of this tx [default: 1073741824]
         --until <valid-until-block>    this tx is valid until the given block height. `+h` means
                                        `<current-height> + h` [default: +95]
     -h, --help                         Print help information
