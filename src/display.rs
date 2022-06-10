@@ -169,7 +169,7 @@ impl Display for SystemConfig {
             "admin": hex(&self.admin),
             "block_interval": self.block_interval,
             "block_limit": self.block_limit,
-            "package_limit": self.package_limit,
+            "quota_limit": self.quota_limit,
             "validators": validators,
             "emergency_brake": self.emergency_brake,
             "version_pre_hash": hex(&self.version_pre_hash),
@@ -179,7 +179,7 @@ impl Display for SystemConfig {
             "validators_pre_hash": hex(&self.validators_pre_hash),
             "emergency_brake_pre_hash": hex(&self.emergency_brake_pre_hash),
             "block_limit_pre_hash": hex(&self.block_limit_pre_hash),
-            "package_limit_pre_hash": hex(&self.package_limit_pre_hash),
+            "quota_limit_pre_hash": hex(&self.quota_limit_pre_hash),
         })
     }
 }

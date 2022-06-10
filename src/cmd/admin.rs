@@ -124,24 +124,24 @@ where
         })
 }
 
-pub fn set_package_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+pub fn set_quota_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: AdminBehaviour,
 {
-    Command::<Context<Co, Ex, Ev>>::new("set-package-limit")
-        .about("Set package limit")
+    Command::<Context<Co, Ex, Ev>>::new("set-quota-limit")
+        .about("Set quota limit")
         .arg(
-            Arg::new("package_limit")
-                .help("new package limit")
+            Arg::new("quota_limit")
+                .help("new quota limit")
                 .required(true)
                 .validator(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
-            let package_limit = m.value_of("package_limit").unwrap().parse::<u64>()?;
+            let quota_limit = m.value_of("quota_limit").unwrap().parse::<u64>()?;
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
-                    .set_package_limit(admin_signer, package_limit)
+                    .set_quota_limit(admin_signer, quota_limit)
                     .await
             })??;
             println!("{}", tx_hash.display());
@@ -184,7 +184,7 @@ where
             update_validators(),
             set_block_interval(),
             emergency_brake(),
-            set_package_limit(),
+            set_quota_limit(),
             set_block_limit(),
         ])
 }

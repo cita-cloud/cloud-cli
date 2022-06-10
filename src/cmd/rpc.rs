@@ -106,7 +106,7 @@ where
                 .short('q')
                 .long("quota")
                 .takes_value(true)
-                .default_value("3000000")
+                .default_value("1073741824")
                 .validator(str::parse::<u64>),
         )
         .arg(
@@ -169,7 +169,7 @@ where
                 .short('q')
                 .long("quota")
                 .takes_value(true)
-                .default_value("3000000")
+                .default_value("1073741824")
                 .validator(str::parse::<u64>),
         )
         .arg(

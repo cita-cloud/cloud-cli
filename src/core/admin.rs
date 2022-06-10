@@ -33,7 +33,7 @@ pub trait AdminBehaviour {
     async fn emergency_brake<S>(&self, admin_signer: &S, switch: bool) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
-    async fn set_package_limit<S>(&self, admin_signer: &S, package_limit: u64) -> Result<Hash>
+    async fn set_quota_limit<S>(&self, admin_signer: &S, quota_limit: u64) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync;
     async fn set_block_limit<S>(&self, admin_signer: &S, block_limit: u64) -> Result<Hash>
@@ -95,14 +95,14 @@ where
             .context("failed to send `emergency_brake` utxo")
     }
 
-    async fn set_package_limit<S>(&self, admin_signer: &S, package_limit: u64) -> Result<Hash>
+    async fn set_quota_limit<S>(&self, admin_signer: &S, quota_limit: u64) -> Result<Hash>
     where
         S: SignerBehaviour + Send + Sync,
     {
-        let output = package_limit.to_be_bytes().to_vec();
-        self.send_utxo(admin_signer, output, UtxoType::PackageLimit)
+        let output = quota_limit.to_be_bytes().to_vec();
+        self.send_utxo(admin_signer, output, UtxoType::QuotaLimit)
             .await
-            .context("failed to send `set_package_limit` utxo")
+            .context("failed to send `set_quota_limit` utxo")
     }
 
     async fn set_block_limit<S>(&self, admin_signer: &S, block_limit: u64) -> Result<Hash>
@@ -112,6 +112,6 @@ where
         let output = block_limit.to_be_bytes().to_vec();
         self.send_utxo(admin_signer, output, UtxoType::BlockLimit)
             .await
-            .context("failed to send `set_package_limit` utxo")
+            .context("failed to send `set_block_limit` utxo")
     }
 }
