@@ -128,6 +128,7 @@ impl Display for Block {
                     "timestamp": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
+                    "proof": hex(&self.proof),
                 })
             }
             None => json!({}),
