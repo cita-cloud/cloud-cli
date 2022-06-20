@@ -335,13 +335,18 @@ where
             let s = m.value_of("tx_hash").unwrap();
             let tx_hash = parse_hash(s)?;
             let c = &ctx.controller;
-            let tx_with_index = ctx.rt.block_on(async move {
-                try_join!(
-                    c.get_tx(tx_hash),
-                    c.get_tx_block_number(tx_hash),
-                    c.get_tx_index(tx_hash),
-                )
-            })??;
+
+            let tx = ctx
+                .rt
+                .block_on(c.get_tx(tx_hash))?
+                .map_err(|e| println!("{e}"))
+                .unwrap();
+            let tx_with_index = match ctx.rt.block_on(async move {
+                try_join!(c.get_tx_block_number(tx_hash), c.get_tx_index(tx_hash),)
+            })? {
+                Ok(info) => (tx, info.0, info.1),
+                Err(_) => (tx, u64::MAX, u64::MAX),
+            };
 
             println!("{}", tx_with_index.display());
 
