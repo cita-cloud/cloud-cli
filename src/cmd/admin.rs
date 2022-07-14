@@ -191,6 +191,7 @@ where
 
 #[cfg(test)]
 mod tests {
+
     use crate::cmd::cldi_cmd;
     use crate::core::mock::context;
     use crate::crypto::Hash;

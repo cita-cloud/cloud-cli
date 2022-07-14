@@ -6,6 +6,8 @@ on:
 env:
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: 1
+  PROTOC_NO_VENDOR: 1
+
 jobs:
   publish-release:
     name: Publish Release
@@ -50,6 +52,11 @@ jobs:
 
       - name: Checkout Repository
         uses: actions/checkout@v2
+
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build release binary
         uses: actions-rs/cargo@v1
