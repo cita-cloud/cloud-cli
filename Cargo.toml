@@ -10,8 +10,8 @@ clap_complete = "3.1"
 hex = "0.4"
 tokio = { version = "1.6", features = ["full"] }
 rand = "0.8"
-tonic = "0.5"
-prost = "0.8"
+tonic = "0.7"
+prost = "0.10"
 time = { version = "0.3.5", features = ["formatting", "local-offset"] }
 serde = "1.0"
 serde_json = "1.0"
@@ -46,7 +46,7 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "0.7"
 
 [dev-dependencies]
 mockall = "0.11"

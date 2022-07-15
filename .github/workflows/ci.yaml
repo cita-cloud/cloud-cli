@@ -17,6 +17,8 @@ on:
 env:
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: 1
+  PROTOC_NO_VENDOR: 1
+
 jobs:
   rustfmt:
     name: rustfmt
@@ -24,6 +26,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -43,6 +49,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -64,6 +74,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -84,6 +98,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
