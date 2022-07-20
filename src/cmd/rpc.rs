@@ -17,6 +17,7 @@ use clap::Arg;
 use std::net::IpAddr;
 use tokio::try_join;
 
+use crate::utils::parse_u64;
 use crate::{
     cmd::{evm::store_abi, Command},
     core::{
@@ -57,6 +58,13 @@ where
                 .takes_value(true)
                 .validator(parse_data),
         )
+        .arg(
+            Arg::new("height")
+                .help("the height of this call request")
+                .required(false)
+                .takes_value(true)
+                .validator(parse_u64),
+        )
         .handler(|_cmd, m, ctx| {
             let from = match m.value_of("from") {
                 Some(from) => parse_addr(from).unwrap(),
@@ -64,8 +72,15 @@ where
             };
             let to = parse_addr(m.value_of("to").unwrap())?;
             let data = parse_data(m.value_of("data").unwrap())?;
+            let height = parse_u64(if let Some(height) = m.value_of("height") {
+                height
+            } else {
+                "0"
+            })?;
 
-            let resp = ctx.rt.block_on(ctx.executor.call(from, to, data))??;
+            let resp = ctx
+                .rt
+                .block_on(ctx.executor.call(from, to, data, height))??;
             println!("{}", resp.display());
             Ok(())
         })

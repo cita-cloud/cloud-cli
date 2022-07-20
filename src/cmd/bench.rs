@@ -29,7 +29,7 @@ use crate::{
         context::Context,
         controller::{ControllerBehaviour, SignerBehaviour},
     },
-    utils::{get_block_height_at, parse_addr, parse_data, parse_position, parse_value},
+    utils::{get_block_height_at, parse_addr, parse_data, parse_position, parse_u64, parse_value},
 };
 use cita_cloud_proto::blockchain::Transaction;
 
@@ -289,6 +289,14 @@ where
                 .takes_value(true)
                 .validator(parse_data),
         )
+        .arg(
+            Arg::new("height")
+                .help("the height for the call request. Default ro current height")
+                .required(false)
+                .long("height")
+                .takes_value(true)
+                .validator(parse_u64),
+        )
         .handler(|_cmd, m, ctx| {
             let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
             let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
@@ -314,8 +322,12 @@ where
                     Some(to) => parse_data(to).unwrap(),
                     None => rng.gen::<[u8; 32]>().to_vec(),
                 };
+                let height = match m.value_of("height") {
+                    Some(height) => parse_u64(height).unwrap(),
+                    None => 0,
+                };
 
-                let workload_builder = || (from, to, data);
+                let workload_builder = || (from, to, data, height);
 
                 // Connection builder
                 let executor_addr = ctx.current_executor_addr();
@@ -328,8 +340,8 @@ where
                 };
 
                 // Work
-                let worker_fn = |client: Ex, (from, to, data)| async move {
-                    client.call(from, to, data).await.map(|_| ())
+                let worker_fn = |client: Ex, (from, to, data, height)| async move {
+                    client.call(from, to, data, height).await.map(|_| ())
                 };
 
                 // before fns

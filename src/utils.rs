@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::io::Write;
+use std::num::ParseIntError;
 use std::path::Path;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -28,6 +29,10 @@ use crate::{
 // Use an Option because UtcOffset::from_hms returns a Result
 // that cannot be unwraped in constant expr...
 static LOCAL_UTC_OFFSET: AtomicCell<Option<UtcOffset>> = AtomicCell::new(None);
+
+pub fn parse_u64(s: &str) -> Result<u64, ParseIntError> {
+    s.parse::<u64>()
+}
 
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
