@@ -23,12 +23,24 @@ pub type ExecutorClient =
 
 #[tonic::async_trait]
 pub trait ExecutorBehaviour {
-    async fn call(&self, from: Address, to: Address, data: Vec<u8>) -> Result<CallResponse>;
+    async fn call(
+        &self,
+        from: Address,
+        to: Address,
+        data: Vec<u8>,
+        height: u64,
+    ) -> Result<CallResponse>;
 }
 
 #[tonic::async_trait]
 impl ExecutorBehaviour for ExecutorClient {
-    async fn call(&self, from: Address, to: Address, data: Vec<u8>) -> Result<CallResponse> {
+    async fn call(
+        &self,
+        from: Address,
+        to: Address,
+        data: Vec<u8>,
+        height: u64,
+    ) -> Result<CallResponse> {
         let req = CallRequest {
             from: from.to_vec(),
             to: to.to_vec(),
@@ -37,6 +49,7 @@ impl ExecutorBehaviour for ExecutorClient {
             // But since no one uses chaincode, we may just use the evm's convention.
             method: data,
             args: Vec::new(),
+            height,
         };
 
         ExecutorClient::call(&mut self.clone(), req)
