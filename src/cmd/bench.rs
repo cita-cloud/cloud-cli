@@ -238,6 +238,13 @@ where
                 .await
             })??;
 
+            let end = match total {
+                0..=1000 => 10,
+                1001..=10000 => 20,
+                10001..=100000 => 30,
+                _ => total / 1000,
+            };
+
             if watch_blocks {
                 let watch_begin = watch_begin.load()
                     .expect("if bench has succeeded, watch begin should always exist. This is a bug, please contact with maintainers");
@@ -249,6 +256,8 @@ where
                         &watch_begin.to_string(),
                         "--until",
                         &total.to_string(),
+                        "--end",
+                        &format!("+{}", end),
                         ],
                         ctx
                     )
