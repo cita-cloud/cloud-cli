@@ -14,7 +14,6 @@
 
 use anyhow::Context as _;
 use clap::Arg;
-use std::net::IpAddr;
 use tokio::try_join;
 
 use crate::utils::parse_u64;
@@ -121,7 +120,7 @@ where
                 .short('q')
                 .long("quota")
                 .takes_value(true)
-                .default_value("1073741824")
+                .default_value("200000")
                 .validator(str::parse::<u64>),
         )
         .arg(
@@ -404,33 +403,20 @@ where
     Command::<Context<Co, Ex, Ev>>::new("add-node")
         .about("call add-node rpc")
         .arg(
-            Arg::new("host")
-                .help("the host of the new node")
-                .required(true),
-        )
-        .arg(
             Arg::new("port")
                 .help("the port of the new node")
                 .validator(str::parse::<u16>)
                 .required(true),
         )
-        .arg(Arg::new("tls").help("the domain name of the new node"))
+        .arg(
+            Arg::new("domain")
+                .help("the domain name of the new node")
+                .required(true),
+        )
         .handler(|_cmd, m, ctx| {
-            let host = m.value_of("host").unwrap();
             let port = m.value_of("port").unwrap().parse::<u64>().unwrap();
-            let tls = m.value_of("tls");
-
-            let ptcl = match host.parse::<std::net::IpAddr>() {
-                Ok(IpAddr::V4(_)) => "ip4",
-                Ok(IpAddr::V6(_)) => "ip6",
-                Err(_) => "dns4",
-            };
-
-            let multiaddr = if let Some(tls) = tls {
-                format!("/{ptcl}/{host}/tcp/{port}/tls/{tls}")
-            } else {
-                format!("/{ptcl}/{host}/tcp/{port}")
-            };
+            let domain = m.value_of("domain").unwrap();
+            let multiaddr = format!("/dns4/127.0.0.1/tcp/{port}/tls/{domain}");
 
             let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
             // https://github.com/cita-cloud/status_code

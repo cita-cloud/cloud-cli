@@ -100,7 +100,8 @@ impl Display for CompactBlock {
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": tx_hashes.len(),
                     "tx_hashes": tx_hashes,
-                    "timestamp": display_time(header.timestamp),
+                    "timestamp": header.timestamp,
+                    "time": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
                 })
