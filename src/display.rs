@@ -270,27 +270,28 @@ impl Display for NodeInfo {
         let mut info_pair = Map::new();
         info_pair.insert(
             String::from("address"),
-            Json::from(format!("0x{}", hex::encode(&self.address))),
+            Json::from(hex::encode(&self.address)),
         );
-        let net_info = self.net_info.as_ref().unwrap();
-        info_pair.insert(String::from("origin"), Json::from(net_info.origin));
-        let multi_address: Multiaddr = net_info.multi_address[..].parse().unwrap();
-        for ptcl in multi_address.iter() {
-            match ptcl {
-                Protocol::Dns4(host) => {
-                    info_pair.insert(String::from("host"), Json::from(host));
-                }
-                Protocol::Ip4(host) => {
-                    info_pair.insert(String::from("host"), Json::from(host.to_string()));
-                }
-                Protocol::Tcp(port) => {
-                    info_pair.insert(String::from("port"), Json::from(port));
-                }
-                Protocol::Tls(domain) => {
-                    info_pair.insert(String::from("domain"), Json::from(domain));
-                }
-                _ => panic!("multi address({:?}) can't parse", net_info.multi_address),
-            };
+        if let Some(net_info) = self.net_info.as_ref() {
+            info_pair.insert(String::from("origin"), Json::from(net_info.origin));
+            let multi_address: Multiaddr = net_info.multi_address[..].parse().unwrap();
+            for ptcl in multi_address.iter() {
+                match ptcl {
+                    Protocol::Dns4(host) => {
+                        info_pair.insert(String::from("host"), Json::from(host));
+                    }
+                    Protocol::Ip4(host) => {
+                        info_pair.insert(String::from("host"), Json::from(host.to_string()));
+                    }
+                    Protocol::Tcp(port) => {
+                        info_pair.insert(String::from("port"), Json::from(port));
+                    }
+                    Protocol::Tls(domain) => {
+                        info_pair.insert(String::from("domain"), Json::from(domain));
+                    }
+                    _ => panic!("multi address({:?}) can't parse", net_info.multi_address),
+                };
+            }
         }
         Json::from(info_pair)
     }
