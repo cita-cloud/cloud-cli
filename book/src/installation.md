@@ -5,7 +5,7 @@
 ## 直接下载预编译的二进制文件
 
 cldi有预编译好的二进制可执行文件，可以根据使用环境下载对应的文件。
-https://github.com/whfuyn/cloud-cli/releases
+[下载链接](https://github.com/cita-cloud/cloud-cli/releases)
 
 如果你不知道如何选择，那么一般来说:
 - cldi-x86_64-pc-windows-msvc.zip，如果你是在Windows下
@@ -36,7 +36,7 @@ $ rustup update
 可以通过GitHub安装。
 
 ```bash
-$ cargo install --git https://github.com/whfuyn/cloud-cli --branch main
+$ cargo install --git https://github.com/cita-cloud/cloud-cli --branch main
 ```
 
 也可以先把项目clone到本地。

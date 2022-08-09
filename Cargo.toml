@@ -1,49 +1,49 @@
 [package]
 name = "cldi"
-version = "0.4.1"
+version = "0.4.3"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "3.1", features = ["cargo"] }
-clap_complete = "3.1"
+clap = { version = "3.2", features = ["cargo"] }
+clap_complete = "3.2"
 hex = "0.4"
-tokio = { version = "1.6", features = ["full"] }
+tokio = { version = "1.20", features = ["full"] }
 rand = "0.8"
 tonic = "0.7"
 prost = "0.10"
-time = { version = "0.3.5", features = ["formatting", "local-offset"] }
+time = { version = "0.3", features = ["formatting", "local-offset"] }
 serde = "1.0"
 serde_json = "1.0"
 lazy_static = "1.4"
 thiserror = "1.0"
 anyhow = "1.0"
-home = "0.5.3"
-indicatif = "0.16.2"
-rayon = "1.5.1"
-tentacle-multiaddr = "0.3.1"
+home = "0.5"
+indicatif = "0.17"
+rayon = "1.5"
+tentacle-multiaddr = "0.3"
 toml = "0.5"
-rustyline = "9.1"
-shell-words = "1.0"
+rustyline = "10.0"
+shell-words = "1.1"
 parking_lot = "0.12"
 crossbeam = "0.8"
 tempfile = "3.3"
 # crypto SM
 libsm = "0.5.0"
-efficient-sm2 = "0.1.5"
+efficient-sm2 = "0.1"
 # crypto ETH
 aes = "0.8"
 ctr = "0.9"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.22", features = ["rand-std", "recovery"] }
+secp256k1 = { version = "0.24", features = ["rand-std", "recovery"] }
 # ethabi cli
-ethabi = "17.0"
+ethabi = "17.1"
 sha3 = "0.10"
 itertools = "0.10"
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
+cita_cloud_proto = "6.6.0"
 
 [build-dependencies]
 tonic-build = "0.7"

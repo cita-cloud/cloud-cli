@@ -4,7 +4,7 @@
 
 ```plaintext
 $ cldi help
-cldi 0.4.0
+cldi 0.4.3
 Rivtower Technologies <contact@rivtower.com>
 The command line interface to interact with CITA-Cloud
 
@@ -34,6 +34,6 @@ SUBCOMMANDS:
     bench          Simple benchmarks
     watch          Watch blocks
     completions    Generate completions for current shell. Add the output script to `.profile`
-                   or `.bashrc` etc. to make it effective.
+                       or `.bashrc` etc. to make it effective.
     help           Print this message or the help of the given subcommand(s)
 ```

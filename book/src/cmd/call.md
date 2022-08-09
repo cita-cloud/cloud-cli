@@ -10,16 +10,19 @@ cldi-call
 Call executor
 
 USAGE:
-    cldi call [OPTIONS] <to> <data>
+    cldi call [OPTIONS] <to> <data> [height]
 
 ARGS:
-    <to>      the target contract address
-    <data>    the data of this call request
+    <to>        the target contract address
+    <data>      the data of this call request
+    <height>    the height of this call request
 
 OPTIONS:
     -f, --from <from>    default to use current account address
     -h, --help           Print help information
 ```
+
+`height`为可选参数，不传递则表示默认取最新高度。
 
 ## 示例
 
