@@ -64,7 +64,7 @@ OPTIONS:
     -t, --to <to>                      the target address of this tx. Default to random
     -d, --data <data>                  the data of this tx. Default to random 32 bytes
     -v, --value <value>                the value of this tx [default: 0x0]
-    -q, --quota <quota>                the quota of this tx [default: 1073741824]
+    -q, --quota <quota>                the quota of this tx [default: 200000]
         --until <valid-until-block>    this tx is valid until the given block height. `+h` means
                                        `<current-height> + h` [default: +95]
         --disable-watch                don't watch blocks
@@ -94,5 +94,6 @@ OPTIONS:
     -f, --from <from>                  Default to use current account address
     -t, --to <to>                      the target contract address to call. Default to random
     -d, --data <data>                  the data for the call request. Default to random 32 bytes
+        --height <height>              the height for the call request. Default ro current height
     -h, --help                         Print help information
 ```

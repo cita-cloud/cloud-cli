@@ -62,8 +62,7 @@ fn aes(data: &[u8], pw: &[u8]) -> Vec<u8> {
 }
 
 fn secp256k1_generate_secret_key() -> SecretKey {
-    let mut rng = OsRng::new().expect("failed to get OsRng");
-    let raw_sk = RawSecretKey::new(&mut rng);
+    let raw_sk = RawSecretKey::new(&mut OsRng);
     raw_sk.secret_bytes()
 }
 

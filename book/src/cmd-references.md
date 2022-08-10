@@ -6,7 +6,7 @@
 
 ## controller的接口
 
-[controller proto](https://github.com/cita-cloud/cita_cloud_proto/blob/c6431a69bf6078e20295fe0742a81dec3d687917/protos/controller.proto#L57-L89)
+[controller proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/controller.proto#L61-L95)
 
 ```protobuf
 service RPCService {
@@ -21,6 +21,8 @@ service RPCService {
     rpc GetBlockByHash(common.Hash) returns (blockchain.CompactBlock);
 
     rpc GetBlockByNumber(BlockNumber) returns (blockchain.CompactBlock);
+
+    rpc GetBlockDetailByNumber(BlockNumber) returns (blockchain.Block);
 
     rpc GetTransaction(common.Hash) returns (blockchain.RawTransaction);
 
@@ -45,7 +47,7 @@ service RPCService {
 ```
 
 ## executor的接口
-[executor proto](https://github.com/cita-cloud/cita_cloud_proto/blob/c6431a69bf6078e20295fe0742a81dec3d687917/protos/executor.proto#L39-L44)
+[executor proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/executor.proto#L41-L46)
 
 其中call的数据格式由具体的executor微服务定义。
 ```protobuf
@@ -58,7 +60,7 @@ service ExecutorService {
 ```
 
 ## executor_evm的接口
-[executor_evm proto](https://github.com/cita-cloud/cita_cloud_proto/blob/c6431a69bf6078e20295fe0742a81dec3d687917/protos/vm/evm.proto#L64-L74)
+[executor_evm proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/vm/evm.proto#L64-L74)
 ```protobuf
 service RPCService {
   rpc GetTransactionReceipt(common.Hash) returns (Receipt);

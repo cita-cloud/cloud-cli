@@ -29,12 +29,11 @@ cldi-rpc-add-node
 call add-node rpc
 
 USAGE:
-    cldi rpc add-node <host> <port> [tls]
+    cldi rpc add-node <port> <domain>
 
 ARGS:
-    <host>    the host of the new node
-    <port>    the port of the new node
-    <tls>     the domain name of the new node
+    <port>      the port of the new node
+    <domain>    the domain name of the new node
 
 OPTIONS:
     -h, --help    Print help information

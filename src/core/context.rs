@@ -46,7 +46,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ev: GrpcClientBehaviour,
     {
         let rt = CtrlCSignalCapturedRuntime(tokio::runtime::Runtime::new()?);
-        let editor = rustyline::Editor::<()>::new();
+        let editor = rustyline::Editor::<()>::new()?;
         let wallet = Wallet::open(&config.data_dir)?;
 
         let default_context_setting = config

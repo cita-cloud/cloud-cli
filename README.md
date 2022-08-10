@@ -43,7 +43,7 @@ $ rustup update
 可以通过GitHub安装。
 
 ```bash
-$ cargo install --git https://github.com/whfuyn/cloud-cli --branch main
+$ cargo install --git https://github.com/cita-cloud/cloud-cli --branch main
 ```
 
 也可以先把项目clone到本地。
@@ -56,7 +56,7 @@ $ cargo install --path cloud-cli
 ### 验证安装
 ```plaintext
 $ cldi --version
-cldi 0.4.0
+cldi 0.4.3
 ```
 
 ## 快速入门

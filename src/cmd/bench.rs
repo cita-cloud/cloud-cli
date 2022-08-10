@@ -428,7 +428,7 @@ where
             indicatif::ProgressStyle::default_bar()
                 .template(
                     "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos:>7}/{len:7}",
-                )
+                )?
                 .progress_chars("=> "),
         );
         Arc::new(progbar)
@@ -463,7 +463,7 @@ where
     )
     .await;
 
-    progbar.finish_at_current_pos();
+    progbar.finish();
 
     if let Some(t) = t {
         println!(
