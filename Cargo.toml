@@ -43,7 +43,7 @@ itertools = "0.10"
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 
-cita_cloud_proto = "6.6.0"
+cita_cloud_proto = "=6.6.0"
 
 [build-dependencies]
 tonic-build = "0.7"
