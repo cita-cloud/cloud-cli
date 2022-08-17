@@ -38,7 +38,7 @@ jobs:
       - name: "Building docker images"
         run: |
           image="citacloud/$(basename ${GITHUB_REPOSITORY})"
-          tag=${GITHUB_REF#refs/heads/}
+          tag=${GITHUB_REF_NAME}
           if [ "$tag" = 'master' ] || [ "$tag" = 'main' ]; then
               tag=latest
           fi
