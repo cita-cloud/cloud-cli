@@ -44,6 +44,7 @@ mock! {
 
         async fn get_version(&self) -> Result<String>;
         async fn get_system_config(&self) -> Result<SystemConfig>;
+        async fn get_system_config_by_number(&self, block_number: u64) -> Result<SystemConfig>;
 
         async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
         async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;

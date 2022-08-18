@@ -237,9 +237,33 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-system-config")
         .about("Get system config")
-        .handler(|_cmd, _m, ctx| {
-            let system_config = ctx.rt.block_on(ctx.controller.get_system_config())??;
-            println!("{}", system_config.display());
+        .arg(
+            Arg::new("height")
+                .help("Get system config by height")
+                .required(false)
+                .takes_value(true)
+                .validator(parse_u64),
+        )
+        .handler(|_cmd, m, ctx| {
+            if m.is_present("height") {
+                let height = m.value_of("height").unwrap().parse()?;
+                let current_height = ctx.rt.block_on(ctx.controller.get_block_number(false))??;
+                if height > current_height {
+                    println!("curren height: {}", current_height);
+                } else {
+                    let system_config = ctx
+                        .rt
+                        .block_on(ctx.controller.get_system_config_by_number(height))??;
+                    println!(
+                        "system config in height {}:\n{}",
+                        height,
+                        system_config.display()
+                    );
+                }
+            } else {
+                let system_config = ctx.rt.block_on(ctx.controller.get_system_config())??;
+                println!("current system config:\n{}", system_config.display());
+            };
             Ok(())
         })
 }

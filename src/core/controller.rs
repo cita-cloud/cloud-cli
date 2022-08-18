@@ -42,6 +42,7 @@ pub trait ControllerBehaviour {
 
     async fn get_version(&self) -> Result<String>;
     async fn get_system_config(&self) -> Result<SystemConfig>;
+    async fn get_system_config_by_number(&self, block_number: u64) -> Result<SystemConfig>;
 
     async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
     async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
@@ -82,6 +83,15 @@ impl ControllerBehaviour for ControllerClient {
 
     async fn get_system_config(&self) -> Result<SystemConfig> {
         let resp = ControllerClient::get_system_config(&mut self.clone(), Empty {})
+            .await?
+            .into_inner();
+
+        Ok(resp)
+    }
+
+    async fn get_system_config_by_number(&self, block_number: u64) -> Result<SystemConfig> {
+        let block_number = BlockNumber { block_number };
+        let resp = ControllerClient::get_system_config_by_number(&mut self.clone(), block_number)
             .await?
             .into_inner();
 
