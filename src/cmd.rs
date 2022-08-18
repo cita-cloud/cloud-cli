@@ -29,9 +29,12 @@ use std::ffi::OsString;
 
 pub use cldi::cldi_cmd;
 
+type HandleFn<'help, Ctx> =
+    dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help;
 pub struct Command<'help, Ctx: 'help> {
     cmd: clap::Command<'help>,
-    handler: Box<dyn Fn(&Self, &ArgMatches, &mut Ctx) -> Result<()> + 'help>,
+
+    handler: Box<HandleFn<'help, Ctx>>,
 
     subcmds: HashMap<String, Self>,
 }
