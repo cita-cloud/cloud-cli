@@ -21,7 +21,7 @@ use cita_cloud_proto::{
         raw_transaction::Tx, Block, CompactBlock, RawTransaction, Transaction,
         UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction, Witness,
     },
-    common::{NodeInfo, TotalNodeInfo},
+    common::{NodeInfo, Proof, StateRoot, TotalNodeInfo},
     controller::SystemConfig,
     evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
     executor::CallResponse,
@@ -85,17 +85,17 @@ impl Display for CallResponse {
     }
 }
 
-impl Display for CompactBlock {
+impl Display for (CompactBlock, Proof, StateRoot) {
     fn to_json(&self) -> Json {
-        let tx_hashes = match self.body.as_ref() {
+        let tx_hashes = match self.0.body.as_ref() {
             Some(body) => body.tx_hashes.iter().map(|h| hex(h)).collect(),
             None => Vec::new(),
         };
 
-        match &self.header {
+        match &self.0.header {
             Some(header) => {
                 json!({
-                    "version": self.version,
+                    "version": self.0.version,
                     "height": header.height,
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": tx_hashes.len(),
@@ -104,6 +104,8 @@ impl Display for CompactBlock {
                     "time": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
+                    "proof": hex(&self.1.proof),
+                    "state_root": hex(&self.2.state_root),
                 })
             }
             None => json!({}),
@@ -126,10 +128,12 @@ impl Display for Block {
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": raw_transactions.len(),
                     "raw_transactions": raw_transactions,
-                    "timestamp": display_time(header.timestamp),
+                    "timestamp": header.timestamp,
+                    "time": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
                     "proof": hex(&self.proof),
+                    "state_root": hex(&self.state_root),
                 })
             }
             None => json!({}),

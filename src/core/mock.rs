@@ -24,8 +24,8 @@ use crate::{
 use anyhow::Result;
 use cita_cloud_proto::{
     blockchain::{Block, CompactBlock, RawTransaction},
-    common::TotalNodeInfo,
-    controller::SystemConfig,
+    common::{Proof, StateRoot, TotalNodeInfo},
+    controller::{BlockNumber, SystemConfig},
     evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
     executor::CallResponse,
 };
@@ -49,11 +49,9 @@ mock! {
         async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
         async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
 
-        async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
-        async fn get_block_by_hash(&self, hash: Hash) -> Result<CompactBlock>;
-
+        async fn get_height_by_hash(&self, hash: Hash) -> Result<BlockNumber>;
+        async fn get_block_by_number(&self, block_number: u64) -> Result<(CompactBlock, Proof, StateRoot)>;
         async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
-        async fn get_block_detail_by_hash(&self, hash: Hash) -> Result<Block>;
 
         async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
         async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64>;

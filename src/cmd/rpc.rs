@@ -292,26 +292,21 @@ where
         .handler(|_cmd, m, ctx| {
             let s = m.value_of("height_or_hash").unwrap();
             let d = m.is_present("detail");
-            if d {
-                let block = if s.starts_with("0x") {
-                    let hash = parse_hash(s)?;
-                    ctx.rt.block_on(ctx.controller.get_block_detail_by_hash(hash))??
-                } else {
-                    let height = s.parse()?;
-                    ctx.rt.block_on(ctx.controller.get_block_detail_by_number(height))??
-                };
-
-                println!("{}", block.display());
-            }  else {
-                let block = if s.starts_with("0x") {
-                    let hash = parse_hash(s)?;
-                    ctx.rt.block_on(ctx.controller.get_block_by_hash(hash))??
-                } else {
-                    let height = s.parse()?;
-                    ctx.rt.block_on(ctx.controller.get_block_by_number(height))??
-                };
-
-                println!("{}", block.display());
+            let height = if s.starts_with("0x") {
+                let hash = parse_hash(s)?;
+                ctx.rt.block_on(ctx.controller.get_height_by_hash(hash))??.block_number
+            } else {
+                s.parse()?
+            };
+            let current_height = ctx.rt.block_on(ctx.controller.get_block_number(false))??;
+            if height > current_height {
+                println!("curren height: {}", current_height);
+            } else if d {
+                let full_block = ctx.rt.block_on(ctx.controller.get_block_detail_by_number(height))??;
+                println!("{}", full_block.display());
+            } else {
+                let block_info = ctx.rt.block_on(ctx.controller.get_block_by_number(height))??;
+                println!("{}", block_info.display());
             }
             Ok(())
         })
