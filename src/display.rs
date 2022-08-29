@@ -13,19 +13,21 @@
 // limitations under the License.
 
 use crate::{
+    core::controller::{CompactBlockWithStaterootProof, ProofType, ProofWithValidators},
     crypto::{Address, Hash},
     utils::{display_time, hex},
 };
 use cita_cloud_proto::{
     blockchain::{
-        raw_transaction::Tx, Block, CompactBlock, RawTransaction, Transaction,
-        UnverifiedTransaction, UnverifiedUtxoTransaction, UtxoTransaction, Witness,
+        raw_transaction::Tx, Block, RawTransaction, Transaction, UnverifiedTransaction,
+        UnverifiedUtxoTransaction, UtxoTransaction, Witness,
     },
     common::{NodeInfo, TotalNodeInfo},
     controller::SystemConfig,
     evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
     executor::CallResponse,
 };
+use consensus_bft::message::SignedFollowerVote;
 use serde_json::json;
 use serde_json::map::Map;
 use serde_json::Value as Json;
@@ -85,17 +87,17 @@ impl Display for CallResponse {
     }
 }
 
-impl Display for CompactBlock {
+impl Display for CompactBlockWithStaterootProof {
     fn to_json(&self) -> Json {
-        let tx_hashes = match self.body.as_ref() {
+        let tx_hashes = match self.compact_block.body.as_ref() {
             Some(body) => body.tx_hashes.iter().map(|h| hex(h)).collect(),
             None => Vec::new(),
         };
 
-        match &self.header {
+        match &self.compact_block.header {
             Some(header) => {
                 json!({
-                    "version": self.version,
+                    "version": self.compact_block.version,
                     "height": header.height,
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": tx_hashes.len(),
@@ -104,6 +106,8 @@ impl Display for CompactBlock {
                     "time": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
+                    "proof": hex(&self.proof.proof),
+                    "state_root": hex(&self.state_root.state_root),
                 })
             }
             None => json!({}),
@@ -126,10 +130,12 @@ impl Display for Block {
                     "prev_hash": hex(&header.prevhash),
                     "tx_count": raw_transactions.len(),
                     "raw_transactions": raw_transactions,
-                    "timestamp": display_time(header.timestamp),
+                    "timestamp": header.timestamp,
+                    "time": display_time(header.timestamp),
                     "transaction_root": hex(&header.transactions_root),
                     "proposer": hex(&header.proposer),
                     "proof": hex(&self.proof),
+                    "state_root": hex(&self.state_root),
                 })
             }
             None => json!({}),
@@ -325,7 +331,7 @@ impl Display for Receipt {
         let logs = self.logs.iter().map(Log::to_json).collect::<Vec<_>>();
         json!({
             "tx_hash": hex(&self.transaction_hash),
-            "legacy_cita_block_hash": hex(&self.block_hash),
+            "block_hash": hex(&self.block_hash),
             "block_number": self.block_number,
             "tx_index": self.transaction_index,
             "contract_addr": hex(&self.contract_address),
@@ -378,5 +384,57 @@ impl Display for ByteAbi {
     fn display(&self) -> String {
         // Don't display ""
         String::from_utf8_lossy(&self.bytes_abi).to_string()
+    }
+}
+
+impl Display for (SignedFollowerVote, String) {
+    fn to_json(&self) -> Json {
+        json!({
+            "signature": hex(&self.0.sig),
+            "proposal_hash": hex(&self.0.vote.hash.unwrap().0),
+            "validator": self.1,
+        })
+    }
+}
+
+impl Display for ProofWithValidators {
+    fn to_json(&self) -> Json {
+        match &self.proof {
+            ProofType::BftProof(bft_proof) => {
+                let validator_iter = self.validators.iter().map(|v| hex(v));
+                let vote_iter = bft_proof.votes.clone().into_iter();
+                let vote_with_validator_iter = vote_iter.zip(validator_iter);
+                let votes: Vec<Json> = vote_with_validator_iter.map(|f| f.to_json()).collect();
+                json!({
+                    "height": bft_proof.height,
+                    "round": bft_proof.round,
+                    "step": bft_proof.step,
+                    "proposal_hash": hex(&bft_proof.hash.unwrap().0),
+                    "votes": votes,
+                })
+            }
+            ProofType::OverlordProof(overlord_proof) => {
+                let validators = self.validators.iter().map(|v| hex(v)).collect::<Vec<_>>();
+                let bitmap_str = overlord_proof
+                    .signature
+                    .address_bitmap
+                    .iter()
+                    .map(|u| format!("{:b}", u))
+                    .collect::<String>();
+                let address_bitmap = if validators.is_empty() {
+                    bitmap_str
+                } else {
+                    bitmap_str.split_at(validators.len()).0.to_string()
+                };
+                json!({
+                    "height": overlord_proof.height,
+                    "round": overlord_proof.round,
+                    "proposal_hash": hex(&overlord_proof.block_hash),
+                    "signature": hex(&overlord_proof.signature.signature),
+                    "address_bitmap": address_bitmap,
+                    "validators": validators,
+                })
+            }
+        }
     }
 }

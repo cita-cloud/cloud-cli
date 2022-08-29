@@ -13,19 +13,22 @@
 // limitations under the License.
 
 use super::{
-    client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
-    evm::EvmBehaviour, executor::ExecutorBehaviour,
+    client::GrpcClientBehaviour,
+    context::Context,
+    controller::{CompactBlockWithStaterootProof, ControllerBehaviour, ProofWithValidators},
+    evm::EvmBehaviour,
+    executor::ExecutorBehaviour,
 };
 use crate::{
-    config::Config,
+    config::{Config, CryptoType},
     core::wallet::Account,
     crypto::{Address, Hash, SmCrypto},
 };
 use anyhow::Result;
 use cita_cloud_proto::{
-    blockchain::{Block, CompactBlock, RawTransaction},
+    blockchain::{Block, RawTransaction},
     common::TotalNodeInfo,
-    controller::SystemConfig,
+    controller::{BlockNumber, SystemConfig},
     evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
     executor::CallResponse,
 };
@@ -44,15 +47,14 @@ mock! {
 
         async fn get_version(&self) -> Result<String>;
         async fn get_system_config(&self) -> Result<SystemConfig>;
+        async fn get_system_config_by_number(&self, block_number: u64) -> Result<SystemConfig>;
 
         async fn get_block_number(&self, for_pending: bool) -> Result<u64>;
         async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
 
-        async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
-        async fn get_block_by_hash(&self, hash: Hash) -> Result<CompactBlock>;
-
+        async fn get_height_by_hash(&self, hash: Hash) -> Result<BlockNumber>;
+        async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlockWithStaterootProof>;
         async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
-        async fn get_block_detail_by_hash(&self, hash: Hash) -> Result<Block>;
 
         async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
         async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64>;
@@ -62,6 +64,8 @@ mock! {
         async fn get_peers_info(&self) -> Result<TotalNodeInfo>;
 
         async fn add_node(&self, multiaddr: String) -> Result<u32>;
+        async fn parse_bft_proof(&self, proof_bytes: Vec<u8>, crypto_type: CryptoType) -> Result<ProofWithValidators>;
+        async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
     }
 
     #[tonic::async_trait]
