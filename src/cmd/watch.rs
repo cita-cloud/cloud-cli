@@ -93,7 +93,7 @@ where
                     };
 
                     while h <= std::cmp::min(current_height, end) {
-                        let block_info = match ctx.controller.get_block_by_number(h).await {
+                        let compact_block_with_stateroot_proof = match ctx.controller.get_block_by_number(h).await {
                             Ok(block) => block,
                             Err(e) => {
                                 println!("failed to get block `{h}`: `{e}`");
@@ -101,7 +101,7 @@ where
                                 continue;
                             },
                         };
-                        match (block_info.0.header, block_info.0.body) {
+                        match (compact_block_with_stateroot_proof.compact_block.header, compact_block_with_stateroot_proof.compact_block.body) {
                             (Some(header), Some(body)) => {
                                 let height = header.height;
                                 let elapsed_secs = {

@@ -13,18 +13,21 @@
 // limitations under the License.
 
 use super::{
-    client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
-    evm::EvmBehaviour, executor::ExecutorBehaviour,
+    client::GrpcClientBehaviour,
+    context::Context,
+    controller::{CompactBlockWithStaterootProof, ControllerBehaviour, ProofWithValidators},
+    evm::EvmBehaviour,
+    executor::ExecutorBehaviour,
 };
 use crate::{
-    config::Config,
+    config::{Config, CryptoType},
     core::wallet::Account,
     crypto::{Address, Hash, SmCrypto},
 };
 use anyhow::Result;
 use cita_cloud_proto::{
-    blockchain::{Block, CompactBlock, RawTransaction},
-    common::{Proof, StateRoot, TotalNodeInfo},
+    blockchain::{Block, RawTransaction},
+    common::TotalNodeInfo,
     controller::{BlockNumber, SystemConfig},
     evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
     executor::CallResponse,
@@ -50,7 +53,7 @@ mock! {
         async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
 
         async fn get_height_by_hash(&self, hash: Hash) -> Result<BlockNumber>;
-        async fn get_block_by_number(&self, block_number: u64) -> Result<(CompactBlock, Proof, StateRoot)>;
+        async fn get_block_by_number(&self, block_number: u64) -> Result<CompactBlockWithStaterootProof>;
         async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
 
         async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
@@ -61,6 +64,8 @@ mock! {
         async fn get_peers_info(&self) -> Result<TotalNodeInfo>;
 
         async fn add_node(&self, multiaddr: String) -> Result<u32>;
+        async fn parse_bft_proof(&self, proof_bytes: Vec<u8>, crypto_type: CryptoType) -> Result<ProofWithValidators>;
+        async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
     }
 
     #[tonic::async_trait]

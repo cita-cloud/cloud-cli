@@ -16,6 +16,7 @@ OPTIONS:
 SUBCOMMANDS:
     add-node     call add-node rpc
     store-abi    Store EVM contract ABI
+    parse-proof  parse consensus proof
     help         Print this message or the help of the given subcommand(s)
 ```
 
@@ -41,7 +42,7 @@ OPTIONS:
 
 ## store-abi
 
-通过发送交易，在链上保存合约的ABI。
+通过发送交易，在链上保存合约的`ABI`。
 
 ```plaintext
 $ cldi rpc store-abi -h
@@ -60,4 +61,28 @@ OPTIONS:
         --until <valid-until-block>    this tx is valid until the given block height. `+h` means
                                        `<current-height> + h` [default: +95]
     -h, --help                         Print help information
+```
+
+### parse-proof
+
+从字节码解析并打印共识的Proof信息，默认`crypto-type`为`SM`，默认`consensus-type`为`BFT`
+
+```plaintext
+$ cldi rpc parse-proof -h
+cldi-rpc-parse-proof 
+parse consensus proof
+
+USAGE:
+    cldi rpc parse-proof [OPTIONS] <proof>
+
+ARGS:
+    <proof>    plain proof data with `0x` prefix
+
+OPTIONS:
+        --consensus <consensus-type>    The consensus type of the proof. [default:
+                                        <current-context-crypto-type>] [possible values: BFT,
+                                        OVERLORD]
+        --crypto <crypto-type>          The crypto type of the proof. [default:
+                                        <current-context-crypto-type>] [possible values: SM, ETH]
+    -h, --help                          Print help information
 ```

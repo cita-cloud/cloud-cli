@@ -18,6 +18,7 @@ OPTIONS:
     -u <account-name>             account name
     -p <password>                 password to unlock the account
         --crypto <crypto-type>    The crypto type of the target chain [possible values: SM, ETH]
+        --consensus <consensus-type>    The consensus type of the target chain [possible values: BFT, OVERLORD, RAFT]
     -h, --help                    Print help information
     -V, --version                 Print version information
 

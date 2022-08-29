@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::Context as _;
+use anyhow::{anyhow, Context as _};
 use clap::Arg;
+use std::str::FromStr;
 use tokio::try_join;
 
+use crate::config::{ConsensusType, CryptoType};
 use crate::utils::parse_u64;
 use crate::{
     cmd::{evm::store_abi, Command},
@@ -249,20 +251,16 @@ where
                 let height = m.value_of("height").unwrap().parse()?;
                 let current_height = ctx.rt.block_on(ctx.controller.get_block_number(false))??;
                 if height > current_height {
-                    println!("curren height: {}", current_height);
+                    return Err(anyhow!("current_height: {}", current_height));
                 } else {
                     let system_config = ctx
                         .rt
                         .block_on(ctx.controller.get_system_config_by_number(height))??;
-                    println!(
-                        "system config in height {}:\n{}",
-                        height,
-                        system_config.display()
-                    );
+                    println!("{}", system_config.display());
                 }
             } else {
                 let system_config = ctx.rt.block_on(ctx.controller.get_system_config())??;
-                println!("current system config:\n{}", system_config.display());
+                println!("{}", system_config.display());
             };
             Ok(())
         })
@@ -300,13 +298,13 @@ where
             };
             let current_height = ctx.rt.block_on(ctx.controller.get_block_number(false))??;
             if height > current_height {
-                println!("curren height: {}", current_height);
+                return Err(anyhow!("current_height: {}", current_height));
             } else if d {
                 let full_block = ctx.rt.block_on(ctx.controller.get_block_detail_by_number(height))??;
                 println!("{}", full_block.display());
             } else {
-                let block_info = ctx.rt.block_on(ctx.controller.get_block_by_number(height))??;
-                println!("{}", block_info.display());
+                let compact_block_with_stateroot_proof = ctx.rt.block_on(ctx.controller.get_block_by_number(height))??;
+                println!("{}", compact_block_with_stateroot_proof.display());
             }
             Ok(())
         })
@@ -453,6 +451,68 @@ where
         })
 }
 
+pub fn parse_proof<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("parse-proof")
+        .about("parse consensus proof")
+        .arg(
+            Arg::new("proof")
+                .help("plain proof data with `0x` prefix")
+                .required(true)
+                .takes_value(true)
+                .validator(parse_data),
+        )
+        .arg(
+            Arg::new("consensus-type")
+                .help(
+                    "The consensus type of the proof. [default: <current-context-consensus-type>]",
+                )
+                .long("consensus")
+                .possible_values(["BFT", "OVERLORD"])
+                .ignore_case(true)
+                .validator(ConsensusType::from_str),
+        )
+        .arg(
+            Arg::new("crypto-type")
+                .help("The crypto type of the proof. [default: <current-context-crypto-type>]")
+                .long("crypto")
+                .possible_values(["SM", "ETH"])
+                .ignore_case(true)
+                .validator(CryptoType::from_str),
+        )
+        .handler(|_cmd, m, ctx| {
+            let consensus_type = m
+                .value_of("consensus-type")
+                .map(|s| s.parse::<ConsensusType>().unwrap())
+                .unwrap_or(ctx.current_setting.consensus_type);
+            let crypto_type = m
+                .value_of("crypto-type")
+                .map(|s| s.parse::<CryptoType>().unwrap())
+                .unwrap_or(ctx.current_setting.crypto_type);
+            let proof_str = m.value_of("proof").unwrap();
+            match consensus_type {
+                ConsensusType::Bft => {
+                    let proof_with_validators = ctx.rt.block_on(
+                        ctx.controller
+                            .parse_bft_proof(parse_data(proof_str)?, crypto_type),
+                    )??;
+                    println!("{}", proof_with_validators.display());
+                }
+                ConsensusType::Overlord => {
+                    let proof_with_validators = ctx
+                        .rt
+                        .block_on(ctx.controller.parse_overlord_proof(parse_data(proof_str)?))??;
+                    println!("{}", proof_with_validators.display());
+                }
+                _ => return Err(anyhow!("impossible consensus type")),
+            }
+
+            Ok(())
+        })
+}
+
 pub fn rpc_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour + Send + Sync,
@@ -461,7 +521,7 @@ where
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("Other RPC commands")
         .subcommand_required_else_help(true)
-        .subcommands([add_node(), store_abi()])
+        .subcommands([add_node(), store_abi(), parse_proof()])
 }
 
 #[cfg(test)]

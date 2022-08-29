@@ -37,7 +37,7 @@ lazy_static::lazy_static! {
     pub static ref SECP256K1: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
 
-fn keccak_hash(input: &[u8]) -> Hash {
+pub fn keccak_hash(input: &[u8]) -> Hash {
     let mut hasher = Keccak::v256();
     hasher.update(input);
 
@@ -72,7 +72,7 @@ fn secp256k1_sk2pk(sk: &SecretKey) -> PublicKey {
     raw_pk.serialize_uncompressed()[1..65].try_into().unwrap()
 }
 
-fn secp256k1_pk2addr(pk: &PublicKey) -> Address {
+pub fn secp256k1_pk2addr(pk: &PublicKey) -> Address {
     keccak_hash(pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..]
         .try_into()
         .unwrap()
@@ -91,6 +91,22 @@ fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
     output[SIGNATURE_BYTES_LEN - 1] = recovery_id.to_i32() as u8;
 
     output
+}
+
+#[allow(unused)]
+pub fn secp256k1_recover(message: &[u8], signature: &Signature) -> Option<PublicKey> {
+    let context = &SECP256K1;
+    let rid = secp256k1::ecdsa::RecoveryId::from_i32(i32::from(signature[SIGNATURE_BYTES_LEN - 1]))
+        .ok()?;
+    let rsig = secp256k1::ecdsa::RecoverableSignature::from_compact(
+        &signature[0..SIGNATURE_BYTES_LEN - 1],
+        rid,
+    )
+    .ok()?;
+    let msg = secp256k1::Message::from_slice(message).ok()?;
+    let pubkey = context.recover_ecdsa(&msg, &rsig).ok()?;
+    let serialized = pubkey.serialize_uncompressed();
+    Some((&serialized[1..65]).try_into().unwrap())
 }
 
 #[derive(Debug)]

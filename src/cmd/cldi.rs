@@ -18,7 +18,7 @@ use tonic::transport::Endpoint;
 
 use crate::{
     cmd::{account, admin, bench, context, ethabi, evm, rpc, watch, Command},
-    config::{ContextSetting, CryptoType},
+    config::{ConsensusType, ContextSetting, CryptoType},
     core::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
         evm::EvmBehaviour, executor::ExecutorBehaviour,
@@ -103,6 +103,14 @@ where
                 .ignore_case(true)
                 .validator(CryptoType::from_str),
         )
+        .arg(
+            Arg::new("consensus-type")
+                .help("The consensus type of the target chain")
+                .long("consensus")
+                .possible_values(["BFT", "OVERLORD", "RAFT"])
+                .ignore_case(true)
+                .validator(ConsensusType::from_str),
+        )
         .handler(|cmd, m, ctx| {
             // If a subcommand is present, context modifiers(e.g. -r) will construct a tmp context for that subcommand.
             // Otherwise modify the current context.
@@ -115,7 +123,8 @@ where
                     || m.is_present("executor-addr")
                     || m.is_present("account-name")
                     || m.is_present("password")
-                    || m.is_present("crypto-type"));
+                    || m.is_present("crypto-type")
+                    || m.is_present("consensus-type"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
@@ -148,6 +157,9 @@ where
             }
             if let Some(crypto_type) = m.value_of("crypto-type") {
                 current_setting.crypto_type = crypto_type.parse().unwrap();
+            }
+            if let Some(consensus_type) = m.value_of("consensus-type") {
+                current_setting.consensus_type = consensus_type.parse().unwrap();
             }
 
             ctx.switch_context(current_setting)?;

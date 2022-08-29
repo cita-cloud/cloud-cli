@@ -20,7 +20,10 @@ use anyhow::Result;
 use prost::Message;
 use tonic::transport::Channel;
 
+use crate::config::CryptoType;
 use crate::crypto::{ArrayLike, Hash};
+use crate::utils::recover_validators;
+use bincode::deserialize;
 use cita_cloud_proto::{
     blockchain::{
         raw_transaction::Tx, Block, CompactBlock, RawTransaction,
@@ -30,9 +33,29 @@ use cita_cloud_proto::{
     common::{Empty, Hash as CloudHash, NodeNetInfo, Proof, StateRoot, TotalNodeInfo},
     controller::{BlockNumber, Flag, SystemConfig},
 };
+use consensus_bft::message::LeaderVote as BftProof;
+use overlord::types::Proof as OverlordProof;
+use rlp::Decodable;
+use rlp::Rlp;
 
 pub type ControllerClient =
     cita_cloud_proto::controller::rpc_service_client::RpcServiceClient<Channel>;
+
+pub struct CompactBlockWithStaterootProof {
+    pub compact_block: CompactBlock,
+    pub state_root: StateRoot,
+    pub proof: Proof,
+}
+
+pub enum ProofType {
+    BftProof(BftProof),
+    OverlordProof(OverlordProof),
+}
+
+pub struct ProofWithValidators {
+    pub proof: ProofType,
+    pub validators: Vec<Vec<u8>>,
+}
 
 #[tonic::async_trait]
 pub trait ControllerBehaviour {
@@ -51,7 +74,7 @@ pub trait ControllerBehaviour {
     async fn get_block_by_number(
         &self,
         block_number: u64,
-    ) -> Result<(CompactBlock, Proof, StateRoot)>;
+    ) -> Result<CompactBlockWithStaterootProof>;
     async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block>;
 
     async fn get_tx(&self, tx_hash: Hash) -> Result<RawTransaction>;
@@ -62,6 +85,12 @@ pub trait ControllerBehaviour {
     async fn get_peers_info(&self) -> Result<TotalNodeInfo>;
 
     async fn add_node(&self, multiaddr: String) -> Result<u32>;
+    async fn parse_bft_proof(
+        &self,
+        proof_bytes: Vec<u8>,
+        crypto_type: CryptoType,
+    ) -> Result<ProofWithValidators>;
+    async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
 }
 
 #[tonic::async_trait]
@@ -132,7 +161,7 @@ impl ControllerBehaviour for ControllerClient {
     async fn get_block_by_number(
         &self,
         block_number: u64,
-    ) -> Result<(CompactBlock, Proof, StateRoot)> {
+    ) -> Result<CompactBlockWithStaterootProof> {
         let block_number = BlockNumber { block_number };
         let compact_block =
             ControllerClient::get_block_by_number(&mut self.clone(), block_number.clone())
@@ -145,7 +174,11 @@ impl ControllerBehaviour for ControllerClient {
             ControllerClient::get_state_root_by_number(&mut self.clone(), block_number)
                 .await?
                 .into_inner();
-        Ok((compact_block, proof, state_root))
+        Ok(CompactBlockWithStaterootProof {
+            compact_block,
+            state_root,
+            proof,
+        })
     }
 
     async fn get_block_detail_by_number(&self, block_number: u64) -> Result<Block> {
@@ -219,6 +252,31 @@ impl ControllerBehaviour for ControllerClient {
             .into_inner();
 
         Ok(resp.code)
+    }
+
+    async fn parse_bft_proof(
+        &self,
+        proof_bytes: Vec<u8>,
+        crypto_type: CryptoType,
+    ) -> Result<ProofWithValidators> {
+        let bft_proof: BftProof = deserialize(&proof_bytes).unwrap_or_default();
+        let validators = recover_validators(crypto_type, bft_proof.clone());
+        Ok(ProofWithValidators {
+            proof: ProofType::BftProof(bft_proof),
+            validators,
+        })
+    }
+
+    async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators> {
+        let overlord_proof: OverlordProof = OverlordProof::decode(&Rlp::new(&proof_bytes)).unwrap();
+        let validators: Vec<Vec<u8>> = self
+            .get_system_config_by_number(overlord_proof.height)
+            .await
+            .map_or_else(|_| vec![], |v| v.validators);
+        Ok(ProofWithValidators {
+            proof: ProofType::OverlordProof(overlord_proof),
+            validators,
+        })
     }
 }
 
