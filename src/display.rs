@@ -414,17 +414,20 @@ impl Display for ProofWithValidators {
                 })
             }
             ProofType::OverlordProof(overlord_proof) => {
-                let validators = self.validators.iter().map(|v| hex(v)).collect::<Vec<_>>();
-                let bitmap_str = overlord_proof
+                let mut validators = self.validators.iter().map(|v| hex(v)).collect::<Vec<_>>();
+                let mut address_bitmap = overlord_proof
                     .signature
                     .address_bitmap
                     .iter()
                     .map(|u| format!("{:b}", u))
                     .collect::<String>();
-                let address_bitmap = if validators.is_empty() {
-                    bitmap_str
-                } else {
-                    bitmap_str.split_at(validators.len()).0.to_string()
+                if !validators.is_empty() {
+                    address_bitmap = address_bitmap.split_at(validators.len()).0.to_string();
+                    address_bitmap.chars().enumerate().for_each(|(i, c)| {
+                        if c == '1' {
+                            validators[i].insert(0, '*');
+                        }
+                    })
                 };
                 json!({
                     "height": overlord_proof.height,
