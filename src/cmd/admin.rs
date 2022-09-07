@@ -148,30 +148,6 @@ where
             Ok(())
         })
 }
-pub fn set_block_limit<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
-where
-    Co: AdminBehaviour,
-{
-    Command::<Context<Co, Ex, Ev>>::new("set-block-limit")
-        .about("Set block limit")
-        .arg(
-            Arg::new("block_limit")
-                .help("new block limit")
-                .required(true)
-                .validator(str::parse::<u64>),
-        )
-        .handler(|_cmd, m, ctx| {
-            let block_limit = m.value_of("block_limit").unwrap().parse::<u64>()?;
-            let admin_signer = ctx.current_account()?;
-            let tx_hash = ctx.rt.block_on(async {
-                ctx.controller
-                    .set_block_limit(admin_signer, block_limit)
-                    .await
-            })??;
-            println!("{}", tx_hash.display());
-            Ok(())
-        })
-}
 pub fn admin_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: AdminBehaviour,
@@ -185,7 +161,6 @@ where
             set_block_interval(),
             emergency_brake(),
             set_quota_limit(),
-            set_block_limit(),
         ])
 }
 

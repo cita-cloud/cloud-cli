@@ -362,7 +362,6 @@ pub enum UtxoType {
     BlockInterval = 1003,
     Validators = 1004,
     EmergencyBrake = 1005,
-    BlockLimit = 1006,
     QuotaLimit = 1007,
 }
 
@@ -460,7 +459,6 @@ where
                 UtxoType::Validators => &system_config.validators_pre_hash,
                 UtxoType::EmergencyBrake => &system_config.emergency_brake_pre_hash,
                 UtxoType::QuotaLimit => &system_config.quota_limit_pre_hash,
-                UtxoType::BlockLimit => &system_config.block_limit_pre_hash,
             }
             .clone();
 

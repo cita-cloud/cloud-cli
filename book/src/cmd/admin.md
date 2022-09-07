@@ -19,7 +19,6 @@ SUBCOMMANDS:
     set-block-interval    Set block interval
     emergency-brake       Send emergency brake cmd to chain
     set-quota-limit       Set quota limit
-    set-block-limit       Set block limit
     help                  Print this message or the help of the given subcommand(s)
 ```
 
