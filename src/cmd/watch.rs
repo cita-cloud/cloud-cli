@@ -106,7 +106,7 @@ where
                     };
 
                     while h <= std::cmp::min(current_height, end) {
-                        let block = match ctx.controller.get_block_detail_by_number(h).await {
+                        let block = match ctx.controller.get_compact_block_by_number(h).await {
                             Ok(block) => block,
                             Err(e) => {
                                 println!("failed to get block `{h}`: `{e}`");
@@ -115,7 +115,7 @@ where
                             },
                         };
                         match (block.header, block.body) {
-                            (Some(header), Some(txs)) => {
+                            (Some(header), Some(body)) => {
                                 let height = header.height;
                                 let elapsed_secs = {
                                     let t = std::time::UNIX_EPOCH + Duration::from_millis(header.timestamp);
@@ -126,7 +126,7 @@ where
                                 };
                                 total_secs = elapsed_secs;
 
-                                let cnt = txs.body.len() as u64;
+                                let cnt = body.tx_hashes.len() as u64;
                                 if cnt > 0 {
                                     finalized_txs += cnt;
                                     empty_block_num = 0;
