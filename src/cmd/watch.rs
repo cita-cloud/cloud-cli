@@ -54,6 +54,14 @@ where
                 .takes_value(true)
                 .validator(str::parse::<u64>),
         )
+        .arg(
+            Arg::new("until-empty")
+                .help("stop watching when the number of consecutive empty blocks reach the given limit")
+                .short('u')
+                .long("until-empty")
+                .takes_value(true)
+                .validator(str::parse::<u64>),
+        )
         .handler(|_cmd, m, ctx| {
             let mut finalized_txs = 0;
             let mut total_secs = 0;
@@ -74,11 +82,16 @@ where
                     .value_of("until-finalized-txs")
                     .map(|s| s.parse::<u64>().unwrap());
 
+                let until_empty = m
+                    .value_of("until-empty")
+                    .map(|s| s.parse::<u64>().unwrap());
+
                 let mut h = begin;
 
-                let mut check_interval = tokio::time::interval(Duration::from_secs(1));
+                let mut check_interval = tokio::time::interval(Duration::from_millis(500));
                 let mut retry_interval = tokio::time::interval(Duration::from_secs(3));
                 let mut begin_time = None;
+                let mut empty_block_num = 0;
 
             'outter:
                 while h <= end {
@@ -93,7 +106,7 @@ where
                     };
 
                     while h <= std::cmp::min(current_height, end) {
-                        let compact_block_with_stateroot_proof = match ctx.controller.get_block_by_number(h).await {
+                        let block = match ctx.controller.get_compact_block_by_number(h).await {
                             Ok(block) => block,
                             Err(e) => {
                                 println!("failed to get block `{h}`: `{e}`");
@@ -101,7 +114,7 @@ where
                                 continue;
                             },
                         };
-                        match (compact_block_with_stateroot_proof.compact_block.header, compact_block_with_stateroot_proof.compact_block.body) {
+                        match (block.header, block.body) {
                             (Some(header), Some(body)) => {
                                 let height = header.height;
                                 let elapsed_secs = {
@@ -114,7 +127,12 @@ where
                                 total_secs = elapsed_secs;
 
                                 let cnt = body.tx_hashes.len() as u64;
-                                finalized_txs += cnt;
+                                if cnt > 0 {
+                                    finalized_txs += cnt;
+                                    empty_block_num = 0;
+                                } else {
+                                    empty_block_num += 1;
+                                }
 
                                 if elapsed_secs < 3600 {
                                     println!(
@@ -139,6 +157,11 @@ where
 
                                 if let Some(until_finalized_txs) = until_finalized_txs {
                                     if finalized_txs >= until_finalized_txs {
+                                        break 'outter;
+                                    }
+                                }
+                                if let Some(until_empty) = until_empty {
+                                    if empty_block_num >= until_empty {
                                         break 'outter;
                                     }
                                 }

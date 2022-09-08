@@ -71,6 +71,7 @@ pub trait ControllerBehaviour {
     async fn get_block_hash(&self, block_number: u64) -> Result<Hash>;
 
     async fn get_height_by_hash(&self, hash: Hash) -> Result<BlockNumber>;
+    async fn get_compact_block_by_number(&self, block_number: u64) -> Result<CompactBlock>;
     async fn get_block_by_number(
         &self,
         block_number: u64,
@@ -156,6 +157,15 @@ impl ControllerBehaviour for ControllerClient {
             .into_inner();
 
         Ok(resp)
+    }
+
+    async fn get_compact_block_by_number(&self, block_number: u64) -> Result<CompactBlock> {
+        let block_number = BlockNumber { block_number };
+        let compact_block =
+            ControllerClient::get_block_by_number(&mut self.clone(), block_number.clone())
+                .await?
+                .into_inner();
+        Ok(compact_block)
     }
 
     async fn get_block_by_number(
