@@ -4,7 +4,7 @@
 
 ```plaintext
 $ cldi help
-cldi 0.4.3
+cldi 0.5.0
 Rivtower Technologies <contact@rivtower.com>
 The command line interface to interact with CITA-Cloud
 
