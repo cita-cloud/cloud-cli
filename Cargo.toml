@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.4.3"
+version = "0.5.0"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
