@@ -19,8 +19,9 @@ use crate::{
     core::{
         context::Context, controller::ControllerBehaviour, evm::EvmBehaviour, evm::EvmBehaviourExt,
     },
+    crypto::{Address, Hash},
     display::Display,
-    utils::{get_block_height_at, parse_addr, parse_hash, parse_position},
+    utils::{get_block_height_at, parse_addr, parse_hash, parse_position, Position},
 };
 
 pub fn get_receipt<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -32,12 +33,11 @@ where
         .arg(
             Arg::new("tx_hash")
                 .help("Transaction hash")
-                .takes_value(true)
                 .required(true)
-                .validator(parse_hash),
+                .value_parser(parse_hash),
         )
         .handler(|_cmd, m, ctx| {
-            let tx_hash = parse_hash(m.value_of("tx_hash").unwrap())?;
+            let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
 
             let receipt = ctx.rt.block_on(ctx.evm.get_receipt(tx_hash))??;
             println!("{}", receipt.display());
@@ -54,12 +54,11 @@ where
         .arg(
             Arg::new("addr")
                 .help("Contract address")
-                .takes_value(true)
                 .required(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .handler(|_cmd, m, ctx| {
-            let addr = parse_addr(m.value_of("addr").unwrap())?;
+            let addr = *m.get_one::<Address>("addr").unwrap();
 
             let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))??;
             println!("{}", byte_code.display());
@@ -76,12 +75,11 @@ where
         .arg(
             Arg::new("addr")
                 .help("Account address, default to current account")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .handler(|_cmd, m, ctx| {
-            let addr = match m.value_of("addr") {
-                Some(s) => parse_addr(s).unwrap(),
+            let addr = match m.get_one::<Address>("addr") {
+                Some(s) => s.to_owned(),
                 None => *ctx.current_account()?.address(),
             };
 
@@ -100,12 +98,11 @@ where
         .arg(
             Arg::new("addr")
                 .help("Account address, default to current account")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .handler(|_cmd, m, ctx| {
-            let addr = match m.value_of("addr") {
-                Some(s) => parse_addr(s).unwrap(),
+            let addr = match m.get_one::<Address>("addr") {
+                Some(s) => s.to_owned(),
                 None => *ctx.current_account()?.address(),
             };
 
@@ -125,11 +122,10 @@ where
             Arg::new("addr")
                 .help("Contract address")
                 .required(true)
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .handler(|_cmd, m, ctx| {
-            let addr = parse_addr(m.value_of("addr").unwrap())?;
+            let addr = *m.get_one::<Address>("addr").unwrap();
 
             let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))??;
             println!("{}", byte_abi.display());
@@ -146,34 +142,31 @@ where
         .arg(
             Arg::new("addr")
                 .required(true)
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
-        .arg(Arg::new("abi").required(true).takes_value(true))
+        .arg(Arg::new("abi").required(true))
         .arg(
             Arg::new("quota")
                 .help("the quota of this tx")
                 .short('q')
                 .long("quota")
-                .takes_value(true)
                 .default_value("1073741824")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("valid-until-block")
                 .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
-                .takes_value(true)
                 .default_value("+95")
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             let tx_hash = ctx.rt.block_on(async {
-                let contract_addr = parse_addr(m.value_of("addr").unwrap())?;
-                let abi = m.value_of("abi").unwrap();
-                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let contract_addr = *m.get_one::<Address>("addr").unwrap();
+                let abi = m.get_one::<String>("abi").unwrap();
+                let quota = *m.get_one::<u64>("quota").unwrap();
                 let valid_until_block = {
-                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
                     get_block_height_at(&ctx.controller, pos).await?
                 };
 
@@ -191,4 +184,130 @@ where
             println!("{}", tx_hash.display());
             Ok(())
         })
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::crypto::Hash;
+    use cita_cloud_proto::controller::SystemConfig;
+    use cita_cloud_proto::evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt};
+
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    fn test_evm_subcmds() {
+        let cldi_cmd = cldi_cmd();
+        let (mut ctx, _temp_dir) = context();
+
+        ctx.evm
+            .expect_get_receipt()
+            .returning(|_utxo| Ok(Receipt::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "receipt",
+                    "0x74ac6372ab461de6817d7146a9b8ad17c35525b13a37f4bb0da325fbfd999f3a",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.evm
+            .expect_get_code()
+            .returning(|_utxo| Ok(ByteCode::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "code",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.evm
+            .expect_get_balance()
+            .returning(|_utxo| Ok(Balance::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "balance",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.evm
+            .expect_get_tx_count()
+            .returning(|_utxo| Ok(Nonce::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "nonce",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.evm
+            .expect_get_abi()
+            .returning(|_utxo| Ok(ByteAbi::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "abi",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.controller
+            .expect_get_system_config()
+            .returning(|| Ok(SystemConfig::default()));
+
+        ctx.controller
+            .expect_get_block_number()
+            .returning(|_| Ok(100u64));
+
+        ctx.controller
+            .expect_send_raw()
+            .returning(|_utxo| Ok(Hash::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "rpc",
+                    "store-abi",
+                    "-q",
+                    "200000",
+                    "--until",
+                    "+80",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "fake abi",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+    }
 }

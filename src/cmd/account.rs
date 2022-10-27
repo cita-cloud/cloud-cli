@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
-
 use anyhow::anyhow;
-use clap::Arg;
+use clap::{Arg, ArgAction};
 use serde_json::json;
 
 use crate::{
@@ -37,27 +35,24 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
             Arg::new("name")
                 .help("The name for the new generated account, default to account address")
                 .long("name")
-                .takes_value(true),
         )
         .arg(
             Arg::new("password")
                 .short('p')
                 .long("password")
                 .help("The password to encrypt the account")
-                .takes_value(true),
         )
         .arg(
             Arg::new("crypto-type")
                 .help("The crypto type for the generated account. [default: <current-context-crypto-type>]")
                 .long("crypto")
-                .possible_values(["SM", "ETH"])
+                .value_parser(["SM", "ETH"])
                 .ignore_case(true)
-                .validator(CryptoType::from_str)
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").map(str::to_string);
-            let pw = m.value_of("password").map(str::as_bytes);
-            let crypto_type = m.value_of("crypto-type")
+            let name = m.get_one::<String>("name");
+            let pw = m.get_one::<String>("password").map(|s| s.as_bytes());
+            let crypto_type = m.get_one::<String>("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
                 .unwrap_or(ctx.current_setting.crypto_type);
             let account: MultiCryptoAccount = match crypto_type {
@@ -73,11 +68,12 @@ pub fn generate_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, E
             // TODO: don't display secret key
             let output = serde_json::to_string_pretty(&maybe_locked)?;
 
-            let name = name.unwrap_or_else(|| hex(maybe_locked.address()));
+            let default_name = hex(maybe_locked.address());
+            let name = name.unwrap_or(&default_name);
             ctx.wallet.save(name.clone(), maybe_locked)?;
             // Make generated account usable without having to unlock it.
             if let Some(pw) = pw {
-                ctx.wallet.unlock(&name, pw)?;
+                ctx.wallet.unlock(name, pw)?;
             }
 
             println!("{output}");
@@ -116,35 +112,31 @@ pub fn import_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         .arg(
             Arg::new("secret-key")
                 .help("The secret key")
-                .takes_value(true)
                 .required(true),
         )
         .arg(
             Arg::new("name")
                 .help("The name of the account, default to account address")
                 .long("name")
-                .takes_value(true),
         )
         .arg(
             Arg::new("password")
                 .help("The password to encrypt the account")
                 .short('p')
                 .long("password")
-                .takes_value(true),
         )
         .arg(
             Arg::new("crypto-type")
                 .help("The crypto type for the imported account. [default: <current-context-crypto-type>]")
                 .long("crypto")
-                .possible_values(["SM", "ETH"])
+                .value_parser(["SM", "ETH"])
                 .ignore_case(true)
-                .validator(CryptoType::from_str)
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").map(str::to_string);
-            let pw = m.value_of("password").map(str::as_bytes);
-            let sk = m.value_of("secret-key").unwrap();
-            let crypto_type = m.value_of("crypto-type")
+            let name = m.get_one::<String>("name");
+            let pw = m.get_one::<String>("password").map(|s| s.as_bytes());
+            let sk = m.get_one::<String>("secret-key").unwrap();
+            let crypto_type = m.get_one::<String>("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
                 .unwrap_or(ctx.current_setting.crypto_type);
 
@@ -168,14 +160,14 @@ pub fn import_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
                 "pubkey": pubkey,
             });
 
-            let name = name.unwrap_or(addr);
+            let name = name.unwrap_or(&addr);
             if let Some(pw) = pw {
                 let locked = account.lock(pw);
 
                 ctx.wallet.save(name.clone(), locked)?;
-                ctx.wallet.unlock(&name, pw)?;
+                ctx.wallet.unlock(name, pw)?;
             } else {
-                ctx.wallet.save(name, account)?;
+                ctx.wallet.save(name.to_owned(), account)?;
             };
 
             println!("{}", info.display());
@@ -189,19 +181,17 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         .arg(
             Arg::new("name")
                 .help("The name of the account")
-                .required(true)
-                .takes_value(true),
+                .required(true),
         )
         .arg(
             Arg::new("password")
                 .help("The password to decrypt the account")
                 .short('p')
-                .long("password")
-                .takes_value(true),
+                .long("password"),
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password").map(str::as_bytes);
+            let name = m.get_one::<String>("name").unwrap();
+            let pw = m.get_one::<String>("password").map(|s| s.as_bytes());
 
             let maybe_locked = ctx.wallet.get(name)?;
 
@@ -226,7 +216,6 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         .arg(
             Arg::new("name")
                 .help("The name of the account")
-                .takes_value(true)
                 .required(true),
         )
         .arg(
@@ -234,12 +223,14 @@ pub fn unlock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
                 .help("The password of the account")
                 .short('p')
                 .long("password")
-                .takes_value(true)
                 .required(true),
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password").unwrap().as_bytes();
+            let name = m.get_one::<String>("name").unwrap();
+            let pw = m
+                .get_one::<String>("password")
+                .map(|s| s.as_bytes())
+                .unwrap();
 
             ctx.wallet.unlock_in_keystore(name, pw)?;
 
@@ -253,7 +244,6 @@ pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
         .arg(
             Arg::new("name")
                 .help("The name of the account")
-                .takes_value(true)
                 .required(true),
         )
         .arg(
@@ -261,12 +251,14 @@ pub fn lock_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
                 .help("The password to lock the account")
                 .short('p')
                 .long("password")
-                .takes_value(true)
                 .required(true),
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").unwrap();
-            let pw = m.value_of("password").unwrap().as_bytes();
+            let name = m.get_one::<String>("name").unwrap();
+            let pw = m
+                .get_one::<String>("password")
+                .map(|s| s.as_bytes())
+                .unwrap();
 
             ctx.wallet.lock(name, pw)?;
 
@@ -280,20 +272,20 @@ pub fn delete_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
         .arg(
             Arg::new("name")
                 .help("The name of the account")
-                .takes_value(true)
                 .required(true),
         )
         .arg(
             Arg::new("yes")
                 .help("Don't ask for confirmation")
                 .short('y')
+                .action(ArgAction::SetTrue)
                 .long("yes"),
         )
         .handler(|_cmd, m, ctx| {
-            let name = m.value_of("name").unwrap();
+            let name = m.get_one::<String>("name").unwrap();
             // If account doesn't exit, report it now.
             ctx.wallet.get(name)?;
-            if !m.is_present("yes") {
+            if !m.get_one::<bool>("yes").unwrap() {
                 let prompt = format!("Are you sure to delete the account `{name}`? (y/n) ");
                 loop {
                     match ctx
@@ -324,15 +316,15 @@ pub fn account_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
         .subcommands([
             generate_account()
                 .name("generate")
-                .aliases(&["gen", "g", "create"]),
-            list_account().name("list").aliases(&["ls", "l"]),
+                .aliases(["gen", "g", "create"]),
+            list_account().name("list").aliases(["ls", "l"]),
             import_account().name("import"),
             export_account().name("export"),
             unlock_account().name("unlock"),
             lock_account().name("lock"),
             delete_account()
                 .name("delete")
-                .aliases(&["del", "rm", "remove"]),
+                .aliases(["del", "rm", "remove"]),
         ])
 }
 
@@ -346,17 +338,147 @@ mod tests {
         let cldi_cmd = cldi_cmd();
         let (mut ctx, _temp_dir) = context();
 
+        // generate
         cldi_cmd
-            .exec_from(["cldi", "account", "list"], &mut ctx)
+            .exec_from(["cldi", "account", "generate"], &mut ctx)
             .unwrap();
         cldi_cmd
             .exec_from(["cldi", "account", "generate", "--name", "test"], &mut ctx)
             .unwrap();
         cldi_cmd
+            .exec_from(
+                [
+                    "cldi", "account", "generate", "--name", "test1", "-p", "123456",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi", "account", "generate", "--name", "test2", "-p", "123456", "--crypto",
+                    "sm",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi", "account", "generate", "--name", "test3", "-p", "123456", "--crypto",
+                    "eth",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        // list
+        cldi_cmd
+            .exec_from(["cldi", "account", "list"], &mut ctx)
+            .unwrap();
+        // import
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "account",
+                    "import",
+                    "0x1427b86a4856cf8dbe5e4eb4ab8ab7f1cdf3c7d85e8bb29f07d47e30b43fe72e",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "account",
+                    "import",
+                    "0x1427b86a4856cf8dbe5e4eb4ab8ab7f1cdf3c7d85e8bb29f07d47e30b43fe72e",
+                    "--name",
+                    "test4",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "account",
+                    "import",
+                    "0x1427b86a4856cf8dbe5e4eb4ab8ab7f1cdf3c7d85e8bb29f07d47e30b43fe72e",
+                    "--name",
+                    "test5",
+                    "-p",
+                    "123456",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "account",
+                    "import",
+                    "0x1427b86a4856cf8dbe5e4eb4ab8ab7f1cdf3c7d85e8bb29f07d47e30b43fe72e",
+                    "--name",
+                    "test6",
+                    "-p",
+                    "123456",
+                    "--crypto",
+                    "SM",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "account",
+                    "import",
+                    "0x1427b86a4856cf8dbe5e4eb4ab8ab7f1cdf3c7d85e8bb29f07d47e30b43fe72e",
+                    "--name",
+                    "test7",
+                    "-p",
+                    "123456",
+                    "--crypto",
+                    "ETH",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+        // export
+        cldi_cmd
             .exec_from(["cldi", "account", "export", "test"], &mut ctx)
             .unwrap();
         cldi_cmd
+            .exec_from(
+                ["cldi", "account", "export", "test1", "-p", "123456"],
+                &mut ctx,
+            )
+            .unwrap();
+        // unlock
+        cldi_cmd
+            .exec_from(
+                ["cldi", "account", "unlock", "test1", "-p", "123456"],
+                &mut ctx,
+            )
+            .unwrap();
+        // lock
+        cldi_cmd
+            .exec_from(
+                ["cldi", "account", "lock", "test4", "-p", "123456"],
+                &mut ctx,
+            )
+            .unwrap();
+        // delete
+        cldi_cmd
             .exec_from(["cldi", "account", "delete", "test", "--yes"], &mut ctx)
             .unwrap();
+        //cldi_cmd
+        //    .exec_from(["cldi", "account", "delete", "test1"], &mut ctx)
+        //    .unwrap();
     }
 }

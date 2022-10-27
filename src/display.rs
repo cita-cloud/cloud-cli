@@ -405,11 +405,12 @@ impl Display for ProofWithValidators {
                 let vote_iter = bft_proof.votes.clone().into_iter();
                 let vote_with_validator_iter = vote_iter.zip(validator_iter);
                 let votes: Vec<Json> = vote_with_validator_iter.map(|f| f.to_json()).collect();
+                let proposal_hash = &bft_proof.hash.unwrap_or_default().0;
                 json!({
                     "height": bft_proof.height,
                     "round": bft_proof.round,
                     "step": bft_proof.step,
-                    "proposal_hash": hex(&bft_proof.hash.unwrap().0),
+                    "proposal_hash": hex(proposal_hash),
                     "votes": votes,
                 })
             }

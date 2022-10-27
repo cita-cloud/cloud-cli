@@ -2,7 +2,7 @@
 // I modified the command line parser to integrate it into cloud-cli.
 
 use anyhow::anyhow;
-use clap::Arg;
+use clap::{Arg, ArgAction};
 
 use ethabi::{
     decode, encode,
@@ -20,35 +20,32 @@ use crate::core::context::Context;
 pub fn ethabi_encode_function_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi-encode-function")
         .about("Load function from JSON ABI file.")
-        .arg(Arg::new("abi-path").takes_value(true).required(true))
-        .arg(
-            Arg::new("function_name_or_signature")
-                .takes_value(true)
-                .required(true),
-        )
+        .arg(Arg::new("abi-path").required(true))
+        .arg(Arg::new("function_name_or_signature").required(true))
         .arg(
             Arg::new("params")
                 .short('p')
-                .takes_value(true)
-                .number_of_values(1)
-                .multiple_occurrences(true)
+                .num_args(1)
+                .action(ArgAction::Append)
                 .required(true),
         )
         .arg(
             Arg::new("lenient")
                 .help("Allow short representation of input params.")
                 .short('l')
-                .long("lenient"),
+                .long("lenient")
+                .action(ArgAction::SetTrue),
         )
         .handler(|_cmd, m, _ctx| {
-            let abi_path = m.value_of("abi-path").unwrap();
-            let function_name_or_signature = m.value_of("function_name_or_signature").unwrap();
+            let abi_path = m.get_one::<String>("abi-path").unwrap();
+            let function_name_or_signature =
+                m.get_one::<String>("function_name_or_signature").unwrap();
             let params = m
-                .values_of("params")
+                .get_many::<String>("params")
                 .unwrap_or_default()
-                .map(str::to_string)
+                .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
-            let lenient = m.is_present("lenient");
+            let lenient = *m.get_one::<bool>("lenient").unwrap();
 
             let encoded = encode_input(abi_path, function_name_or_signature, &params, lenient)?;
             println!("0x{encoded}");
@@ -63,27 +60,27 @@ pub fn ethabi_encode_params_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<C
         .arg(
             Arg::new("type-or-param")
                 .short('v')
-                .takes_value(true)
-                .number_of_values(2)
-                .multiple_occurrences(true)
+                .num_args(2)
+                .action(ArgAction::Append)
                 .allow_hyphen_values(true),
         )
         .arg(
             Arg::new("lenient")
                 .help("Allow short representation of input params (numbers are in decimal form).")
                 .short('l')
-                .long("lenient"),
+                .long("lenient")
+                .action(ArgAction::SetTrue),
         )
         .handler(|_cmd, m, _ctx| {
             let params = m
-                .values_of("type-or-param")
+                .get_many::<String>("type-or-param")
                 .unwrap_or_default()
-                .map(str::to_string)
+                .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
-            let lenient = m.is_present("lenient");
+            let lenient = *m.get_one::<bool>("lenient").unwrap();
 
             let encoded = encode_params(&params, lenient)?;
-            println!("0x{encoded}");
+            println!("{encoded}");
 
             Ok(())
         })
@@ -102,17 +99,14 @@ pub fn ethabi_encode_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, 
 pub fn ethabi_decode_function_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi-decode-function")
         .about("Load function from JSON ABI file.")
-        .arg(Arg::new("abi-path").takes_value(true).required(true))
-        .arg(
-            Arg::new("function_name_or_signature")
-                .takes_value(true)
-                .required(true),
-        )
-        .arg(Arg::new("data").takes_value(true).required(true))
+        .arg(Arg::new("abi-path").required(true))
+        .arg(Arg::new("function_name_or_signature").required(true))
+        .arg(Arg::new("data").required(true))
         .handler(|_cmd, m, _ctx| {
-            let abi_path = m.value_of("abi-path").unwrap();
-            let function_name_or_signature = m.value_of("function_name_or_signature").unwrap();
-            let data = m.value_of("data").unwrap();
+            let abi_path = m.get_one::<String>("abi-path").unwrap();
+            let function_name_or_signature =
+                m.get_one::<String>("function_name_or_signature").unwrap();
+            let data = m.get_one::<String>("data").unwrap();
 
             let decoded = decode_call_output(abi_path, function_name_or_signature, data)?;
             println!("{decoded}");
@@ -127,18 +121,17 @@ pub fn ethabi_decode_params_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<C
         .arg(
             Arg::new("type")
                 .short('t')
-                .takes_value(true)
-                .number_of_values(1)
-                .multiple_occurrences(true),
+                .num_args(1)
+                .action(ArgAction::Append),
         )
-        .arg(Arg::new("data").takes_value(true).required(true))
+        .arg(Arg::new("data").required(true))
         .handler(|_cmd, m, _ctx| {
             let types = m
-                .values_of("type")
+                .get_many::<String>("type")
                 .unwrap_or_default()
-                .map(str::to_string)
+                .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
-            let data = m.value_of("data").unwrap();
+            let data = m.get_one::<String>("data").unwrap();
 
             let decoded = decode_params(&types, data)?;
             println!("{decoded}");
@@ -150,29 +143,24 @@ pub fn ethabi_decode_params_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<C
 pub fn ethabi_decode_log_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("ethabi-decode-log")
         .about("Decode event log.")
-        .arg(Arg::new("abi-path").takes_value(true).required(true))
-        .arg(
-            Arg::new("event-name-or-signature")
-                .takes_value(true)
-                .required(true),
-        )
+        .arg(Arg::new("abi-path").required(true))
+        .arg(Arg::new("event-name-or-signature").required(true))
         .arg(
             Arg::new("topic")
                 .short('l')
-                .takes_value(true)
-                .number_of_values(1)
-                .multiple_occurrences(true),
+                .num_args(1)
+                .action(ArgAction::Append),
         )
-        .arg(Arg::new("data").takes_value(true).required(true))
+        .arg(Arg::new("data").required(true))
         .handler(|_cmd, m, _ctx| {
-            let abi_path = m.value_of("abi-path").unwrap();
-            let event_name_or_signature = m.value_of("event-name-or-signature").unwrap();
+            let abi_path = m.get_one::<String>("abi-path").unwrap();
+            let event_name_or_signature = m.get_one::<String>("event-name-or-signature").unwrap();
             let topics = m
-                .values_of("topic")
+                .get_many::<String>("topic")
                 .unwrap_or_default()
-                .map(str::to_string)
+                .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
-            let data = m.value_of("data").unwrap();
+            let data = m.get_one::<String>("data").unwrap();
 
             let decoded = decode_log(abi_path, event_name_or_signature, &topics, data)?;
             println!("{decoded}");
@@ -328,7 +316,7 @@ fn encode_params(params: &[String], lenient: bool) -> anyhow::Result<String> {
 
 fn decode_call_output(path: &str, name_or_signature: &str, data: &str) -> anyhow::Result<String> {
     let function = load_function(path, name_or_signature)?;
-    let data: Vec<u8> = hex::decode(&data)?;
+    let data: Vec<u8> = hex::decode(data)?;
     let tokens = function.decode_output(&data)?;
     let types = function.outputs;
 
@@ -350,7 +338,7 @@ fn decode_params(types: &[String], data: &str) -> anyhow::Result<String> {
         .map(|s| Reader::read(s))
         .collect::<Result<_, _>>()?;
 
-    let data: Vec<u8> = hex::decode(&data)?;
+    let data: Vec<u8> = hex::decode(data)?;
 
     let tokens = decode(&types, &data)?;
 
@@ -389,4 +377,81 @@ fn decode_log(
 
 fn hash_signature(sig: &str) -> Hash {
     Hash::from_slice(Keccak256::digest(sig.replace(' ', "").as_bytes()).as_slice())
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    fn test_ethabi_subcmds() {
+        let cldi_cmd = cldi_cmd();
+        let (mut ctx, _temp_dir) = context();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "ethabi",
+                    "encode",
+                    "function",
+                    "-p",
+                    "1",
+                    "-p",
+                    "123",
+                    "-l",
+                    "test/test.json",
+                    "test",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi", "ethabi", "encode", "params", "-v", "string", "abcd", "-v", "bool",
+                    "0", "-l",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "ethabi",
+                    "decode",
+                    "function",
+                    "test/test.json",
+                    "test",
+                    "0000000000000000000000000000000000000000000000000000000000000001",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(["cldi", "ethabi", "decode", "params", "-t", "string", "-t", "bool", "0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000046162636400000000000000000000000000000000000000000000000000000000"], &mut ctx).unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "ethabi",
+                    "decode",
+                    "log",
+                    "-l",
+                    "0000000000000000000000000000000000000000000000000000000000000001",
+                    "test/event.json",
+                    "Event",
+                    "0000000000000000000000004444444444444444444444444444444444444444",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+    }
 }

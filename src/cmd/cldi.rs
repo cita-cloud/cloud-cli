@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use clap::{crate_authors, crate_version, AppSettings, Arg, ColorChoice};
-use std::str::FromStr;
+use clap::{crate_authors, crate_version, Arg, ColorChoice};
 use tonic::transport::Endpoint;
 
 use crate::{
     cmd::{account, admin, bench, context, ethabi, evm, rpc, watch, Command},
-    config::{ConsensusType, ContextSetting, CryptoType},
+    config::ContextSetting,
     core::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
         evm::EvmBehaviour, executor::ExecutorBehaviour,
@@ -61,55 +60,43 @@ where
         .author(crate_authors!())
         .version(crate_version!())
         .color(ColorChoice::Auto)
-        .global_setting(AppSettings::DeriveDisplayOrder)
         .arg(
             Arg::new("context")
                 .help("context setting")
                 .short('c')
-                .long("context")
-                .takes_value(true),
+                .long("context"),
         )
         .arg(
             Arg::new("controller-addr")
                 .help("controller address")
                 .short('r')
-                .takes_value(true)
-                .validator(|s| Endpoint::from_shared(s.to_string()).map(|_| ())),
+                .value_parser(|s: &str| Endpoint::from_shared(s.to_string())),
         )
         .arg(
             Arg::new("executor-addr")
                 .help("executor address")
                 .short('e')
-                .takes_value(true)
-                .validator(|s| Endpoint::from_shared(s.to_string()).map(|_| ())),
+                .value_parser(|s: &str| Endpoint::from_shared(s.to_string())),
         )
-        .arg(
-            Arg::new("account-name")
-                .help("account name")
-                .short('u')
-                .takes_value(true),
-        )
+        .arg(Arg::new("account-name").help("account name").short('u'))
         .arg(
             Arg::new("password")
                 .help("password to unlock the account")
-                .short('p')
-                .takes_value(true),
+                .short('p'),
         )
         .arg(
             Arg::new("crypto-type")
                 .help("The crypto type of the target chain")
                 .long("crypto")
-                .possible_values(["SM", "ETH"])
-                .ignore_case(true)
-                .validator(CryptoType::from_str),
+                .value_parser(["SM", "ETH"])
+                .ignore_case(true),
         )
         .arg(
             Arg::new("consensus-type")
                 .help("The consensus type of the target chain")
                 .long("consensus")
-                .possible_values(["BFT", "OVERLORD", "RAFT"])
-                .ignore_case(true)
-                .validator(ConsensusType::from_str),
+                .value_parser(["BFT", "OVERLORD", "RAFT"])
+                .ignore_case(true),
         )
         .handler(|cmd, m, ctx| {
             // If a subcommand is present, context modifiers(e.g. -r) will construct a tmp context for that subcommand.
@@ -118,36 +105,42 @@ where
             let mut current_setting = ctx.current_setting.clone();
 
             let is_tmp_ctx = m.subcommand().is_some()
-                && (m.is_present("context")
-                    || m.is_present("controller-addr")
-                    || m.is_present("executor-addr")
-                    || m.is_present("account-name")
-                    || m.is_present("password")
-                    || m.is_present("crypto-type")
-                    || m.is_present("consensus-type"));
+                && (m.contains_id("context")
+                    || m.contains_id("controller-addr")
+                    || m.contains_id("executor-addr")
+                    || m.contains_id("account-name")
+                    || m.contains_id("password")
+                    || m.contains_id("crypto-type")
+                    || m.contains_id("consensus-type"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
             // (account_name, password) for restoring previous account lock status if it's in tmp context.
             let mut relock_info: Option<(String, String)> = None;
 
-            if let Some(setting_name) = m.value_of("context") {
+            if let Some(setting_name) = m.get_one::<String>("context") {
                 current_setting = ctx.get_context_setting(setting_name)?.clone();
             }
-            if let Some(controller_addr) = m.value_of("controller-addr") {
-                current_setting.controller_addr = controller_addr.into();
+            if let Some(mut controller_addr) = m.get_raw("controller-addr") {
+                current_setting.controller_addr = controller_addr
+                    .next()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
             }
-            if let Some(executor_addr) = m.value_of("executor-addr") {
-                current_setting.executor_addr = executor_addr.into();
+            if let Some(mut executor_addr) = m.get_raw("executor-addr") {
+                current_setting.executor_addr =
+                    executor_addr.next().unwrap().to_str().unwrap().to_string();
             }
-            if let Some(account_name) = m.value_of("account-name") {
+            if let Some(account_name) = m.get_one::<String>("account-name") {
                 // Check if the account exists.
                 ctx.wallet.get(account_name)?;
                 current_setting.account_name = account_name.into();
             }
-            if let Some(pw) = m.value_of("password") {
+            if let Some(pw) = m.get_one::<String>("password") {
                 let account_name = m
-                    .value_of("account-name")
+                    .get_one::<String>("account-name")
                     .unwrap_or(&ctx.current_setting.account_name);
                 let was_locked = ctx.wallet.get(account_name)?.is_locked();
                 ctx.wallet.unlock(account_name, pw.as_bytes())?;
@@ -155,10 +148,10 @@ where
                     relock_info.replace((account_name.into(), pw.into()));
                 }
             }
-            if let Some(crypto_type) = m.value_of("crypto-type") {
+            if let Some(crypto_type) = m.get_one::<String>("crypto-type") {
                 current_setting.crypto_type = crypto_type.parse().unwrap();
             }
-            if let Some(consensus_type) = m.value_of("consensus-type") {
+            if let Some(consensus_type) = m.get_one::<String>("consensus-type") {
                 current_setting.consensus_type = consensus_type.parse().unwrap();
             }
 
@@ -177,7 +170,7 @@ where
             ret
         })
         .subcommands([
-            self::get_cmd().aliases(&["ge", "g"]),
+            self::get_cmd().aliases(["ge", "g"]),
             rpc::send_tx().name("send"),
             rpc::call_executor().name("call"),
             rpc::create_contract().name("create"),

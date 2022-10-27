@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use anyhow::{anyhow, Context as _};
-use clap::Arg;
-use std::str::FromStr;
+use clap::{Arg, ArgAction};
 use tokio::try_join;
 
 use crate::config::{ConsensusType, CryptoType};
-use crate::utils::parse_u64;
+use crate::crypto::{Address, Hash};
+use crate::utils::{parse_u64, Position};
 use crate::{
     cmd::{evm::store_abi, Command},
     core::{
@@ -42,42 +42,38 @@ where
                 .help("default to use current account address")
                 .short('f')
                 .long("from")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("to")
                 .help("the target contract address")
                 .required(true)
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("data")
                 .help("the data of this call request")
                 .required(true)
-                .takes_value(true)
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("height")
                 .help("the height of this call request")
                 .required(false)
-                .takes_value(true)
-                .validator(parse_u64),
+                .value_parser(parse_u64),
         )
         .handler(|_cmd, m, ctx| {
-            let from = match m.value_of("from") {
-                Some(from) => parse_addr(from).unwrap(),
+            let from = match m.get_one::<Address>("from") {
+                Some(from) => from.to_owned(),
                 None => *ctx.current_account()?.address(),
             };
-            let to = parse_addr(m.value_of("to").unwrap())?;
-            let data = parse_data(m.value_of("data").unwrap())?;
-            let height = parse_u64(if let Some(height) = m.value_of("height") {
-                height
+            let to = *m.get_one::<Address>("to").unwrap();
+            let data = m.get_one::<Vec<u8>>("data").unwrap().to_owned();
+            let height = if let Some(height) = m.get_one::<u64>("height") {
+                *height
             } else {
-                "0"
-            })?;
+                0
+            };
 
             let resp = ctx
                 .rt
@@ -96,51 +92,46 @@ where
         .arg(
             Arg::new("to")
                 .help("the target address of this tx")
-                .takes_value(true)
                 .required(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("data")
                 .help("the data of this tx")
-                .takes_value(true)
                 .default_value("0x")
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("value")
                 .help("the value of this tx")
                 .short('v')
                 .long("value")
-                .takes_value(true)
                 .default_value("0x0")
-                .validator(parse_value),
+                .value_parser(parse_value),
         )
         .arg(
             Arg::new("quota")
                 .help("the quota of this tx")
                 .short('q')
                 .long("quota")
-                .takes_value(true)
                 .default_value("200000")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("valid-until-block")
                 .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
-                .takes_value(true)
                 .default_value("+95")
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
-                let to = parse_addr(m.value_of("to").unwrap())?.to_vec();
-                let data = parse_data(m.value_of("data").unwrap())?;
-                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
-                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let to = m.get_one::<Address>("to").unwrap().to_vec();
+                let data = m.get_one::<Vec<u8>>("data").unwrap().to_owned();
+                let value = m.get_one::<[u8; 32]>("value").unwrap().to_vec();
+                let quota = *m.get_one::<u64>("quota").unwrap();
                 let valid_until_block = {
-                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
                     get_block_height_at(&ctx.controller, pos).await?
                 };
 
@@ -166,44 +157,40 @@ where
         .arg(
             Arg::new("data")
                 .help("the data of this tx")
-                .takes_value(true)
                 .required(true)
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("value")
                 .help("the value of this tx")
                 .short('v')
                 .long("value")
-                .takes_value(true)
                 .default_value("0x0")
-                .validator(parse_value),
+                .value_parser(parse_value),
         )
         .arg(
             Arg::new("quota")
                 .help("the quota of this tx")
                 .short('q')
                 .long("quota")
-                .takes_value(true)
                 .default_value("1073741824")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("valid-until-block")
                 .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
-                .takes_value(true)
                 .default_value("+95")
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
             ctx.rt.block_on(async {
                 let to = Vec::new();
-                let data = parse_data(m.value_of("data").unwrap())?;
-                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
-                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let data = m.get_one::<Vec<u8>>("data").unwrap().to_owned();
+                let value = m.get_one::<[u8; 32]>("value").unwrap().to_vec();
+                let quota = *m.get_one::<u64>("quota").unwrap();
                 let valid_until_block = {
-                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
                     get_block_height_at(&ctx.controller, pos).await?
                 };
 
@@ -243,12 +230,11 @@ where
             Arg::new("height")
                 .help("Get system config by height")
                 .required(false)
-                .takes_value(true)
-                .validator(parse_u64),
+                .value_parser(parse_u64),
         )
         .handler(|_cmd, m, ctx| {
-            if m.is_present("height") {
-                let height = m.value_of("height").unwrap().parse()?;
+            if m.contains_id("height") {
+                let height = *m.get_one::<u64>("height").unwrap();
                 let current_height = ctx.rt.block_on(ctx.controller.get_block_number(false))??;
                 if height > current_height {
                     return Err(anyhow!("current_height: {}", current_height));
@@ -272,13 +258,12 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-block")
         .about("Get block by block height or hash(0x)")
-        .arg(Arg::new("detail").long("detail").short('d').help("with transaction details"))
+        .arg(Arg::new("detail").long("detail").short('d').help("with transaction details").action(ArgAction::SetTrue))
         .arg(
             Arg::new("height_or_hash")
                 .help("plain decimal number or hash with `0x` prefix")
                 .required(true)
-                .takes_value(true)
-                .validator(|s| {
+                .value_parser(|s: &str| {
                     if s.starts_with("0x") {
                         parse_hash(s)?;
                     } else {
@@ -288,8 +273,8 @@ where
                 })
         )
         .handler(|_cmd, m, ctx| {
-            let s = m.value_of("height_or_hash").unwrap();
-            let d = m.is_present("detail");
+            let s = m.get_raw("height_or_hash").unwrap().next().unwrap().to_str().unwrap();
+            let d = *m.get_one::<bool>("detail").unwrap();
             let height = if s.starts_with("0x") {
                 let hash = parse_hash(s)?;
                 ctx.rt.block_on(ctx.controller.get_height_by_hash(hash))??.block_number
@@ -320,10 +305,11 @@ where
             Arg::new("for_pending")
                 .help("if set, get block number of the pending block")
                 .short('p')
-                .long("for_pending"),
+                .long("for_pending")
+                .action(ArgAction::SetTrue),
         )
         .handler(|_cmd, m, ctx| {
-            let for_pending = m.is_present("for_pending");
+            let for_pending = *m.get_one::<bool>("for_pending").unwrap();
 
             let block_number = ctx
                 .rt
@@ -342,12 +328,11 @@ where
         .arg(
             Arg::new("height")
                 .help("the block height")
-                .takes_value(true)
                 .required(true)
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
-            let height = m.value_of("height").unwrap().parse()?;
+            let height = *m.get_one::<u64>("height").unwrap();
             let hash = ctx.rt.block_on(ctx.controller.get_block_hash(height))??;
             println!("{}", hash.display());
 
@@ -361,10 +346,9 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("get-tx")
         .about("Get transaction data by tx_hash")
-        .arg(Arg::new("tx_hash").required(true).validator(parse_hash))
+        .arg(Arg::new("tx_hash").required(true).value_parser(parse_hash))
         .handler(|_cmd, m, ctx| {
-            let s = m.value_of("tx_hash").unwrap();
-            let tx_hash = parse_hash(s)?;
+            let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
             let c = &ctx.controller;
 
             let tx = ctx
@@ -422,7 +406,7 @@ where
         .arg(
             Arg::new("port")
                 .help("the port of the new node")
-                .validator(str::parse::<u16>)
+                .value_parser(str::parse::<u16>)
                 .required(true),
         )
         .arg(
@@ -431,8 +415,8 @@ where
                 .required(true),
         )
         .handler(|_cmd, m, ctx| {
-            let port = m.value_of("port").unwrap().parse::<u64>().unwrap();
-            let domain = m.value_of("domain").unwrap();
+            let port = *m.get_one::<u16>("port").unwrap();
+            let domain = m.get_one::<String>("domain").unwrap();
             let multiaddr = format!("/dns4/127.0.0.1/tcp/{port}/tls/{domain}");
 
             let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
@@ -461,8 +445,7 @@ where
             Arg::new("proof")
                 .help("plain proof data with `0x` prefix")
                 .required(true)
-                .takes_value(true)
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("consensus-type")
@@ -470,40 +453,37 @@ where
                     "The consensus type of the proof. [default: <current-context-consensus-type>]",
                 )
                 .long("consensus")
-                .possible_values(["BFT", "OVERLORD"])
-                .ignore_case(true)
-                .validator(ConsensusType::from_str),
+                .value_parser(["BFT", "OVERLORD"])
+                .ignore_case(true),
         )
         .arg(
             Arg::new("crypto-type")
                 .help("The crypto type of the proof. [default: <current-context-crypto-type>]")
                 .long("crypto")
-                .possible_values(["SM", "ETH"])
-                .ignore_case(true)
-                .validator(CryptoType::from_str),
+                .value_parser(["SM", "ETH"])
+                .ignore_case(true),
         )
         .handler(|_cmd, m, ctx| {
             let consensus_type = m
-                .value_of("consensus-type")
+                .get_one::<String>("consensus-type")
                 .map(|s| s.parse::<ConsensusType>().unwrap())
                 .unwrap_or(ctx.current_setting.consensus_type);
             let crypto_type = m
-                .value_of("crypto-type")
+                .get_one::<String>("crypto-type")
                 .map(|s| s.parse::<CryptoType>().unwrap())
                 .unwrap_or(ctx.current_setting.crypto_type);
-            let proof_str = m.value_of("proof").unwrap();
+            let proof = m.get_one::<Vec<u8>>("proof").unwrap().to_owned();
             match consensus_type {
                 ConsensusType::Bft => {
-                    let proof_with_validators = ctx.rt.block_on(
-                        ctx.controller
-                            .parse_bft_proof(parse_data(proof_str)?, crypto_type),
-                    )??;
+                    let proof_with_validators = ctx
+                        .rt
+                        .block_on(ctx.controller.parse_bft_proof(proof, crypto_type))??;
                     println!("{}", proof_with_validators.display());
                 }
                 ConsensusType::Overlord => {
                     let proof_with_validators = ctx
                         .rt
-                        .block_on(ctx.controller.parse_overlord_proof(parse_data(proof_str)?))??;
+                        .block_on(ctx.controller.parse_overlord_proof(proof))??;
                     println!("{}", proof_with_validators.display());
                 }
                 _ => return Err(anyhow!("impossible consensus type")),
@@ -526,12 +506,17 @@ where
 
 #[cfg(test)]
 mod tests {
+    use cita_cloud_proto::blockchain::{Block, RawTransaction};
+    use cita_cloud_proto::controller::{BlockNumber, SystemConfig};
+    use cita_cloud_proto::executor::CallResponse;
+
     use super::*;
     use crate::cmd::cldi_cmd;
+    use crate::core::controller::ProofWithValidators;
     use crate::core::mock::context;
 
     #[test]
-    fn test_get_peer_count() {
+    fn test_rpc_subcmds() {
         let cmd = get_peer_count();
         let cldi_cmd = cldi_cmd();
 
@@ -541,6 +526,140 @@ mod tests {
         cmd.exec_from(["get-peer-count"], &mut ctx).unwrap();
         cldi_cmd
             .exec_from(["cldi", "get", "peer-count"], &mut ctx)
+            .unwrap();
+
+        ctx.executor
+            .expect_call()
+            .returning(|_, _, _, _| Ok(CallResponse::default()));
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "call",
+                    "-f",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "0xabcd",
+                    "100",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.controller
+            .expect_get_system_config()
+            .returning(|| Ok(SystemConfig::default()));
+
+        ctx.controller
+            .expect_get_block_number()
+            .returning(|_| Ok(100u64));
+
+        ctx.controller
+            .expect_send_raw()
+            .returning(|_utxo| Ok(Hash::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "send",
+                    "-v",
+                    "0x0",
+                    "-q",
+                    "200000",
+                    "--until",
+                    "+80",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "0xabcd",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi", "create", "-v", "0x0", "-q", "200000", "--until", "+80", "0xabcd",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.controller
+            .expect_get_system_config_by_number()
+            .returning(|_| Ok(SystemConfig::default()));
+
+        cldi_cmd
+            .exec_from(["cldi", "get", "system-config", "100"], &mut ctx)
+            .unwrap();
+
+        ctx.controller
+            .expect_get_block_detail_by_number()
+            .returning(|_| Ok(Block::default()));
+
+        cldi_cmd
+            .exec_from(["cldi", "get", "block", "-d", "100"], &mut ctx)
+            .unwrap();
+
+        ctx.controller
+            .expect_get_height_by_hash()
+            .returning(|_| Ok(BlockNumber::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "block",
+                    "-d",
+                    "0x74ac6372ab461de6817d7146a9b8ad17c35525b13a37f4bb0da325fbfd999f3a",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.controller
+            .expect_get_block_hash()
+            .returning(|_| Ok(Hash::default()));
+
+        cldi_cmd
+            .exec_from(["cldi", "get", "block-hash", "100"], &mut ctx)
+            .unwrap();
+
+        ctx.controller
+            .expect_get_tx()
+            .returning(|_| Ok(RawTransaction::default()));
+
+        ctx.controller
+            .expect_get_tx_block_number()
+            .returning(|_| Ok(100u64));
+
+        ctx.controller.expect_get_tx_index().returning(|_| Ok(0u64));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "tx",
+                    "0x74ac6372ab461de6817d7146a9b8ad17c35525b13a37f4bb0da325fbfd999f3a",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.controller.expect_add_node().returning(|_| Ok(0u32));
+
+        cldi_cmd
+            .exec_from(["cldi", "rpc", "add-node", "4000", "node3"], &mut ctx)
+            .unwrap();
+
+        ctx.controller
+            .expect_parse_bft_proof()
+            .returning(|_, _| Ok(ProofWithValidators::default()));
+
+        cldi_cmd
+            .exec_from(["cldi", "--consensus", "BFT", "rpc", "parse-proof", "0x6400000000000000000000000000000004000000014200000000000000307861633966306632393365316138636632376531656532333562323030623937393338353863306266303837636334626662623164643066626266333035383362030000000000000064000000000000000000000000000000040000000142000000000000003078616339663066323933653161386366323765316565323335623230306239373933383538633062663038376363346266626231646430666262663330353833628000000000000000856574a753aaf9541714b972473a1c133937b2d5553a6ef735fb3b458b9b149264edec874551eeeacfb4f25e5b64288d65d1b6e978660199fb75f4dbc63fb6da3cf5a660e6002009b700264b873b94a62cbe089bc130bf562618171475276f27a7e7b6d257a8d0faaf37ebfed78642fda9e7efd14f33c202a360b26797e6313464000000000000000000000000000000040000000142000000000000003078616339663066323933653161386366323765316565323335623230306239373933383538633062663038376363346266626231646430666262663330353833628000000000000000039f3bc83360598c47a443c247e3f8672df17d7fde1abb882a630acce2801b7c8cb4f0d719a009e8ef38f1d29fb7eee35d05e51e1d1c9dac3e095f9d516161aa0d5b619543123e5c136790fe89bf723b35467032ddee187965494cd7cf3b3a95fa53625200fe9a6dbf1356cc46838cd2c9aaff3237c001261d6f1dfd3c5f0d80640000000000000000000000000000000400000001420000000000000030786163396630663239336531613863663237653165653233356232303062393739333835386330626630383763633462666262316464306662626633303538336280000000000000008bab0753060e2b43130e7d1d9a3da9e3e865da684cc8ce4b2112d80aeeb84bec8b6e9bbc7b4d06e9733b7ec8141ac2b9f7dbd97b8257ff3ca7e2e7ac688e2aec51abe37c66ab027d026a3daa2edfd21af8c28f9acf6602298ee2ef5a3571f827a5f5cced6e66320a9220263291294b7ce7e4b5df78311f936847e2e13b52ab6d"], &mut ctx)
             .unwrap();
     }
 }

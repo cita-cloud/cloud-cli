@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::Result;
 use clap::Arg;
 
 use crate::{
     cmd::Command,
     core::{admin::AdminBehaviour, context::Context},
+    crypto::Address,
     display::Display,
     utils::{parse_addr, parse_validator_addr},
 };
@@ -32,14 +32,14 @@ where
             Arg::new("admin")
                 .help("the address of the new admin")
                 .required(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .handler(|_cmd, m, ctx| {
-            let new_admin_addr = parse_addr(m.value_of("admin").unwrap())?;
+            let new_admin_addr = m.get_one::<Address>("admin").unwrap();
             let old_admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
-                    .update_admin(old_admin_signer, new_admin_addr)
+                    .update_admin(old_admin_signer, *new_admin_addr)
                     .await
             })??;
             println!("{}", tx_hash.display());
@@ -57,15 +57,15 @@ where
             Arg::new("validators")
                 .help("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
                 .required(true)
-                .multiple_values(true)
-                .validator(parse_validator_addr)
+                .num_args(1..)
+                .value_parser(parse_validator_addr)
         )
         .handler(|_cmd, m, ctx| {
             let validators = m
-                .values_of("validators")
+                .get_many::<Vec<u8>>("validators")
                 .unwrap()
-                .map(parse_validator_addr)
-                .collect::<Result<Vec<Vec<u8>>>>()?;
+                .map(|v| v.to_owned())
+                .collect::<Vec<Vec<u8>>>();
 
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
@@ -86,10 +86,10 @@ where
             Arg::new("block_interval")
                 .help("new block interval")
                 .required(true)
-                .validator(str::parse::<u32>),
+                .value_parser(str::parse::<u32>),
         )
         .handler(|_cmd, m, ctx| {
-            let block_interval = m.value_of("block_interval").unwrap().parse::<u32>()?;
+            let block_interval = *m.get_one::<u32>("block_interval").unwrap();
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
@@ -111,10 +111,10 @@ where
             Arg::new("switch")
                 .help("turn on/off")
                 .required(true)
-                .possible_values(&["on", "off"]),
+                .value_parser(["on", "off"]),
         )
         .handler(|_cmd, m, ctx| {
-            let switch = m.value_of("switch").unwrap() == "on";
+            let switch = m.get_one::<String>("switch").unwrap() == "on";
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx
                 .rt
@@ -134,10 +134,10 @@ where
             Arg::new("quota_limit")
                 .help("new quota limit")
                 .required(true)
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
-            let quota_limit = m.value_of("quota_limit").unwrap().parse::<u64>()?;
+            let quota_limit = *m.get_one::<u64>("quota_limit").unwrap();
             let admin_signer = ctx.current_account()?;
             let tx_hash = ctx.rt.block_on(async {
                 ctx.controller
@@ -194,6 +194,10 @@ mod tests {
 
         cldi_cmd
             .exec_from(["cldi", "admin", "set-block-interval", "6"], &mut ctx)
+            .unwrap();
+
+        cldi_cmd
+            .exec_from(["cldi", "admin", "set-quota-limit", "10000000"], &mut ctx)
             .unwrap();
 
         cldi_cmd

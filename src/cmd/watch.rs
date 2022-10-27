@@ -19,7 +19,7 @@ use std::time::Duration;
 use crate::{
     cmd::Command,
     core::{context::Context, controller::ControllerBehaviour},
-    utils::parse_position,
+    utils::{parse_position, Position},
 };
 
 pub fn watch_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -33,34 +33,30 @@ where
                 .help("the block height starts from. You can use +/- prefix to seek from current height")
                 .short('b')
                 .long("begin")
-                .takes_value(true)
                 .allow_hyphen_values(true)
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .arg(
             Arg::new("end")
                 .help("the block height ends at. You can use +/- prefix to seek from current height")
                 .short('e')
                 .long("end")
-                .takes_value(true)
                 .allow_hyphen_values(true)
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .arg(
             Arg::new("until-finalized-txs")
                 .help("stop watching when finalized txs reach the given limit")
                 .short('t')
                 .long("until")
-                .takes_value(true)
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("until-empty")
                 .help("stop watching when the number of consecutive empty blocks reach the given limit")
                 .short('u')
                 .long("until-empty")
-                .takes_value(true)
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .handler(|_cmd, m, ctx| {
             let mut finalized_txs = 0;
@@ -70,21 +66,17 @@ where
                 let current_height = ctx.controller.get_block_number(false).await?;
 
                 let begin = m
-                    .value_of("begin")
-                    .map(|s| parse_position(s).unwrap().with_current(current_height))
+                    .get_one::<Position>("begin")
+                    .map(|s| s.with_current(current_height))
                     .unwrap_or(current_height);
                 let end = m
-                    .value_of("end")
-                    .map(|s| parse_position(s).unwrap().with_current(current_height))
+                    .get_one::<Position>("end")
+                    .map(|s| s.with_current(current_height))
                     .unwrap_or(u64::MAX);
 
-                let until_finalized_txs = m
-                    .value_of("until-finalized-txs")
-                    .map(|s| s.parse::<u64>().unwrap());
+                let until_finalized_txs = m.get_one::<u64>("until-finalized-txs").copied();
 
-                let until_empty = m
-                    .value_of("until-empty")
-                    .map(|s| s.parse::<u64>().unwrap());
+                let until_empty = m.get_one::<u64>("until-empty").copied();
 
                 let mut h = begin;
 
@@ -191,4 +183,36 @@ where
 
             Ok(())
         })
+}
+
+#[cfg(test)]
+mod tests {
+
+    use cita_cloud_proto::blockchain::CompactBlock;
+
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    #[should_panic]
+    fn test_watch_subcmds() {
+        let cldi_cmd = cldi_cmd();
+
+        let (mut ctx, _temp_dir) = context();
+
+        ctx.controller
+            .expect_get_block_number()
+            .returning(|_| Ok(100u64));
+
+        ctx.controller
+            .expect_get_compact_block_by_number()
+            .returning(|_| Ok(CompactBlock::default()));
+
+        cldi_cmd
+            .exec_from(
+                ["cldi", "watch", "-b", "1", "-e", "2", "-t", "1", "-u", "1"],
+                &mut ctx,
+            )
+            .unwrap();
+    }
 }
