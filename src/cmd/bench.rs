@@ -15,7 +15,7 @@
 use std::{future::Future, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context as _, Result};
-use clap::Arg;
+use clap::{Arg, ArgAction};
 use crossbeam::atomic::AtomicCell;
 use parking_lot::Mutex;
 use rand::{thread_rng, Rng};
@@ -29,7 +29,11 @@ use crate::{
         context::Context,
         controller::{ControllerBehaviour, SignerBehaviour},
     },
-    utils::{get_block_height_at, parse_addr, parse_data, parse_position, parse_u64, parse_value},
+    crypto::Address,
+    utils::{
+        get_block_height_at, parse_addr, parse_data, parse_position, parse_u64, parse_value,
+        Position,
+    },
 };
 use cita_cloud_proto::blockchain::Transaction;
 
@@ -55,31 +59,27 @@ fn bench_basic<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
                 )
                 .short('c')
                 .long("concurrency")
-                .takes_value(true)
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("connections")
                 .help("Number of connections connects to server")
                 .long("connections")
-                .takes_value(true)
                 .default_value("1")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("timeout")
                 .help("Timeout for each request (in seconds). 0 means no timeout")
                 .long("timeout")
-                .takes_value(true)
                 .default_value("0")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("total")
                 .help("Number of tasks in the benchmark")
-                .takes_value(true)
                 .default_value("10000")
-                .validator(str::parse::<u32>),
+                .value_parser(str::parse::<u32>),
         )
 }
 
@@ -95,76 +95,71 @@ where
                 .help("the target address of this tx. Default to random")
                 .short('t')
                 .long("to")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("data")
                 .help("the data of this tx. Default to random 32 bytes")
                 .short('d')
                 .long("data")
-                .takes_value(true)
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("value")
                 .help("the value of this tx")
                 .short('v')
                 .long("value")
-                .takes_value(true)
                 .default_value("0x0")
-                .validator(parse_value),
+                .value_parser(parse_value),
         )
         .arg(
             Arg::new("quota")
                 .help("the quota of this tx")
                 .short('q')
                 .long("quota")
-                .takes_value(true)
                 .default_value("200000")
-                .validator(str::parse::<u64>),
+                .value_parser(str::parse::<u64>),
         )
         .arg(
             Arg::new("valid-until-block")
                 .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
                 .long("until")
-                .takes_value(true)
                 .default_value("+95")
-                .validator(parse_position),
+                .value_parser(parse_position),
         )
         .arg(
             Arg::new("disable-watch")
                 .help("don't watch blocks")
                 .long("disable-watch")
+                .action(ArgAction::SetTrue)
         )
         .handler(|_cmd, m, ctx| {
-            let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
-            let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
-            let timeout = m.value_of("timeout").unwrap().parse::<u64>().unwrap();
-            let workers = m
-                .value_of("concurrency")
-                .map(|s| s.parse::<u64>().unwrap())
-                .unwrap_or(total);
+            let total = *m.get_one::<u32>("total").unwrap() as u64;
+            let connections = *m.get_one::<u64>("connections").unwrap();
+            let timeout = *m.get_one::<u64>("timeout").unwrap();
+            let workers = *m
+                .get_one::<u64>("concurrency")
+                .unwrap_or(&total);
 
-            let watch_blocks = !m.is_present("disable-watch");
+            let watch_blocks = !m.get_one::<bool>("disable-watch").unwrap();
             let watch_begin = Arc::new(AtomicCell::new(Option::<u64>::None));
 
             ctx.rt.block_on(async {
                 // Workload builder
                 let mut rng = thread_rng();
 
-                let to = match m.value_of("to") {
-                    Some(to) => parse_addr(to).unwrap(),
+                let to = match m.get_one::<Address>("to") {
+                    Some(to) => to.to_owned(),
                     None => rng.gen(),
                 }.to_vec();
-                let data = match m.value_of("data") {
-                    Some(to) => parse_data(to).unwrap(),
+                let data = match m.get_one::<Vec<u8>>("data") {
+                    Some(to) => to.to_owned(),
                     None => rng.gen::<[u8; 32]>().to_vec(),
                 };
-                let value = parse_value(m.value_of("value").unwrap())?.to_vec();
-                let quota = m.value_of("quota").unwrap().parse::<u64>()?;
+                let value = m.get_one::<[u8; 32]>("value").unwrap().to_vec();
+                let quota = *m.get_one::<u64>("quota").unwrap();
                 let valid_until_block = {
-                    let pos = parse_position(m.value_of("valid-until-block").unwrap())?;
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
                     get_block_height_at(&ctx.controller, pos).await?
                 };
 
@@ -272,60 +267,53 @@ where
                 .help("Default to use current account address")
                 .short('f')
                 .long("from")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("to")
                 .help("the target contract address to call. Default to random")
                 .short('t')
                 .long("to")
-                .takes_value(true)
-                .validator(parse_addr),
+                .value_parser(parse_addr),
         )
         .arg(
             Arg::new("data")
                 .help("the data for the call request. Default to random 32 bytes")
                 .short('d')
                 .long("data")
-                .takes_value(true)
-                .validator(parse_data),
+                .value_parser(parse_data),
         )
         .arg(
             Arg::new("height")
                 .help("the height for the call request. Default ro current height")
                 .required(false)
                 .long("height")
-                .takes_value(true)
-                .validator(parse_u64),
+                .value_parser(parse_u64),
         )
         .handler(|_cmd, m, ctx| {
-            let total = m.value_of("total").unwrap().parse::<u64>().unwrap();
-            let connections = m.value_of("connections").unwrap().parse::<u64>().unwrap();
-            let timeout = m.value_of("timeout").unwrap().parse::<u64>().unwrap();
-            let workers = m
-                .value_of("concurrency")
-                .map(|s| s.parse::<u64>().unwrap())
-                .unwrap_or(total);
+            let total = *m.get_one::<u32>("total").unwrap() as u64;
+            let connections = *m.get_one::<u64>("connections").unwrap();
+            let timeout = *m.get_one::<u64>("timeout").unwrap();
+            let workers = *m.get_one::<u64>("concurrency").unwrap_or(&total);
 
             ctx.rt.block_on(async {
                 // Workload builder
                 let mut rng = thread_rng();
 
-                let from = match m.value_of("from") {
-                    Some(from) => parse_addr(from).unwrap(),
+                let from = match m.get_one::<Address>("from") {
+                    Some(from) => from.to_owned(),
                     None => *ctx.current_account()?.address(),
                 };
-                let to = match m.value_of("to") {
-                    Some(to) => parse_addr(to).unwrap(),
+                let to = match m.get_one::<Address>("to") {
+                    Some(to) => to.to_owned(),
                     None => rng.gen(),
                 };
-                let data = match m.value_of("data") {
-                    Some(to) => parse_data(to).unwrap(),
+                let data = match m.get_one::<Vec<u8>>("data") {
+                    Some(data) => data.to_owned(),
                     None => rng.gen::<[u8; 32]>().to_vec(),
                 };
-                let height = match m.value_of("height") {
-                    Some(height) => parse_u64(height).unwrap(),
+                let height = match m.get_one::<u64>("height") {
+                    Some(height) => *height,
                     None => 0,
                 };
 
@@ -639,4 +627,80 @@ where
         .take()
         .map(Err)
         .unwrap_or(Ok(()))
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::cmd::cldi_cmd;
+    use crate::core::mock::context;
+
+    #[test]
+    #[should_panic]
+    fn test_bench_send_subcmds() {
+        let cldi_cmd = cldi_cmd();
+
+        let (mut ctx, _temp_dir) = context();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "bench",
+                    "send",
+                    "-c",
+                    "1",
+                    "--connections",
+                    "1",
+                    "-t",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "-d",
+                    "0x1234",
+                    "-v",
+                    "0x0",
+                    "-q",
+                    "500000",
+                    "--until",
+                    "100",
+                    "--disable-watch",
+                    "1",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_bench_call_subcmds() {
+        let cldi_cmd = cldi_cmd();
+
+        let (mut ctx, _temp_dir) = context();
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "bench",
+                    "call",
+                    "-c",
+                    "1",
+                    "--connections",
+                    "1",
+                    "--timeout",
+                    "1",
+                    "-f",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "-t",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "-d",
+                    "0x1234",
+                    "--height",
+                    "100",
+                    "1",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+    }
 }

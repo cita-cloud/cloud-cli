@@ -52,6 +52,13 @@ pub enum ProofType {
     OverlordProof(OverlordProof),
 }
 
+impl Default for ProofType {
+    fn default() -> Self {
+        ProofType::BftProof(BftProof::default())
+    }
+}
+
+#[derive(Default)]
 pub struct ProofWithValidators {
     pub proof: ProofType,
     pub validators: Vec<Vec<u8>>,

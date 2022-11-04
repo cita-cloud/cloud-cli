@@ -1,0 +1,16 @@
+[{
+	"type":"function",
+	"inputs": [{
+		"name":"a",
+		"type":"bool"
+	},
+	{
+		"name":"b",
+		"type":"uint256"
+	}],
+	"name":"test",
+	"outputs":[{
+		"name":"",
+		"type":"bool"
+	}]
+}]

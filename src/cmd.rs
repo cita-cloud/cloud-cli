@@ -22,8 +22,9 @@ mod evm;
 mod rpc;
 mod watch;
 
-use anyhow::{anyhow, bail, Result};
-use clap::{AppSettings, Arg, ArgMatches, ColorChoice};
+use anyhow::{bail, Result};
+use clap::builder::{IntoResettable, Str, StyledStr};
+use clap::{Arg, ArgMatches, ColorChoice};
 use std::collections::HashMap;
 use std::ffi::OsString;
 
@@ -32,7 +33,7 @@ pub use cldi::cldi_cmd;
 type HandleFn<'help, Ctx> =
     dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help;
 pub struct Command<'help, Ctx: 'help> {
-    cmd: clap::Command<'help>,
+    cmd: clap::Command,
 
     handler: Box<HandleFn<'help, Ctx>>,
 
@@ -41,7 +42,7 @@ pub struct Command<'help, Ctx: 'help> {
 
 impl<'help, Ctx: 'help> Command<'help, Ctx> {
     /// Create a new command.
-    pub fn new<S: Into<String>>(name: S) -> Self {
+    pub fn new<S: Into<Str>>(name: S) -> Self {
         Self {
             cmd: clap::Command::new(name),
             handler: Box::new(Self::dispatch_subcmd),
@@ -50,43 +51,38 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
     }
 
     /// (Re)Sets this command's app name.
-    pub fn name(mut self, name: &str) -> Self {
+    pub fn name<S: Into<Str>>(mut self, name: S) -> Self {
         self.cmd = self.cmd.name(name);
         self
     }
 
-    pub fn alias<S: Into<&'help str>>(mut self, name: S) -> Self {
+    pub fn alias<S: IntoResettable<Str>>(mut self, name: S) -> Self {
         self.cmd = self.cmd.alias(name);
         self
     }
 
-    pub fn aliases(mut self, names: &[&'help str]) -> Self {
+    pub fn aliases(mut self, names: impl IntoIterator<Item = impl Into<Str>>) -> Self {
         self.cmd = self.cmd.aliases(names);
         self
     }
 
-    pub fn about<O: Into<Option<&'help str>>>(mut self, about: O) -> Self {
+    pub fn about<O: IntoResettable<StyledStr>>(mut self, about: O) -> Self {
         self.cmd = self.cmd.about(about);
         self
     }
 
-    pub fn version<S: Into<&'help str>>(mut self, ver: S) -> Self {
+    pub fn version<S: IntoResettable<Str>>(mut self, ver: S) -> Self {
         self.cmd = self.cmd.version(ver);
         self
     }
 
-    pub fn author<S: Into<&'help str>>(mut self, author: S) -> Self {
+    pub fn author<S: IntoResettable<Str>>(mut self, author: S) -> Self {
         self.cmd = self.cmd.author(author);
         self
     }
 
     pub fn color(mut self, color: ColorChoice) -> Self {
         self.cmd = self.cmd.color(color);
-        self
-    }
-
-    pub fn global_setting(mut self, setting: AppSettings) -> Self {
-        self.cmd = self.cmd.global_setting(setting);
         self
     }
 
@@ -105,7 +101,7 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
         self
     }
 
-    pub fn arg<A: Into<Arg<'help>>>(mut self, a: A) -> Self {
+    pub fn arg<A: Into<Arg>>(mut self, a: A) -> Self {
         self.cmd = self.cmd.arg(a);
         self
     }
@@ -147,14 +143,13 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
             .arg(
                 Arg::new("shell")
                     .required(true)
-                    .possible_values(&[
+                    .value_parser([
                         "bash",
                         "zsh",
                         "powershell",
                         "fish",
                         "elvish",
-                    ])
-                    .validator(|s| s.parse::<clap_complete::Shell>()),
+                    ]),
             );
 
         let cmd_for_completions = self
@@ -162,7 +157,8 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
             .clone()
             .subcommand(completions_without_handler.cmd.clone());
         let completions = completions_without_handler.handler(move |_cmd, m, _ctx| {
-            let shell: clap_complete::Shell = m.value_of("shell").unwrap().parse().unwrap();
+            let shell: clap_complete::Shell =
+                m.get_one::<String>("shell").unwrap().parse().unwrap();
             let mut stdout = std::io::stdout();
             let bin_name = cmd_for_completions.get_name();
             clap_complete::generate(
@@ -212,29 +208,6 @@ impl<'help, Ctx: 'help> Command<'help, Ctx> {
     /// Get name of the underlaying clap App.
     pub fn get_name(&self) -> &str {
         self.cmd.get_name()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_clap_command(&self) -> &clap::Command<'help> {
-        &self.cmd
-    }
-
-    #[allow(dead_code)]
-    pub fn get_subcommand(&self, subcmd: &str) -> Option<&Self> {
-        self.subcmds.get(subcmd)
-    }
-
-    #[allow(dead_code)]
-    pub fn rename_subcommand(&mut self, old: &str, new: &str) -> Result<()> {
-        let old_app = self
-            .cmd
-            .find_subcommand_mut(old)
-            .ok_or_else(|| anyhow!("subcommand not found"))?;
-        *old_app = old_app.clone().name(new);
-        let old_subcmd = self.subcmds.remove(old).expect("subcommand not found");
-        self.subcmds.insert(new.into(), old_subcmd.name(new));
-
-        Ok(())
     }
 
     /// Get matches from the underlaying clap App.

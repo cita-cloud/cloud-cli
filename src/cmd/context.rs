@@ -30,9 +30,9 @@ use crate::{
 pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("save-context")
         .about("save context")
-        .arg(Arg::new("context-name").takes_value(true).required(true))
+        .arg(Arg::new("context-name").required(true))
         .handler(|_cmd, m, ctx| {
-            let context_name = m.value_of("context-name").unwrap();
+            let context_name = m.get_one::<String>("context-name").unwrap();
             let current_setting = ctx.current_setting.clone();
             ctx.config
                 .context_settings
@@ -46,9 +46,9 @@ pub fn save<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
 pub fn delete<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> {
     Command::<Context<Co, Ex, Ev>>::new("delete-context")
         .about("delete context")
-        .arg(Arg::new("context-name").takes_value(true).required(true))
+        .arg(Arg::new("context-name").required(true))
         .handler(|_cmd, m, ctx| {
-            let context_name = m.value_of("context-name").unwrap();
+            let context_name = m.get_one::<String>("context-name").unwrap();
             ctx.config
                 .context_settings
                 .remove(context_name)
@@ -82,9 +82,9 @@ where
 {
     Command::<Context<Co, Ex, Ev>>::new("default-context")
         .about("set a context as default and switch current context to it")
-        .arg(Arg::new("context-name").takes_value(true).required(true))
+        .arg(Arg::new("context-name").required(true))
         .handler(|_cmd, m, ctx| {
-            let context_name = m.value_of("context-name").unwrap();
+            let context_name = m.get_one::<String>("context-name").unwrap();
             let setting = ctx.get_context_setting(context_name)?.clone();
             ctx.config.default_context = context_name.into();
             ctx.config.save()?;
@@ -106,8 +106,8 @@ where
         .subcommand_required_else_help(true)
         .subcommands([
             save().name("save"),
-            list().name("list").aliases(&["ls", "l"]),
-            delete().name("delete").aliases(&["del", "rm"]),
+            list().name("list").aliases(["ls", "l"]),
+            delete().name("delete").aliases(["del", "rm"]),
             default().name("default"),
         ])
 }
