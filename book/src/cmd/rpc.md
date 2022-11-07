@@ -4,20 +4,19 @@
 
 ```plaintext
 $ cldi help rpc
-cldi-rpc
 Other RPC commands
 
-USAGE:
-    cldi rpc <SUBCOMMAND>
+Usage: cldi rpc <COMMAND>
 
-OPTIONS:
-    -h, --help    Print help information
+Commands:
+  add-node        call add-node rpc
+  store-abi       Store EVM contract ABI
+  parse-proof     parse consensus proof
+  estimate-quota  estimate quota a specified transaction will cost
+  help            Print this message or the help of the given subcommand(s)
 
-SUBCOMMANDS:
-    add-node     call add-node rpc
-    store-abi    Store EVM contract ABI
-    parse-proof  parse consensus proof
-    help         Print this message or the help of the given subcommand(s)
+Options:
+  -h, --help  Print help information
 ```
 
 ## add-node
@@ -85,4 +84,22 @@ OPTIONS:
         --crypto <crypto-type>          The crypto type of the proof. [default:
                                         <current-context-crypto-type>] [possible values: SM, ETH]
     -h, --help                          Print help information
+```
+
+### estimate-quota
+
+估算执行给定交易将花费的`quota`
+
+```plaintext
+$ cldi rpc estimate-quota -h
+estimate quota a specified transaction will cost
+
+Usage: cldi rpc estimate-quota <data> [to]
+
+Arguments:
+  <data>  the data of this call request
+  [to]    the target contract address, empty means create contract
+
+Options:
+  -h, --help  Print help information
 ```

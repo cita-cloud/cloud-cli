@@ -14,6 +14,8 @@
 
 use anyhow::Context as _;
 use anyhow::Result;
+use cita_cloud_proto::evm::ByteQuota;
+use cita_cloud_proto::executor::CallRequest;
 use tonic::transport::Channel;
 
 use super::controller::{SignerBehaviour, TransactionSenderBehaviour};
@@ -58,6 +60,12 @@ pub trait EvmBehaviour {
     async fn get_balance(&self, addr: Address) -> Result<Balance>;
     async fn get_tx_count(&self, addr: Address) -> Result<Nonce>;
     async fn get_abi(&self, addr: Address) -> Result<ByteAbi>;
+    async fn estimate_quota(
+        &self,
+        from: Vec<u8>,
+        to: Vec<u8>,
+        method: Vec<u8>,
+    ) -> Result<ByteQuota>;
 }
 
 #[tonic::async_trait]
@@ -112,6 +120,25 @@ impl EvmBehaviour for EvmClient {
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get abi")
+    }
+
+    async fn estimate_quota(
+        &self,
+        from: Vec<u8>,
+        to: Vec<u8>,
+        method: Vec<u8>,
+    ) -> Result<ByteQuota> {
+        let req = CallRequest {
+            from,
+            to,
+            method,
+            args: Vec::new(),
+            height: 0,
+        };
+        EvmClient::estimate_quota(&mut self.clone(), req)
+            .await
+            .map(|resp| resp.into_inner())
+            .context("failed to estimate quota")
     }
 }
 
