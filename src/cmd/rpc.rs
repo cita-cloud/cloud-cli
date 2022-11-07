@@ -17,6 +17,7 @@ use clap::{Arg, ArgAction};
 use tokio::try_join;
 
 use crate::config::{ConsensusType, CryptoType};
+use crate::core::evm::EvmBehaviour;
 use crate::crypto::{Address, Hash};
 use crate::utils::{parse_u64, Position};
 use crate::{
@@ -493,15 +494,59 @@ where
         })
 }
 
+pub fn estimate_quota<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Ev: EvmBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("estimate-quota")
+        .about("estimate quota a specified transaction will cost")
+        .arg(
+            Arg::new("data")
+                .help("the data of this call request")
+                .required(true)
+                .value_parser(parse_data),
+        )
+        .arg(
+            Arg::new("from")
+                .help("default to use current account address")
+                .short('f')
+                .long("from")
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("to")
+                .help("the target contract address, default means create contract")
+                .short('t')
+                .long("to")
+                .value_parser(parse_addr),
+        )
+        .handler(|_cmd, m, ctx| {
+            let from = match m.get_one::<Address>("from") {
+                Some(from) => from.to_vec(),
+                None => ctx.current_account()?.address().to_vec(),
+            };
+            let to = match m.get_one::<Address>("to") {
+                Some(to) => to.to_vec(),
+                None => [0; 20].to_vec(),
+            };
+            let data = m.get_one::<Vec<u8>>("data").unwrap().to_owned();
+
+            let byte_quota = ctx.rt.block_on(ctx.evm.estimate_quota(from, to, data))??;
+            println!("{}", byte_quota.display());
+            Ok(())
+        })
+}
+
 pub fn rpc_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour + Send + Sync,
     Ex: ExecutorBehaviour,
+    Ev: EvmBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("rpc")
         .about("Other RPC commands")
         .subcommand_required_else_help(true)
-        .subcommands([add_node(), store_abi(), parse_proof()])
+        .subcommands([add_node(), store_abi(), parse_proof(), estimate_quota()])
 }
 
 #[cfg(test)]

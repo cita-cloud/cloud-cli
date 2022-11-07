@@ -29,7 +29,7 @@ use cita_cloud_proto::{
     blockchain::{Block, CompactBlock, RawTransaction},
     common::TotalNodeInfo,
     controller::{BlockNumber, SystemConfig},
-    evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
+    evm::{Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt},
     executor::CallResponse,
 };
 use mockall::mock;
@@ -119,6 +119,12 @@ mock! {
         async fn get_balance(&self, addr: Address) -> Result<Balance>;
         async fn get_tx_count(&self, addr: Address) -> Result<Nonce>;
         async fn get_abi(&self, addr: Address) -> Result<ByteAbi>;
+        async fn estimate_quota(
+            &self,
+            from: Vec<u8>,
+            to: Vec<u8>,
+            method: Vec<u8>,
+        ) -> Result<ByteQuota>;
     }
 
     #[tonic::async_trait]

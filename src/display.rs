@@ -24,10 +24,11 @@ use cita_cloud_proto::{
     },
     common::{NodeInfo, TotalNodeInfo},
     controller::SystemConfig,
-    evm::{Balance, ByteAbi, ByteCode, Log, Nonce, Receipt},
+    evm::{Balance, ByteAbi, ByteCode, ByteQuota, Log, Nonce, Receipt},
     executor::CallResponse,
 };
 use consensus_bft::message::SignedFollowerVote;
+use ethabi::ethereum_types::U256;
 use serde_json::json;
 use serde_json::map::Map;
 use serde_json::Value as Json;
@@ -440,5 +441,17 @@ impl Display for ProofWithValidators {
                 })
             }
         }
+    }
+}
+
+impl Display for ByteQuota {
+    fn to_json(&self) -> Json {
+        json!(hex(self.bytes_quota.as_slice()))
+    }
+
+    fn display(&self) -> String {
+        U256::from_big_endian(self.bytes_quota.as_slice())
+            .as_u64()
+            .to_string()
     }
 }
