@@ -1,4 +1,4 @@
-FROM rust:1.59 AS builder
+FROM rust:slim-bullseye AS builder
 WORKDIR /build
 ENV PROTOC_NO_VENDOR 1
 RUN rustup component add rustfmt && \
@@ -9,7 +9,7 @@ RUN rustup component add rustfmt && \
 COPY . /build
 RUN cargo build --release
 
-FROM debian:buster
+FROM debian:bullseye-slim
 RUN useradd -m chain
 USER chain
 COPY --from=builder /build/target/release/cldi /usr/bin/
