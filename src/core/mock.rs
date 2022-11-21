@@ -27,7 +27,7 @@ use crate::{
 use anyhow::Result;
 use cita_cloud_proto::{
     blockchain::{Block, CompactBlock, RawTransaction},
-    common::TotalNodeInfo,
+    common::NodeStatus,
     controller::{BlockNumber, SystemConfig},
     evm::{Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt},
     executor::CallResponse,
@@ -45,7 +45,6 @@ mock! {
     impl ControllerBehaviour for ControllerClient {
         async fn send_raw(&self, raw: RawTransaction) -> Result<Hash>;
 
-        async fn get_version(&self) -> Result<String>;
         async fn get_system_config(&self) -> Result<SystemConfig>;
         async fn get_system_config_by_number(&self, block_number: u64) -> Result<SystemConfig>;
 
@@ -61,8 +60,7 @@ mock! {
         async fn get_tx_index(&self, tx_hash: Hash) -> Result<u64>;
         async fn get_tx_block_number(&self, tx_hash: Hash) -> Result<u64>;
 
-        async fn get_peer_count(&self) -> Result<u64>;
-        async fn get_peers_info(&self) -> Result<TotalNodeInfo>;
+        async fn get_node_status(&self) -> Result<NodeStatus>;
 
         async fn add_node(&self, multiaddr: String) -> Result<u32>;
         async fn parse_bft_proof(&self, proof_bytes: Vec<u8>, crypto_type: CryptoType) -> Result<ProofWithValidators>;

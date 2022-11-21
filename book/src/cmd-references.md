@@ -6,7 +6,7 @@
 
 ## controller的接口
 
-[controller proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/controller.proto#L61-L95)
+[controller proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/controller.proto#L53-L90)
 
 ```protobuf
 service RPCService {
@@ -20,7 +20,13 @@ service RPCService {
 
     rpc GetBlockByHash(common.Hash) returns (blockchain.CompactBlock);
 
+    rpc GetHeightByHash(common.Hash) returns (BlockNumber);
+
     rpc GetBlockByNumber(BlockNumber) returns (blockchain.CompactBlock);
+
+    rpc GetStateRootByNumber (BlockNumber) returns (common.StateRoot);
+
+    rpc GetProofByNumber (BlockNumber) returns (common.Proof);
 
     rpc GetBlockDetailByNumber(BlockNumber) returns (blockchain.Block);
 
@@ -28,7 +34,7 @@ service RPCService {
 
     rpc GetSystemConfig(common.Empty) returns (SystemConfig);
 
-    rpc GetVersion(common.Empty) returns (SoftwareVersion);
+    rpc GetSystemConfigByNumber(BlockNumber) returns (SystemConfig);
 
     rpc GetBlockHash(BlockNumber) returns (common.Hash);
 
@@ -36,13 +42,10 @@ service RPCService {
 
     rpc GetTransactionIndex(common.Hash) returns (TransactionIndex);
 
-    rpc GetPeerCount(common.Empty) returns (PeerCount);
-
     // add new node
     rpc AddNode(common.NodeNetInfo) returns (common.StatusCode);
 
-    // get peers info
-    rpc GetPeersInfo(common.Empty) returns (common.TotalNodeInfo);
+    rpc GetNodeStatus(common.Empty) returns (common.NodeStatus);
 }
 ```
 
@@ -60,7 +63,7 @@ service ExecutorService {
 ```
 
 ## executor_evm的接口
-[executor_evm proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/vm/evm.proto#L64-L74)
+[executor_evm proto](https://github.com/cita-cloud/cita_cloud_proto/blob/master/protos/vm/evm.proto#L69-L81)
 ```protobuf
 service RPCService {
   rpc GetTransactionReceipt(common.Hash) returns (Receipt);
@@ -72,5 +75,7 @@ service RPCService {
   rpc GetTransactionCount(common.Address) returns (Nonce);
 
   rpc GetAbi(common.Address) returns (ByteAbi);
+
+  rpc EstimateQuota(executor.CallRequest) returns (ByteQuota);
 }
 ```
