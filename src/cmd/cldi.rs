@@ -38,14 +38,12 @@ where
             rpc::get_block().name("block").alias("b"),
             evm::get_code().name("code"),
             rpc::get_tx().name("tx"),
-            rpc::get_peer_count().name("peer-count").alias("pc"),
-            rpc::get_peers_info().name("peers-info").alias("pi"),
             evm::get_account_nonce().name("nonce"),
             evm::get_receipt().name("receipt").alias("r"),
-            rpc::get_version().name("version").alias("ver"),
             rpc::get_system_config().name("system-config").alias("sc"),
             rpc::get_block_hash().name("block-hash").alias("bh"),
             rpc::get_block_number().name("block-number").alias("bn"),
+            rpc::get_node_status().name("node-status").alias("ns"),
         ])
 }
 

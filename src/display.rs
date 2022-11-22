@@ -22,7 +22,7 @@ use cita_cloud_proto::{
         raw_transaction::Tx, Block, RawTransaction, Transaction, UnverifiedTransaction,
         UnverifiedUtxoTransaction, UtxoTransaction, Witness,
     },
-    common::{NodeInfo, TotalNodeInfo},
+    common::{NodeHeight, NodeNetInfo, NodeStatus},
     controller::SystemConfig,
     evm::{Balance, ByteAbi, ByteCode, ByteQuota, Log, Nonce, Receipt},
     executor::CallResponse,
@@ -272,45 +272,6 @@ impl Display for (RawTransaction, u64, u64) {
     }
 }
 
-impl Display for NodeInfo {
-    fn to_json(&self) -> Json {
-        let mut info_pair = Map::new();
-        info_pair.insert(
-            String::from("address"),
-            Json::from(hex::encode(&self.address)),
-        );
-        if let Some(net_info) = self.net_info.as_ref() {
-            info_pair.insert(String::from("origin"), Json::from(net_info.origin));
-            let multi_address: Multiaddr = net_info.multi_address[..].parse().unwrap();
-            for ptcl in multi_address.iter() {
-                match ptcl {
-                    Protocol::Dns4(host) => {
-                        info_pair.insert(String::from("host"), Json::from(host));
-                    }
-                    Protocol::Ip4(host) => {
-                        info_pair.insert(String::from("host"), Json::from(host.to_string()));
-                    }
-                    Protocol::Tcp(port) => {
-                        info_pair.insert(String::from("port"), Json::from(port));
-                    }
-                    Protocol::Tls(domain) => {
-                        info_pair.insert(String::from("domain"), Json::from(domain));
-                    }
-                    _ => panic!("multi address({:?}) can't parse", net_info.multi_address),
-                };
-            }
-        }
-        Json::from(info_pair)
-    }
-}
-
-impl Display for TotalNodeInfo {
-    fn to_json(&self) -> Json {
-        let nodes: Vec<Json> = self.nodes.iter().map(Display::to_json).collect();
-        json!({ "nodes": nodes })
-    }
-}
-
 impl Display for Log {
     fn to_json(&self) -> Json {
         json!({
@@ -453,5 +414,58 @@ impl Display for ByteQuota {
         U256::from_big_endian(self.bytes_quota.as_slice())
             .as_u64()
             .to_string()
+    }
+}
+
+impl Display for NodeHeight {
+    fn to_json(&self) -> Json {
+        json!({
+            "address": hex(&self.address),
+            "height": self.height,
+        })
+    }
+}
+
+impl Display for NodeNetInfo {
+    fn to_json(&self) -> Json {
+        let mut info_pair = Map::new();
+        if let Ok(multi_address) = self.multi_address.parse::<Multiaddr>() {
+            for protocol in multi_address.iter() {
+                match protocol {
+                    Protocol::Dns4(host) => {
+                        info_pair.insert(String::from("host"), Json::from(host));
+                    }
+                    Protocol::Ip4(host) => {
+                        info_pair.insert(String::from("host"), Json::from(host.to_string()));
+                    }
+                    Protocol::Tcp(port) => {
+                        info_pair.insert(String::from("port"), Json::from(port));
+                    }
+                    Protocol::Tls(domain) => {
+                        info_pair.insert(String::from("domain"), Json::from(domain));
+                    }
+                    p => panic!(
+                        "multi address({:?}) contains unexpected protocol: {:?}",
+                        self.multi_address, p
+                    ),
+                };
+            }
+            Json::from(info_pair)
+        } else {
+            json!({ "address": self.multi_address })
+        }
+    }
+}
+
+impl Display for NodeStatus {
+    fn to_json(&self) -> Json {
+        json!({
+            "is_sync": self.is_sync,
+            "version": self.version,
+            "self_status": self.self_status.as_ref().unwrap().to_json(),
+            "peer_status": self.peer_status.iter().map(NodeHeight::to_json).collect::<Vec<_>>(),
+            "connected_peer_count": self.connected_peer_count,
+            "connected_peers_info": self.connected_peers_info.as_ref().unwrap().nodes.iter().map(Display::to_json).collect::<Vec<_>>(),
+        })
     }
 }
