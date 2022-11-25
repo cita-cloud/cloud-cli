@@ -119,6 +119,7 @@ pub struct ContextSetting {
     pub account_name: String,
     pub crypto_type: CryptoType,
     pub consensus_type: ConsensusType,
+    pub connect_timeout: u64,
 }
 
 impl FromStr for CryptoType {
@@ -156,6 +157,7 @@ impl Default for ContextSetting {
             account_name: "default".into(),
             crypto_type: CryptoType::Sm,
             consensus_type: ConsensusType::Bft,
+            connect_timeout: 3,
         }
     }
 }

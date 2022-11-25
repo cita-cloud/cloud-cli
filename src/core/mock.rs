@@ -71,7 +71,7 @@ mock! {
     impl GrpcClientBehaviour for ControllerClient {
         fn from_channel(ch: Channel) -> Self;
         async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
         async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
     }
 
@@ -98,7 +98,7 @@ mock! {
     impl GrpcClientBehaviour for ExecutorClient {
         fn from_channel(ch: Channel) -> Self;
         async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
         async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
     }
 
@@ -129,7 +129,7 @@ mock! {
     impl GrpcClientBehaviour for EvmClient {
         fn from_channel(ch: Channel) -> Self;
         async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str) -> Result<Self>;
+        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
         async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
     }
 
@@ -151,7 +151,7 @@ pub fn context() -> (
     let mock_ctx = MockControllerClient::connect_context();
     mock_ctx.expect().returning(|_| Ok(Default::default()));
     let mock_ctx = MockControllerClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
     let mock_ctx = MockControllerClient::connect_timeout_context();
     mock_ctx.expect().returning(|_, _| Ok(Default::default()));
 
@@ -160,7 +160,7 @@ pub fn context() -> (
     let mock_ctx = MockExecutorClient::connect_context();
     mock_ctx.expect().returning(|_| Ok(Default::default()));
     let mock_ctx = MockExecutorClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
     let mock_ctx = MockExecutorClient::connect_timeout_context();
     mock_ctx.expect().returning(|_, _| Ok(Default::default()));
 
@@ -169,7 +169,7 @@ pub fn context() -> (
     let mock_ctx = MockEvmClient::connect_context();
     mock_ctx.expect().returning(|_| Ok(Default::default()));
     let mock_ctx = MockEvmClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
+    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
     let mock_ctx = MockEvmClient::connect_timeout_context();
     mock_ctx.expect().returning(|_, _| Ok(Default::default()));
 
