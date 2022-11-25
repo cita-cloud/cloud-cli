@@ -169,4 +169,13 @@ impl CtrlCSignalCapturedRuntime {
             }
         })
     }
+
+    pub fn block_on_without_timeout<F: Future>(&self, future: F) -> Result<F::Output, Error> {
+        self.0.block_on(async {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => Err(Error::Canceled),
+                res = future => Ok(res),
+            }
+        })
+    }
 }

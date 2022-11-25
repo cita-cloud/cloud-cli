@@ -62,7 +62,7 @@ where
             let mut finalized_txs = 0;
             let mut total_secs = 0;
 
-            let watch_result = ctx.rt.block_on(async {
+            let watch_result = ctx.rt.block_on_without_timeout(async {
                 let current_height = ctx.controller.get_block_number(false).await?;
 
                 let begin = m

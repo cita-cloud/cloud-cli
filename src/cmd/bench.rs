@@ -144,7 +144,7 @@ where
             let watch_blocks = !m.get_one::<bool>("disable-watch").unwrap();
             let watch_begin = Arc::new(AtomicCell::new(Option::<u64>::None));
 
-            ctx.rt.block_on(async {
+            ctx.rt.block_on_without_timeout(async {
                 // Workload builder
                 let mut rng = thread_rng();
 
@@ -296,7 +296,7 @@ where
             let timeout = *m.get_one::<u64>("timeout").unwrap();
             let workers = *m.get_one::<u64>("concurrency").unwrap_or(&total);
 
-            ctx.rt.block_on(async {
+            ctx.rt.block_on_without_timeout(async {
                 // Workload builder
                 let mut rng = thread_rng();
 
