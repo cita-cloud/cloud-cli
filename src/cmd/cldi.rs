@@ -96,6 +96,12 @@ where
                 .value_parser(["BFT", "OVERLORD", "RAFT"])
                 .ignore_case(true),
         )
+        .arg(
+            Arg::new("connect-timeout")
+                .help("connect timeout")
+                .short('t')
+                .value_parser(str::parse::<u64>),
+        )
         .handler(|cmd, m, ctx| {
             // If a subcommand is present, context modifiers(e.g. -r) will construct a tmp context for that subcommand.
             // Otherwise modify the current context.
@@ -109,7 +115,8 @@ where
                     || m.contains_id("account-name")
                     || m.contains_id("password")
                     || m.contains_id("crypto-type")
-                    || m.contains_id("consensus-type"));
+                    || m.contains_id("consensus-type")
+                    || m.contains_id("connect-timeout"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
@@ -151,6 +158,9 @@ where
             }
             if let Some(consensus_type) = m.get_one::<String>("consensus-type") {
                 current_setting.consensus_type = consensus_type.parse().unwrap();
+            }
+            if let Some(&connect_timeout) = m.get_one::<u64>("connect-timeout") {
+                current_setting.connect_timeout = connect_timeout;
             }
 
             ctx.switch_context(current_setting)?;

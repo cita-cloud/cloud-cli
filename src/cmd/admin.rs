@@ -55,7 +55,7 @@ where
         .about("Update validators of the chain")
         .arg(
             Arg::new("validators")
-                .help("a space-separated list of the new validator addresses, e.g. `cldi update-validators 0x12..34 0xab..cd`")
+                .help("a space-separated list of the new validator addresses, e.g. `cldi admin update-validators 0x12..34 0xab..cd`")
                 .required(true)
                 .num_args(1..)
                 .value_parser(parse_validator_addr)

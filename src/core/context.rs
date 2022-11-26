@@ -14,7 +14,7 @@
 
 use anyhow::{anyhow, ensure, Context as _, Result};
 use rustyline::Editor;
-use std::future::Future;
+use std::{future::Future, time::Duration};
 
 use super::{
     client::GrpcClientBehaviour,
@@ -63,9 +63,18 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
             });
         // connect_lazy must run in async environment.
         let (controller, executor, evm) = rt.block_on(async {
-            let co = Co::connect_lazy(&default_context_setting.controller_addr)?;
-            let ex = Ex::connect_lazy(&default_context_setting.executor_addr)?;
-            let ev = Ev::connect_lazy(&default_context_setting.executor_addr)?;
+            let co = Co::connect_lazy(
+                &default_context_setting.controller_addr,
+                Duration::from_secs(default_context_setting.connect_timeout),
+            )?;
+            let ex = Ex::connect_lazy(
+                &default_context_setting.executor_addr,
+                Duration::from_secs(default_context_setting.connect_timeout),
+            )?;
+            let ev = Ev::connect_lazy(
+                &default_context_setting.executor_addr,
+                Duration::from_secs(default_context_setting.connect_timeout),
+            )?;
             anyhow::Ok((co, ex, ev))
         })??;
 
@@ -128,9 +137,18 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         }
 
         let (controller, executor, evm) = self.rt.block_on(async {
-            let co = Co::connect_lazy(&setting.controller_addr)?;
-            let ex = Ex::connect_lazy(&setting.executor_addr)?;
-            let ev = Ev::connect_lazy(&setting.executor_addr)?;
+            let co = Co::connect_lazy(
+                &setting.controller_addr,
+                Duration::from_secs(setting.connect_timeout),
+            )?;
+            let ex = Ex::connect_lazy(
+                &setting.executor_addr,
+                Duration::from_secs(setting.connect_timeout),
+            )?;
+            let ev = Ev::connect_lazy(
+                &setting.executor_addr,
+                Duration::from_secs(setting.connect_timeout),
+            )?;
             anyhow::Ok((co, ex, ev))
         })??;
         self.controller = controller;
