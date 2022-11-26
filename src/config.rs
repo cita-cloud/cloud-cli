@@ -46,25 +46,19 @@ impl Config {
 
         let config_file = data_dir.join(CLOUD_CLI_CONFIG_FILE_NAME);
         let mut config = if config_file.exists() {
-            let s = fs::read_to_string(&config_file)?;
-            if let Ok(config) = toml::from_str(&s) {
-                config
-            } else {
-                Self::use_default_config(config_file)?
-            }
+            let s = fs::read_to_string(config_file)?;
+            toml::from_str(&s)?
         } else {
-            Self::use_default_config(config_file)?
+            let mut f = File::create(config_file)?;
+            let default_config = Self::default();
+            f.write_all(toml::to_string_pretty(&default_config).unwrap().as_bytes())?;
+
+            default_config
         };
+
         config.data_dir = data_dir.to_path_buf();
 
         Ok(config)
-    }
-
-    fn use_default_config(config_file: PathBuf) -> Result<Self> {
-        let mut f = File::options().write(true).create(true).open(config_file)?;
-        let default_config = Self::default();
-        f.write_all(toml::to_string_pretty(&default_config).unwrap().as_bytes())?;
-        Ok(default_config)
     }
 
     // atomically save
@@ -118,7 +112,6 @@ pub struct ContextSetting {
     pub account_name: String,
     pub crypto_type: CryptoType,
     pub consensus_type: ConsensusType,
-    pub rpc_timeout: u8,
 }
 
 impl FromStr for CryptoType {
@@ -156,7 +149,6 @@ impl Default for ContextSetting {
             account_name: "default".into(),
             crypto_type: CryptoType::Sm,
             consensus_type: ConsensusType::Bft,
-            rpc_timeout: 3,
         }
     }
 }
