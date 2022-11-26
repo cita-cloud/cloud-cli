@@ -96,12 +96,6 @@ where
                 .value_parser(["BFT", "OVERLORD", "RAFT"])
                 .ignore_case(true),
         )
-        .arg(
-            Arg::new("rpc-timeout")
-                .help("rpc request timeout")
-                .short('t')
-                .value_parser(str::parse::<u8>),
-        )
         .handler(|cmd, m, ctx| {
             // If a subcommand is present, context modifiers(e.g. -r) will construct a tmp context for that subcommand.
             // Otherwise modify the current context.
@@ -115,8 +109,7 @@ where
                     || m.contains_id("account-name")
                     || m.contains_id("password")
                     || m.contains_id("crypto-type")
-                    || m.contains_id("consensus-type")
-                    || m.contains_id("rpc-timeout"));
+                    || m.contains_id("consensus-type"));
             if is_tmp_ctx {
                 previous_setting.replace(current_setting.clone());
             }
@@ -158,9 +151,6 @@ where
             }
             if let Some(consensus_type) = m.get_one::<String>("consensus-type") {
                 current_setting.consensus_type = consensus_type.parse().unwrap();
-            }
-            if let Some(&rpc_timeout) = m.get_one::<u8>("rpc-timeout") {
-                current_setting.rpc_timeout = rpc_timeout;
             }
 
             ctx.switch_context(current_setting)?;

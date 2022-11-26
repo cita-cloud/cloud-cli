@@ -14,8 +14,7 @@
 
 use anyhow::{anyhow, ensure, Context as _, Result};
 use rustyline::Editor;
-use std::{future::Future, time::Duration};
-use tokio::time;
+use std::future::Future;
 
 use super::{
     client::GrpcClientBehaviour,
@@ -46,6 +45,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ex: GrpcClientBehaviour,
         Ev: GrpcClientBehaviour,
     {
+        let rt = CtrlCSignalCapturedRuntime(tokio::runtime::Runtime::new()?);
         let editor = rustyline::Editor::<()>::new()?;
         let wallet = Wallet::open(&config.data_dir)?;
 
@@ -61,10 +61,6 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
                 println!("Using a local default context..");
                 ContextSetting::default()
             });
-        let rt = CtrlCSignalCapturedRuntime(
-            tokio::runtime::Runtime::new()?,
-            default_context_setting.rpc_timeout,
-        );
         // connect_lazy must run in async environment.
         let (controller, executor, evm) = rt.block_on(async {
             let co = Co::connect_lazy(&default_context_setting.controller_addr)?;
@@ -140,7 +136,6 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         self.controller = controller;
         self.executor = executor;
         self.evm = evm;
-        self.rt.1 = setting.rpc_timeout;
         self.current_setting = setting;
 
         Ok(())
@@ -148,23 +143,16 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("Canceled")]
-    Canceled,
-    #[error("Timeout")]
-    Timeout,
-}
+#[error("Canceled")]
+pub struct Canceled;
 
-pub struct CtrlCSignalCapturedRuntime(tokio::runtime::Runtime, u8);
+pub struct CtrlCSignalCapturedRuntime(tokio::runtime::Runtime);
 
 impl CtrlCSignalCapturedRuntime {
-    pub fn block_on<F: Future>(&self, future: F) -> Result<F::Output, Error> {
+    pub fn block_on<F: Future>(&self, future: F) -> Result<F::Output, Canceled> {
         self.0.block_on(async {
-            let rpc_timeout = time::sleep(Duration::from_secs(self.1.into()));
-            tokio::pin!(rpc_timeout);
             tokio::select! {
-                _ = &mut rpc_timeout => Err(Error::Timeout),
-                _ = tokio::signal::ctrl_c() => Err(Error::Canceled),
+                _ = tokio::signal::ctrl_c() => Err(Canceled),
                 res = future => Ok(res),
             }
         })
