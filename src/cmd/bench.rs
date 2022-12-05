@@ -144,7 +144,7 @@ where
             let watch_blocks = !m.get_one::<bool>("disable-watch").unwrap();
             let watch_begin = Arc::new(AtomicCell::new(Option::<u64>::None));
 
-            let bn = Arc::new(AtomicCell::new(Option::<u64>::None));
+            let valid_until_block = Arc::new(AtomicCell::new(Option::<u64>::None));
 
             ctx.rt.block_on(async {
                 // Workload builder
@@ -166,7 +166,7 @@ where
                     .context("failed to fetch chain status")?;
 
                 let signer = ctx.current_account()?;
-                let block_number = bn.clone();
+                let current_valid_until_block = valid_until_block.clone();
 
                 let workload_builder = || {
                     let nonce = {
@@ -175,7 +175,7 @@ where
                         let mut rng = thread_rng();
                         rng.gen::<u64>().to_string()
                     };
-                    let valid_until_block = block_number.load().unwrap();
+                    let valid_until_block = current_valid_until_block.load().unwrap();
                     let raw_tx = Transaction {
                         to,
                         data,
@@ -222,14 +222,12 @@ where
                     anyhow::Ok(())
                 };
                 let controller = ctx.controller.clone();
-                let valid_until_block = get_block_height_at(&controller, pos).await?;
-                bn.store(Some(valid_until_block));
+                valid_until_block.store(Some(get_block_height_at(&controller, pos).await?));
                 tokio::spawn(async move {
                     let mut internal = time::interval(Duration::from_secs(3));
                     loop {
                         internal.tick().await;
-                        let valid_until_block = get_block_height_at(&controller, pos).await.unwrap();
-                        bn.store(Some(valid_until_block));
+                        valid_until_block.store(Some(get_block_height_at(&controller, pos).await.unwrap()));
                     }
                 });
                 bench_fn_with_progbar(
