@@ -75,7 +75,7 @@ pub fn parse_value(s: &str) -> Result<[u8; 32]> {
     }
     // padding 0 to 32 bytes
     let padded = format!("{:0>64}", s);
-    hex::decode(&padded)
+    hex::decode(padded)
         .map(|v| v.try_into().unwrap())
         .map_err(|e| anyhow!("invalid value: {e}"))
 }

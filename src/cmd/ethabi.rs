@@ -296,7 +296,7 @@ fn encode_input(
     let tokens = parse_tokens(&params, lenient)?;
     let result = function.encode_input(&tokens)?;
 
-    Ok(hex::encode(&result))
+    Ok(hex::encode(result))
 }
 
 fn encode_params(params: &[String], lenient: bool) -> anyhow::Result<String> {
@@ -311,7 +311,7 @@ fn encode_params(params: &[String], lenient: bool) -> anyhow::Result<String> {
     let tokens = parse_tokens(params.as_slice(), lenient)?;
     let result = encode(&tokens);
 
-    Ok(hex::encode(&result))
+    Ok(hex::encode(result))
 }
 
 fn decode_call_output(path: &str, name_or_signature: &str, data: &str) -> anyhow::Result<String> {

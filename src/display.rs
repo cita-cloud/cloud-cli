@@ -22,7 +22,7 @@ use cita_cloud_proto::{
         raw_transaction::Tx, Block, RawTransaction, Transaction, UnverifiedTransaction,
         UnverifiedUtxoTransaction, UtxoTransaction, Witness,
     },
-    common::{NodeHeight, NodeNetInfo, NodeStatus},
+    common::{NodeNetInfo, NodeStatus, PeerStatus},
     controller::SystemConfig,
     evm::{Balance, ByteAbi, ByteCode, ByteQuota, Log, Nonce, Receipt},
     executor::CallResponse,
@@ -417,18 +417,13 @@ impl Display for ByteQuota {
     }
 }
 
-impl Display for NodeHeight {
-    fn to_json(&self) -> Json {
-        json!({
-            "address": hex(&self.address),
-            "height": self.height,
-        })
-    }
-}
-
 impl Display for NodeNetInfo {
     fn to_json(&self) -> Json {
         let mut info_pair = Map::new();
+        info_pair.insert(
+            String::from("origin"),
+            Json::from(hex(&self.origin.to_be_bytes())),
+        );
         if let Ok(multi_address) = self.multi_address.parse::<Multiaddr>() {
             for protocol in multi_address.iter() {
                 match protocol {
@@ -450,10 +445,25 @@ impl Display for NodeNetInfo {
                     ),
                 };
             }
-            Json::from(info_pair)
         } else {
-            json!({ "address": self.multi_address })
+            info_pair.insert(
+                String::from("multi_address"),
+                Json::from(self.multi_address.as_str()),
+            );
         }
+        Json::from(info_pair)
+    }
+}
+
+impl Display for PeerStatus {
+    fn to_json(&self) -> Json {
+        let mut info_pair = Map::new();
+        info_pair.insert(String::from("address"), Json::from(hex(&self.address)));
+        info_pair.insert(String::from("height"), Json::from(self.height));
+        if let Some(node_net_info) = self.node_net_info.as_ref() {
+            info_pair.insert(String::from("net_info"), node_net_info.to_json());
+        };
+        Json::from(info_pair)
     }
 }
 
@@ -463,9 +473,8 @@ impl Display for NodeStatus {
             "is_sync": self.is_sync,
             "version": self.version,
             "self_status": self.self_status.as_ref().unwrap().to_json(),
-            "peer_status": self.peer_status.iter().map(NodeHeight::to_json).collect::<Vec<_>>(),
-            "connected_peer_count": self.connected_peer_count,
-            "connected_peers_info": self.connected_peers_info.as_ref().unwrap().nodes.iter().map(Display::to_json).collect::<Vec<_>>(),
+            "peers_count": self.peers_count,
+            "peers_status": self.peers_status.iter().map(PeerStatus::to_json).collect::<Vec<_>>(),
         })
     }
 }
