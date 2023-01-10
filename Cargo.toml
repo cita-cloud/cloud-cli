@@ -45,8 +45,8 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 bincode = "1.3"
 rlp = "0.5"
 
-cita_cloud_proto = "=6.6.3"
-consensus_bft = { git =  "https://github.com/cita-cloud/consensus_bft", package = "consensus", branch = "v6.6.3"}
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs.git", package = "cita_cloud_proto" }
+consensus_bft = { git =  "https://github.com/cita-cloud/consensus_bft", package = "consensus" }
 overlord = "0.4"
 
 [build-dependencies]
