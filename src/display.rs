@@ -475,6 +475,7 @@ impl Display for NodeStatus {
             "self_status": self.self_status.as_ref().unwrap().to_json(),
             "peers_count": self.peers_count,
             "peers_status": self.peers_status.iter().map(PeerStatus::to_json).collect::<Vec<_>>(),
+            "is_danger": self.is_danger,
         })
     }
 }
