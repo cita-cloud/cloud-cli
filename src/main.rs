@@ -50,8 +50,7 @@ fn main() -> Result<()> {
 
         println!("Migrating cloud-cli v0.2.0 accounts..");
         println!(
-            "Data backup can be found in `{}/{}`.",
-            CLOUD_CLI_DATA_DIR_NAME, LEGACY_FILE_BACKUP_NAME
+            "Data backup can be found in `{CLOUD_CLI_DATA_DIR_NAME}/{LEGACY_FILE_BACKUP_NAME}`."
         );
 
         // Displace legacy file
@@ -120,19 +119,19 @@ fn main() -> Result<()> {
                     let args = match shell_words::split(&line) {
                         Ok(args) => args,
                         Err(e) => {
-                            println!("parse error: `{}`", e);
+                            println!("parse error: `{e}`");
                             continue;
                         }
                     };
                     let input = std::iter::once(cldi.get_name().into()).chain(args);
                     if let Err(e) = cldi.exec_from(input, &mut ctx) {
-                        println!("{:?}", e);
+                        println!("{e:?}");
                     }
                 }
                 Err(ReadlineError::Eof) => break,
                 Err(ReadlineError::Interrupted) => println!("press CTRL-D to exit"),
                 Err(e) => {
-                    println!("readline error {}", e);
+                    println!("readline error {e}");
                     break;
                 }
             }

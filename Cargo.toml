@@ -5,10 +5,10 @@ authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.0", features = ["cargo"] }
-clap_complete = "4.0"
+clap = { version = "4.1", features = ["cargo"] }
+clap_complete = "4.1"
 hex = "0.4"
-tokio = { version = "1.21", features = ["full"] }
+tokio = { version = "1.25", features = ["full"] }
 rand = "0.8"
 tonic = "0.8"
 prost = "0.11"
@@ -20,10 +20,10 @@ thiserror = "1.0"
 anyhow = "1.0"
 home = "0.5"
 indicatif = "0.17"
-rayon = "1.5"
+rayon = "1.6"
 tentacle-multiaddr = "0.3"
-toml = "0.5"
-rustyline = "10.0"
+toml = "0.7"
+rustyline = "10.1"
 shell-words = "1.1"
 parking_lot = "0.12"
 crossbeam = "0.8"
@@ -35,22 +35,19 @@ efficient-sm2 = "0.1"
 aes = "0.8"
 ctr = "0.9"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.24", features = ["rand-std", "recovery"] }
+secp256k1 = { version = "0.26", features = ["rand-std", "recovery"] }
 # ethabi cli
-ethabi = "17.2"
+ethabi = "18.0"
 sha3 = "0.10"
 itertools = "0.10"
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 bincode = "1.3"
 rlp = "0.5"
+overlord = "0.4"
 
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs.git", package = "cita_cloud_proto" }
 consensus_bft = { git =  "https://github.com/cita-cloud/consensus_bft", package = "consensus" }
-overlord = "0.4"
-
-[build-dependencies]
-tonic-build = "0.8"
 
 [dev-dependencies]
 mockall = "0.11"

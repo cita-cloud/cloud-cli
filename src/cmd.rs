@@ -28,7 +28,7 @@ use clap::{Arg, ArgMatches, ColorChoice};
 use std::collections::HashMap;
 use std::ffi::OsString;
 
-pub use cldi::cldi_cmd;
+pub use self::cldi::cldi_cmd;
 
 type HandleFn<'help, Ctx> =
     dyn Fn(&Command<'help, Ctx>, &ArgMatches, &mut Ctx) -> Result<()> + 'help;

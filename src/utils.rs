@@ -74,7 +74,7 @@ pub fn parse_value(s: &str) -> Result<[u8; 32]> {
         return Err(anyhow!("can't parse value, the given str is too long"));
     }
     // padding 0 to 32 bytes
-    let padded = format!("{:0>64}", s);
+    let padded = format!("{s:0>64}");
     hex::decode(padded)
         .map(|v| v.try_into().unwrap())
         .map_err(|e| anyhow!("invalid value: {e}"))

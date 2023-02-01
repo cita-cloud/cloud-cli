@@ -465,13 +465,10 @@ where
     }
     let success = progbar.position();
     let failure = total - success;
-    println!("`{}` success, `{}` failure", success, failure);
+    println!("`{success}` success, `{failure}` failure");
 
     if let Err(e) = bench_res {
-        println!(
-            "bench isn't completed successfully, the first reported error is `{:?}`",
-            e
-        );
+        println!("bench isn't completed successfully, the first reported error is `{e:?}`");
         // Don't repeat the error msg.
         bail!("bench failed")
     } else {

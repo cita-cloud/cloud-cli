@@ -100,7 +100,7 @@ pub fn list_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>> 
                 .collect::<Vec<_>>();
 
             let output = serde_json::to_string_pretty(&accounts)?;
-            println!("{}", output);
+            println!("{output}");
 
             Ok(())
         })
@@ -204,7 +204,7 @@ pub fn export_account<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>
             };
 
             let output = serde_json::to_string_pretty(&json)?;
-            println!("{}", output);
+            println!("{output}");
 
             Ok(())
         })

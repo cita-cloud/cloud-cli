@@ -108,7 +108,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
 
         current
             .unlocked()
-            .with_context(|| format!("cannot get current account `{}` ", current_name))
+            .with_context(|| format!("cannot get current account `{current_name}` "))
     }
 
     pub fn current_controller_addr(&self) -> &str {

@@ -302,7 +302,7 @@ where
             let block_number = ctx
                 .rt
                 .block_on(ctx.controller.get_block_number(for_pending))??;
-            println!("{}", block_number);
+            println!("{block_number}");
             Ok(())
         })
 }
@@ -399,10 +399,7 @@ where
                 println!("Success");
             } else {
                 // I have no idea how to explain those status codes.
-                println!(
-                    "Failed with status code: `{}`, please check controler's log",
-                    status
-                );
+                println!("Failed with status code: `{status}`, please check controler's log");
             }
 
             Ok(())
