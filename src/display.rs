@@ -382,7 +382,7 @@ impl Display for ProofWithValidators {
                     .signature
                     .address_bitmap
                     .iter()
-                    .map(|u| format!("{:b}", u))
+                    .map(|u| format!("{u:b}"))
                     .collect::<String>();
                 if !validators.is_empty() {
                     address_bitmap = address_bitmap.split_at(validators.len()).0.to_string();

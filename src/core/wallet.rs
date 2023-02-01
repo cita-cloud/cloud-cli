@@ -585,7 +585,7 @@ impl Wallet {
 
                 if let Err(e) = this.load(&name) {
                     // TODO: use logger
-                    eprintln!("fail to load account `{}`: {}", name, e);
+                    eprintln!("fail to load account `{name}`: {e}");
                 }
             }
         }

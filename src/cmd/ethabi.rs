@@ -347,7 +347,7 @@ fn decode_params(types: &[String], data: &str) -> anyhow::Result<String> {
     let result = types
         .iter()
         .zip(tokens.iter())
-        .map(|(ty, to)| format!("{} {}", ty, to))
+        .map(|(ty, to)| format!("{ty} {to}"))
         .collect::<Vec<String>>()
         .join("\n");
 
