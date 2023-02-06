@@ -21,10 +21,7 @@ use cita_cloud_proto::common::NodeStatus;
 use prost::Message;
 use tonic::transport::Channel;
 
-use crate::config::CryptoType;
 use crate::crypto::{ArrayLike, Hash};
-use crate::utils::recover_validators;
-use bincode::deserialize;
 use cita_cloud_proto::{
     blockchain::{
         raw_transaction::Tx, Block, CompactBlock, RawTransaction,
@@ -34,8 +31,7 @@ use cita_cloud_proto::{
     common::{Empty, Hash as CloudHash, NodeNetInfo, Proof, StateRoot},
     controller::{BlockNumber, Flag, SystemConfig},
 };
-use consensus_bft::message::LeaderVote as BftProof;
-use overlord::types::Proof as OverlordProof;
+use overlord::types::{AggregatedSignature, Hash as OverlordHash, Proof as OverlordProof};
 use rlp::Decodable;
 use rlp::Rlp;
 
@@ -49,13 +45,20 @@ pub struct CompactBlockWithStaterootProof {
 }
 
 pub enum ProofType {
-    BftProof(BftProof),
     OverlordProof(OverlordProof),
 }
 
 impl Default for ProofType {
     fn default() -> Self {
-        ProofType::BftProof(BftProof::default())
+        ProofType::OverlordProof(OverlordProof {
+            height: 0,
+            round: 0,
+            block_hash: OverlordHash::new(),
+            signature: AggregatedSignature {
+                signature: OverlordHash::new(),
+                address_bitmap: OverlordHash::new(),
+            },
+        })
     }
 }
 
@@ -92,11 +95,6 @@ pub trait ControllerBehaviour {
     async fn get_node_status(&self) -> Result<NodeStatus>;
 
     async fn add_node(&self, multiaddr: String) -> Result<u32>;
-    async fn parse_bft_proof(
-        &self,
-        proof_bytes: Vec<u8>,
-        crypto_type: CryptoType,
-    ) -> Result<ProofWithValidators>;
     async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
 }
 
@@ -251,19 +249,6 @@ impl ControllerBehaviour for ControllerClient {
             .into_inner();
 
         Ok(resp.code)
-    }
-
-    async fn parse_bft_proof(
-        &self,
-        proof_bytes: Vec<u8>,
-        crypto_type: CryptoType,
-    ) -> Result<ProofWithValidators> {
-        let bft_proof: BftProof = deserialize(&proof_bytes).unwrap_or_default();
-        let validators = recover_validators(crypto_type, bft_proof.clone());
-        Ok(ProofWithValidators {
-            proof: ProofType::BftProof(bft_proof),
-            validators,
-        })
     }
 
     async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators> {

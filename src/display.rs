@@ -27,7 +27,6 @@ use cita_cloud_proto::{
     evm::{Balance, ByteAbi, ByteCode, ByteQuota, Log, Nonce, Receipt},
     executor::CallResponse,
 };
-use consensus_bft::message::SignedFollowerVote;
 use ethabi::ethereum_types::U256;
 use serde_json::json;
 use serde_json::map::Map;
@@ -349,33 +348,9 @@ impl Display for ByteAbi {
     }
 }
 
-impl Display for (SignedFollowerVote, String) {
-    fn to_json(&self) -> Json {
-        json!({
-            "signature": hex(&self.0.sig),
-            "proposal_hash": hex(&self.0.vote.hash.unwrap().0),
-            "validator": self.1,
-        })
-    }
-}
-
 impl Display for ProofWithValidators {
     fn to_json(&self) -> Json {
         match &self.proof {
-            ProofType::BftProof(bft_proof) => {
-                let validator_iter = self.validators.iter().map(|v| hex(v));
-                let vote_iter = bft_proof.votes.clone().into_iter();
-                let vote_with_validator_iter = vote_iter.zip(validator_iter);
-                let votes: Vec<Json> = vote_with_validator_iter.map(|f| f.to_json()).collect();
-                let proposal_hash = &bft_proof.hash.unwrap_or_default().0;
-                json!({
-                    "height": bft_proof.height,
-                    "round": bft_proof.round,
-                    "step": bft_proof.step,
-                    "proposal_hash": hex(proposal_hash),
-                    "votes": votes,
-                })
-            }
             ProofType::OverlordProof(overlord_proof) => {
                 let mut validators = self.validators.iter().map(|v| hex(v)).collect::<Vec<_>>();
                 let mut address_bitmap = overlord_proof

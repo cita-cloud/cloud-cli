@@ -42,12 +42,10 @@ sha3 = "0.10"
 itertools = "0.10"
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
-bincode = "1.3"
 rlp = "0.5"
 overlord = "0.4"
 
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs.git", package = "cita_cloud_proto" }
-consensus_bft = { git =  "https://github.com/cita-cloud/consensus_bft", package = "consensus" }
 
 [dev-dependencies]
 mockall = "0.11"

@@ -16,7 +16,7 @@ use anyhow::{anyhow, Context as _};
 use clap::{Arg, ArgAction};
 use tokio::try_join;
 
-use crate::config::{ConsensusType, CryptoType};
+use crate::config::ConsensusType;
 use crate::core::evm::EvmBehaviour;
 use crate::crypto::{Address, Hash};
 use crate::utils::{parse_u64, Position};
@@ -424,14 +424,7 @@ where
                     "The consensus type of the proof. [default: <current-context-consensus-type>]",
                 )
                 .long("consensus")
-                .value_parser(["BFT", "OVERLORD"])
-                .ignore_case(true),
-        )
-        .arg(
-            Arg::new("crypto-type")
-                .help("The crypto type of the proof. [default: <current-context-crypto-type>]")
-                .long("crypto")
-                .value_parser(["SM", "ETH"])
+                .value_parser(["OVERLORD"])
                 .ignore_case(true),
         )
         .handler(|_cmd, m, ctx| {
@@ -439,18 +432,8 @@ where
                 .get_one::<String>("consensus-type")
                 .map(|s| s.parse::<ConsensusType>().unwrap())
                 .unwrap_or(ctx.current_setting.consensus_type);
-            let crypto_type = m
-                .get_one::<String>("crypto-type")
-                .map(|s| s.parse::<CryptoType>().unwrap())
-                .unwrap_or(ctx.current_setting.crypto_type);
             let proof = m.get_one::<Vec<u8>>("proof").unwrap().to_owned();
             match consensus_type {
-                ConsensusType::Bft => {
-                    let proof_with_validators = ctx
-                        .rt
-                        .block_on(ctx.controller.parse_bft_proof(proof, crypto_type))??;
-                    println!("{}", proof_with_validators.display());
-                }
                 ConsensusType::Overlord => {
                     let proof_with_validators = ctx
                         .rt
@@ -662,11 +645,11 @@ mod tests {
             .unwrap();
 
         ctx.controller
-            .expect_parse_bft_proof()
-            .returning(|_, _| Ok(ProofWithValidators::default()));
+            .expect_parse_overlord_proof()
+            .returning(|_| Ok(ProofWithValidators::default()));
 
         cldi_cmd
-            .exec_from(["cldi", "--consensus", "BFT", "rpc", "parse-proof", "0x6400000000000000000000000000000004000000014200000000000000307861633966306632393365316138636632376531656532333562323030623937393338353863306266303837636334626662623164643066626266333035383362030000000000000064000000000000000000000000000000040000000142000000000000003078616339663066323933653161386366323765316565323335623230306239373933383538633062663038376363346266626231646430666262663330353833628000000000000000856574a753aaf9541714b972473a1c133937b2d5553a6ef735fb3b458b9b149264edec874551eeeacfb4f25e5b64288d65d1b6e978660199fb75f4dbc63fb6da3cf5a660e6002009b700264b873b94a62cbe089bc130bf562618171475276f27a7e7b6d257a8d0faaf37ebfed78642fda9e7efd14f33c202a360b26797e6313464000000000000000000000000000000040000000142000000000000003078616339663066323933653161386366323765316565323335623230306239373933383538633062663038376363346266626231646430666262663330353833628000000000000000039f3bc83360598c47a443c247e3f8672df17d7fde1abb882a630acce2801b7c8cb4f0d719a009e8ef38f1d29fb7eee35d05e51e1d1c9dac3e095f9d516161aa0d5b619543123e5c136790fe89bf723b35467032ddee187965494cd7cf3b3a95fa53625200fe9a6dbf1356cc46838cd2c9aaff3237c001261d6f1dfd3c5f0d80640000000000000000000000000000000400000001420000000000000030786163396630663239336531613863663237653165653233356232303062393739333835386330626630383763633462666262316464306662626633303538336280000000000000008bab0753060e2b43130e7d1d9a3da9e3e865da684cc8ce4b2112d80aeeb84bec8b6e9bbc7b4d06e9733b7ec8141ac2b9f7dbd97b8257ff3ca7e2e7ac688e2aec51abe37c66ab027d026a3daa2edfd21af8c28f9acf6602298ee2ef5a3571f827a5f5cced6e66320a9220263291294b7ce7e4b5df78311f936847e2e13b52ab6d"], &mut ctx)
+            .exec_from(["cldi", "rpc", "parse-proof", "0xf8880280a0851d013b28aa0dbabd0558593a808accd9c6bcf8b41194d9c341fe0001cf6112f863b860948bec9fa600d1a4dd20d60ea679c9e45af2ab22d915ff251d47816b126a1450ea1270cad8a16df198a8870937efa79e09c60ba70acf12ebf0a08888a5edfeeeb34ca98ba30f869a99fa3302ba7d61ea2c966c8e35e32b88a447d2182e22dbcf70"], &mut ctx)
             .unwrap();
     }
 }

@@ -20,7 +20,7 @@ use super::{
     executor::ExecutorBehaviour,
 };
 use crate::{
-    config::{Config, CryptoType},
+    config::Config,
     core::wallet::Account,
     crypto::{Address, Hash, SmCrypto},
 };
@@ -63,7 +63,6 @@ mock! {
         async fn get_node_status(&self) -> Result<NodeStatus>;
 
         async fn add_node(&self, multiaddr: String) -> Result<u32>;
-        async fn parse_bft_proof(&self, proof_bytes: Vec<u8>, crypto_type: CryptoType) -> Result<ProofWithValidators>;
         async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
     }
 
