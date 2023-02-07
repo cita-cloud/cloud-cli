@@ -106,7 +106,6 @@ pub enum CryptoType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ConsensusType {
-    Bft,
     Overlord,
     Raft,
 }
@@ -140,7 +139,6 @@ impl FromStr for ConsensusType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let ty = match s.to_uppercase().as_str() {
-            "BFT" => ConsensusType::Bft,
             "OVERLORD" => ConsensusType::Overlord,
             "RAFT" => ConsensusType::Raft,
             unknown => bail!("unknown crypto type `{}`", unknown),
@@ -156,7 +154,7 @@ impl Default for ContextSetting {
             executor_addr: "localhost:50002".into(),
             account_name: "default".into(),
             crypto_type: CryptoType::Sm,
-            consensus_type: ConsensusType::Bft,
+            consensus_type: ConsensusType::Overlord,
             connect_timeout: 3,
         }
     }
@@ -174,7 +172,6 @@ impl std::fmt::Display for CryptoType {
 impl std::fmt::Display for ConsensusType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match self {
-            Self::Bft => write!(f, "Bft"),
             Self::Overlord => write!(f, "Overlord"),
             Self::Raft => write!(f, "Raft"),
         }

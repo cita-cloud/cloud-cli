@@ -12,20 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::{anyhow, bail, Context, Result};
+use crossbeam::atomic::AtomicCell;
 use std::io::Write;
 use std::num::ParseIntError;
 use std::path::Path;
-
-use anyhow::{anyhow, bail, Context, Result};
-use consensus_bft::message::LeaderVote;
-use crossbeam::atomic::AtomicCell;
 use tempfile::NamedTempFile;
 use time::UtcOffset;
 
-use crate::crypto::eth::{keccak_hash, secp256k1_pk2addr, secp256k1_recover};
-use crate::crypto::sm::{pk2addr, sm2_recover_signature, sm3_hash};
 use crate::{
-    config::CryptoType,
     core::controller::ControllerBehaviour,
     crypto::{Address, ArrayLike, Crypto, Hash, ADDR_BYTES_LEN, BLS_ADDR_BYTES_LEN},
 };
@@ -202,31 +197,6 @@ pub fn safe_save(path: impl AsRef<Path>, content: &[u8], overwrite_existing: boo
     f.flush()?;
 
     Ok(())
-}
-
-pub fn recover_validators(crypto_type: CryptoType, proof: LeaderVote) -> Vec<Vec<u8>> {
-    proof
-        .votes
-        .into_iter()
-        .map(|vote| {
-            let msg: Vec<u8> = (&vote.vote).into();
-            if crypto_type == CryptoType::Sm {
-                let pubkey = sm2_recover_signature(
-                    sm3_hash(&msg).as_slice(),
-                    vote.sig.as_slice().try_into().unwrap(),
-                )
-                .unwrap();
-                pk2addr(&pubkey).to_vec()
-            } else {
-                let pubkey = secp256k1_recover(
-                    keccak_hash(&msg).as_slice(),
-                    vote.sig.as_slice().try_into().unwrap(),
-                )
-                .unwrap();
-                secp256k1_pk2addr(&pubkey).to_vec()
-            }
-        })
-        .collect()
 }
 
 #[cfg(test)]

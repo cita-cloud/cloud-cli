@@ -64,7 +64,7 @@ OPTIONS:
 
 ### parse-proof
 
-从字节码解析并打印共识的Proof信息，默认`crypto-type`为`SM`，默认`consensus-type`为`BFT`
+从字节码解析并打印共识的Proof信息，默认`crypto-type`为`SM`，默认`consensus-type`为`OVERLORD`
 
 ```plaintext
 $ cldi rpc parse-proof -h
@@ -78,9 +78,6 @@ ARGS:
     <proof>    plain proof data with `0x` prefix
 
 OPTIONS:
-        --consensus <consensus-type>    The consensus type of the proof. [default:
-                                        <current-context-crypto-type>] [possible values: BFT,
-                                        OVERLORD]
         --crypto <crypto-type>          The crypto type of the proof. [default:
                                         <current-context-crypto-type>] [possible values: SM, ETH]
     -h, --help                          Print help information
