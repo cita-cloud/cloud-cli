@@ -199,6 +199,13 @@ pub fn safe_save(path: impl AsRef<Path>, content: &[u8], overwrite_existing: boo
     Ok(())
 }
 
+pub fn clap_about() -> String {
+    let name = env!("CARGO_PKG_NAME").to_string();
+    let version = env!("CARGO_PKG_VERSION");
+    let authors = env!("CARGO_PKG_AUTHORS");
+    name + " " + version + "\n" + authors
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
