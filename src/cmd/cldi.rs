@@ -22,6 +22,7 @@ use crate::{
         client::GrpcClientBehaviour, context::Context, controller::ControllerBehaviour,
         evm::EvmBehaviour, executor::ExecutorBehaviour,
     },
+    utils::clap_about,
 };
 
 pub fn get_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
@@ -54,7 +55,7 @@ where
     Ev: EvmBehaviour + GrpcClientBehaviour + Clone + Send + Sync + 'static,
 {
     Command::<Context<Co, Ex, Ev>>::new("cldi")
-        .about("The command line interface to interact with CITA-Cloud")
+        .about(clap_about() + "\nThe command line interface to interact with CITA-Cloud")
         .author(crate_authors!())
         .version(crate_version!())
         .color(ColorChoice::Auto)
