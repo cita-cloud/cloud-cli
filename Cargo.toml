@@ -8,7 +8,7 @@ edition = "2021"
 clap = { version = "4.1", features = ["cargo"] }
 clap_complete = "4.1"
 hex = "0.4"
-tokio = { version = "1.25", features = ["full"] }
+tokio = { version = "1.26", features = ["full"] }
 rand = "0.8"
 tonic = "0.8"
 prost = "0.11"
@@ -45,7 +45,7 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 rlp = "0.5"
 overlord = "0.4"
 
-cita_cloud_proto = "=6.6.4"
+cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
 
 [dev-dependencies]
 mockall = "0.11"
