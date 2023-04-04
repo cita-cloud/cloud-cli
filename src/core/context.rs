@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use anyhow::{anyhow, ensure, Context as _, Result};
-use rustyline::Editor;
+use rustyline::DefaultEditor;
 use std::{future::Future, time::Duration};
 
 use super::{
@@ -34,7 +34,7 @@ pub struct Context<Co, Ex, Ev> {
     pub current_setting: ContextSetting,
 
     // rustyline::Editor, used for interactive cmd.
-    pub editor: Editor<()>,
+    pub editor: DefaultEditor,
     pub rt: CtrlCSignalCapturedRuntime,
 }
 
@@ -46,7 +46,7 @@ impl<Co, Ex, Ev> Context<Co, Ex, Ev> {
         Ev: GrpcClientBehaviour,
     {
         let rt = CtrlCSignalCapturedRuntime(tokio::runtime::Runtime::new()?);
-        let editor = rustyline::Editor::<()>::new()?;
+        let editor = rustyline::DefaultEditor::new()?;
         let wallet = Wallet::open(&config.data_dir)?;
 
         let default_context_setting = config

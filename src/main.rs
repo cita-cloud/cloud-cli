@@ -114,7 +114,7 @@ fn main() -> Result<()> {
             let line = ctx.editor.readline("cldi> ");
             match line {
                 Ok(line) => {
-                    ctx.editor.add_history_entry(&line);
+                    let _ = ctx.editor.add_history_entry(&line);
 
                     let args = match shell_words::split(&line) {
                         Ok(args) => args,
