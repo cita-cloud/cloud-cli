@@ -45,7 +45,7 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 rlp = "0.5"
 overlord = "0.4"
 
-cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
+cita_cloud_proto = "=6.6.5"
 
 [dev-dependencies]
 mockall = "0.11"
