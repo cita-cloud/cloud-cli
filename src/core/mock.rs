@@ -33,7 +33,6 @@ use cita_cloud_proto::{
     executor::CallResponse,
 };
 use mockall::mock;
-use std::time::Duration;
 use tempfile::tempdir;
 use tempfile::TempDir;
 use tonic::transport::Channel;
@@ -66,16 +65,14 @@ mock! {
         async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
     }
 
-    #[tonic::async_trait]
-    impl GrpcClientBehaviour for ControllerClient {
-        fn from_channel(ch: Channel) -> Self;
-        async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
-        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
-    }
-
     impl Clone for ControllerClient {
         fn clone(&self) -> Self;
+    }
+}
+
+impl GrpcClientBehaviour for MockControllerClient {
+    fn from_channel(_ch: Channel) -> Self {
+        MockControllerClient::default()
     }
 }
 
@@ -93,16 +90,14 @@ mock! {
         ) -> Result<CallResponse>;
     }
 
-    #[tonic::async_trait]
-    impl GrpcClientBehaviour for ExecutorClient {
-        fn from_channel(ch: Channel) -> Self;
-        async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
-        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
-    }
-
     impl Clone for ExecutorClient {
         fn clone(&self) -> Self;
+    }
+}
+
+impl GrpcClientBehaviour for MockExecutorClient {
+    fn from_channel(_ch: Channel) -> Self {
+        MockExecutorClient::default()
     }
 }
 
@@ -124,16 +119,14 @@ mock! {
         ) -> Result<ByteQuota>;
     }
 
-    #[tonic::async_trait]
-    impl GrpcClientBehaviour for EvmClient {
-        fn from_channel(ch: Channel) -> Self;
-        async fn connect(addr: &str) -> Result<Self>;
-        fn connect_lazy(addr: &str, dur: Duration) -> Result<Self>;
-        async fn connect_timeout(addr: &str, dur: Duration) -> Result<Self> ;
-    }
-
     impl Clone for EvmClient {
         fn clone(&self) -> Self;
+    }
+}
+
+impl GrpcClientBehaviour for MockEvmClient {
+    fn from_channel(_ch: Channel) -> Self {
+        MockEvmClient::default()
     }
 }
 
@@ -143,35 +136,6 @@ pub fn context() -> (
     Context<MockControllerClient, MockExecutorClient, MockEvmClient>,
     TempDir,
 ) {
-    // Set up mock context. Note that we don't use the provided impl
-    // for the rest connect* methods since that would actually try to connect.
-    let mock_ctx = MockControllerClient::from_channel_context();
-    mock_ctx.expect().returning(|_| Default::default());
-    let mock_ctx = MockControllerClient::connect_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
-    let mock_ctx = MockControllerClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-    let mock_ctx = MockControllerClient::connect_timeout_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-
-    let mock_ctx = MockExecutorClient::from_channel_context();
-    mock_ctx.expect().returning(|_| Default::default());
-    let mock_ctx = MockExecutorClient::connect_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
-    let mock_ctx = MockExecutorClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-    let mock_ctx = MockExecutorClient::connect_timeout_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-
-    let mock_ctx = MockEvmClient::from_channel_context();
-    mock_ctx.expect().returning(|_| Default::default());
-    let mock_ctx = MockEvmClient::connect_context();
-    mock_ctx.expect().returning(|_| Ok(Default::default()));
-    let mock_ctx = MockEvmClient::connect_lazy_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-    let mock_ctx = MockEvmClient::connect_timeout_context();
-    mock_ctx.expect().returning(|_, _| Ok(Default::default()));
-
     let test_dir = tempdir().expect("cannot get temp dir");
     let config = Config {
         data_dir: test_dir.path().to_path_buf(),
