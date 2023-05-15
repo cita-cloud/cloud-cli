@@ -186,6 +186,48 @@ where
         })
 }
 
+pub fn get_receipt_proof<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Ev: EvmBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("get-receipt-proof")
+        .about("Get the specific tx_hash's receipt proof")
+        .arg(
+            Arg::new("tx_hash")
+                .help("Input the tx hash to extract receipt proof")
+                .required(true)
+                .value_parser(parse_hash),
+        )
+        .handler(|_cmd, m, ctx| {
+            let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
+
+            let receipt_proof = ctx.rt.block_on(ctx.evm.get_receipt_proof(tx_hash))??;
+            println!("{}", receipt_proof.display());
+            Ok(())
+        })
+}
+
+pub fn get_roots_info<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Ev: EvmBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("get-roots-info")
+        .about("Get the specific block's roots info")
+        .arg(
+            Arg::new("height")
+                .help("the block height")
+                .required(true)
+                .value_parser(str::parse::<u64>),
+        )
+        .handler(|_cmd, m, ctx| {
+            let block_number = *m.get_one::<u64>("height").unwrap();
+
+            let receipt_info = ctx.rt.block_on(ctx.evm.get_roots_info(block_number))??;
+            println!("{}", receipt_info.display());
+            Ok(())
+        })
+}
+
 #[cfg(test)]
 mod tests {
 

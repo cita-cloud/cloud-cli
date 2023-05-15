@@ -12,25 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::{anyhow, Context as _};
-use clap::{Arg, ArgAction};
-use tokio::try_join;
-
-use crate::config::ConsensusType;
-use crate::core::evm::EvmBehaviour;
-use crate::crypto::{Address, Hash};
-use crate::utils::{parse_u64, Position};
 use crate::{
     cmd::{evm::store_abi, Command},
+    config::ConsensusType,
     core::{
         context::Context,
         controller::{ControllerBehaviour, TransactionSenderBehaviour},
+        cross_chain::{self, CrossChainResultCode},
+        evm::EvmBehaviour,
         executor::ExecutorBehaviour,
     },
-    crypto::ArrayLike,
+    crypto::{Address, ArrayLike, Hash},
     display::Display,
-    utils::{get_block_height_at, parse_addr, parse_data, parse_hash, parse_position, parse_value},
+    utils::{
+        get_block_height_at, parse_addr, parse_data, parse_hash, parse_position, parse_u64,
+        parse_value, Position,
+    },
 };
+use anyhow::{anyhow, Context as _};
+use cita_cloud_proto::controller::{CrossChainProof, SystemConfig};
+use clap::builder::ArgPredicate;
+use clap::{Arg, ArgAction};
+use executor::types::clean_0x;
+use prost::Message;
+use std::fs::File;
+use std::io::{Read, Write};
+use tokio::try_join;
 
 pub fn call_executor<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
@@ -371,6 +378,53 @@ where
         })
 }
 
+pub fn get_cross_chain_proof<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("get-cross-chain-proof")
+        .about("Get transaction cross chain proof by tx_hash")
+        .arg(
+            Arg::new("tx_hash")
+                .help("Input the tx hash to extract crosschain proof")
+                .required(true)
+                .value_parser(parse_hash),
+        )
+        .arg(
+            Arg::new("output")
+                .help("Output the cross chain proof file path")
+                .short('o')
+                .long("output"),
+        )
+        .handler(|_cmd, m, ctx| {
+            let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
+            let c = &ctx.controller;
+
+            let cc_proof = ctx
+                .rt
+                .block_on(c.get_cross_chain_proof(tx_hash))?
+                .map_err(|e| println!("{e}"))
+                .unwrap();
+
+            println!("{}", cc_proof.display());
+            if m.contains_id("output") {
+                let file_path = m.get_one::<String>("output").unwrap();
+                let ccp_bytes = {
+                    let mut buf = Vec::with_capacity(cc_proof.encoded_len());
+                    cc_proof.encode(&mut buf).unwrap();
+                    buf
+                };
+                let mut f = File::options().write(true).create(true).open(format!(
+                    "{}/{}-ccp",
+                    file_path,
+                    hex::encode(&tx_hash[..8])
+                ))?;
+                f.write_all(&ccp_bytes)?;
+            }
+            Ok(())
+        })
+}
+
 pub fn add_node<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Co: ControllerBehaviour,
@@ -500,6 +554,135 @@ where
         .about("Other RPC commands")
         .subcommand_required_else_help(true)
         .subcommands([add_node(), store_abi(), parse_proof(), estimate_quota()])
+}
+
+pub fn verify_cross_chain_proof<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour,
+    Ev: EvmBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("verify-cross-chain-proof")
+        .about("Verify cross chain proof")
+        .arg(
+            Arg::new("file-path")
+                .long("file")
+                .short('f')
+                .conflicts_with("proof-data")
+                .required_unless_present("proof-data")
+                .help("file path of cross chain proof file"),
+        )
+        .arg(
+            Arg::new("proof-data")
+                .long("data")
+                .short('d')
+                .help("input proof data on hex form with 0x prefix"),
+        )
+        .arg(
+            Arg::new("validators")
+                .long("validators")
+                .short('v')
+                .help("input validators' address on hex form with 0x prefix, split with ,"),
+        )
+        .arg(
+            Arg::new("version")
+                .long("version")
+                .requires_if(ArgPredicate::IsPresent, "chain-id")
+                .help("input chain version")
+                .value_parser(str::parse::<u32>),
+        )
+        .arg(
+            Arg::new("chain-id")
+                .long("chain-id")
+                .requires_if(ArgPredicate::IsPresent, "version")
+                .help("input chain id"),
+        )
+        .handler(|_cmd, m, ctx| {
+            let ccp_bytes = if m.contains_id("file-path") {
+                let file_path = m.get_one::<String>("file-path").unwrap();
+                let mut file = File::options().read(true).open(file_path).unwrap();
+                let mut bytes = Vec::new();
+                file.read_to_end(&mut bytes).unwrap();
+                bytes
+            } else {
+                let proof_data = m.get_one::<String>("proof-data").unwrap();
+                hex::decode(clean_0x(proof_data)).unwrap()
+            };
+            println!("{}", hex::encode(&ccp_bytes));
+            let cc_proof = CrossChainProof::decode(ccp_bytes.as_slice()).unwrap();
+
+            let mut online = false;
+            let sys_conf = if m.contains_id("version") {
+                let version = *m.get_one::<u32>("version").unwrap();
+                let chain_id = clean_0x(m.get_one::<String>("chain-id").unwrap());
+                let sys_conf = SystemConfig {
+                    version,
+                    chain_id: hex::decode(chain_id).unwrap(),
+                    ..Default::default()
+                };
+                Some(sys_conf)
+            } else if let Some(ref receipt_proof) = cc_proof.receipt_proof {
+                if let Some(ref roots_info) = receipt_proof.roots_info {
+                    let height = roots_info.height;
+                    if let Ok(Ok(sys_conf)) = ctx
+                        .rt
+                        .block_on(ctx.controller.get_system_config_by_number(height))
+                    {
+                        online = true;
+                        Some(sys_conf)
+                    } else {
+                        None
+                    }
+                } else {
+                    println!("{}", CrossChainResultCode::NoneRootsInfo.display());
+                    return Ok(());
+                }
+            } else {
+                println!("{}", CrossChainResultCode::NoneReceiptProof.display());
+                return Ok(());
+            };
+
+            let validators = if m.contains_id("validators") {
+                let validators = m.get_one::<String>("validators").unwrap();
+                let validator_vec = validators.split(',').map(|s| s.to_owned()).collect();
+                Some(validator_vec)
+            } else if online {
+                Some(
+                    sys_conf
+                        .clone()
+                        .unwrap()
+                        .validators
+                        .iter()
+                        .map(hex::encode)
+                        .collect(),
+                )
+            } else {
+                None
+            };
+
+            match cross_chain::verify_cross_chain_proof(cc_proof, validators, sys_conf) {
+                Ok(_) => {
+                    let code = CrossChainResultCode::Success;
+                    println!("{}", code.display());
+                }
+                Err(code) => println!("{}", code.display()),
+            }
+
+            Ok(())
+        })
+}
+
+pub fn verify_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: ControllerBehaviour + Send + Sync,
+    Ex: ExecutorBehaviour,
+    Ev: EvmBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("verify")
+        .about("Verify commands")
+        .subcommand_required_else_help(true)
+        .subcommands([verify_cross_chain_proof()
+            .name("cross-chain-proof")
+            .alias("ccp")])
 }
 
 #[cfg(test)]

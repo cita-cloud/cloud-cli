@@ -43,9 +43,16 @@ itertools = "0.10"
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 rlp = "0.5"
-overlord = "0.4"
+cita-merklehash = { version = "0.1", features = ["sm3hash"] }
+static_merkle_tree = "1.1"
+bytes = { version = "1.4", features = ["serde"] }
 
-cita_cloud_proto = "=6.6.5"
+ophelia = "0.3"
+overlord = "0.4"
+ophelia-blst = "0.3"
+
+cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
+executor = { git = "https://github.com/cita-cloud/executor_evm" }
 
 [dev-dependencies]
 mockall = "0.11"
