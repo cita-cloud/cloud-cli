@@ -12,11 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::core::cross_chain::CrossChainResultCode;
 use crate::{
     core::controller::{CompactBlockWithStaterootProof, ProofType, ProofWithValidators},
     crypto::{Address, Hash},
     utils::{display_time, hex},
 };
+use cita_cloud_proto::blockchain::{BlockHeader, CompactBlock, CompactBlockBody};
+use cita_cloud_proto::common::ProposalInner;
+use cita_cloud_proto::controller::CrossChainProof;
+use cita_cloud_proto::evm::{ReceiptProof, RootsInfo};
 use cita_cloud_proto::{
     blockchain::{
         raw_transaction::Tx, Block, RawTransaction, Transaction, UnverifiedTransaction,
@@ -112,6 +117,39 @@ impl Display for CompactBlockWithStaterootProof {
             }
             None => json!({}),
         }
+    }
+}
+
+impl Display for BlockHeader {
+    fn to_json(&self) -> Json {
+        json!({
+            "height": self.height,
+            "prev_hash": hex(&self.prevhash),
+            "timestamp": self.timestamp,
+            "time": display_time(self.timestamp),
+            "transaction_root": hex(&self.transactions_root),
+            "proposer": hex(&self.proposer),
+        })
+    }
+}
+
+impl Display for CompactBlockBody {
+    fn to_json(&self) -> Json {
+        let tx_hashes: Vec<String> = self.tx_hashes.iter().map(|h| hex(h)).collect();
+        json!({
+            "tx_count": tx_hashes.len(),
+            "tx_hashes": tx_hashes,
+        })
+    }
+}
+
+impl Display for CompactBlock {
+    fn to_json(&self) -> Json {
+        json!({
+            "version": self.version,
+            "header": self.header.as_ref().map(|header| header.to_json()).unwrap_or_else(|| json!({})),
+            "body": self.body.as_ref().map(|body| body.to_json()).unwrap_or_else(|| json!({})),
+        })
     }
 }
 
@@ -452,6 +490,87 @@ impl Display for NodeStatus {
             "peers_status": self.peers_status.iter().map(PeerStatus::to_json).collect::<Vec<_>>(),
             "is_danger": self.is_danger,
             "init_block_number": self.init_block_number,
+        })
+    }
+}
+
+impl Display for RootsInfo {
+    fn to_json(&self) -> Json {
+        json!({
+            "height": self.height,
+            "state_root": hex(&self.state_root),
+            "receipt_root": hex(&self.receipt_root),
+        })
+    }
+}
+
+impl Display for ReceiptProof {
+    fn to_json(&self) -> Json {
+        let receipt: executor::types::receipt::Receipt = rlp::decode(&self.receipt).unwrap();
+        json!({
+            "receipt": receipt.to_json(),
+            "receipt_proof": hex(&self.receipt_proof),
+            "roots_info": self.roots_info.as_ref().unwrap().to_json(),
+        })
+    }
+}
+
+impl Display for ProposalInner {
+    fn to_json(&self) -> Json {
+        json!({
+            "pre_state_root": hex(&self.pre_state_root),
+            "proposal": self.proposal.as_ref().unwrap().to_json(),
+        })
+    }
+}
+
+impl Display for CrossChainProof {
+    fn to_json(&self) -> Json {
+        json!({
+            "version": self.version,
+            "chain_id": hex(&self.chain_id),
+            "proposal": self.proposal.as_ref().unwrap().to_json(),
+            "receipt_proof": self.receipt_proof.as_ref().unwrap().to_json(),
+            "proof": hex(&self.proof),
+            "state_root": hex(&self.state_root),
+        })
+    }
+}
+
+impl Display for executor::types::log::Log {
+    fn to_json(&self) -> Json {
+        json!({
+            "address": hex(self.address.as_bytes()),
+            "topics": json!(self.topics.iter().map(|t| hex(t.as_bytes())).collect::<Vec<_>>()),
+            "data": hex(&self.data),
+        })
+    }
+}
+
+impl Display for executor::types::receipt::Receipt {
+    fn to_json(&self) -> Json {
+        let err_msg = self.error.map_or("".to_string(), |e| e.description());
+        let logs = self
+            .logs
+            .iter()
+            .map(executor::types::log::Log::to_json)
+            .collect::<Vec<_>>();
+        json!({
+            "quota_used": self.quota_used.as_u64(),
+            "log_bloom": hex(self.log_bloom.as_bytes()),
+            "logs": logs,
+            "error": err_msg,
+            "account_nonce": self.account_nonce.as_u64(),
+            "transaction_hash": hex(self.transaction_hash.as_bytes()),
+        })
+    }
+}
+
+impl Display for CrossChainResultCode {
+    fn to_json(&self) -> Json {
+        json!({
+            "code": self.code(),
+            "message": format!("{self}")
         })
     }
 }

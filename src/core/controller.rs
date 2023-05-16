@@ -22,6 +22,7 @@ use prost::Message;
 use tonic::transport::Channel;
 
 use crate::crypto::{ArrayLike, Hash};
+use cita_cloud_proto::controller::CrossChainProof;
 use cita_cloud_proto::{
     blockchain::{
         raw_transaction::Tx, Block, CompactBlock, RawTransaction,
@@ -96,6 +97,7 @@ pub trait ControllerBehaviour {
 
     async fn add_node(&self, multiaddr: String) -> Result<u32>;
     async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
+    async fn get_cross_chain_proof(&self, hash: Hash) -> Result<CrossChainProof>;
 }
 
 #[tonic::async_trait]
@@ -254,6 +256,7 @@ impl ControllerBehaviour for ControllerClient {
     async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators> {
         let overlord_proof: OverlordProof = OverlordProof::decode(&Rlp::new(&proof_bytes)).unwrap();
         let validators: Vec<Vec<u8>> = self
+            .clone()
             .get_system_config_by_number(overlord_proof.height)
             .await
             .map_or_else(|_| vec![], |v| v.validators);
@@ -261,6 +264,19 @@ impl ControllerBehaviour for ControllerClient {
             proof: ProofType::OverlordProof(overlord_proof),
             validators,
         })
+    }
+
+    async fn get_cross_chain_proof(&self, hash: Hash) -> Result<CrossChainProof> {
+        let resp = ControllerClient::get_cross_chain_proof(
+            &mut self.clone(),
+            CloudHash {
+                hash: hash.to_vec(),
+            },
+        )
+        .await?
+        .into_inner();
+
+        Ok(resp)
     }
 }
 

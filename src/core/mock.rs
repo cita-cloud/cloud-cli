@@ -28,8 +28,8 @@ use anyhow::Result;
 use cita_cloud_proto::{
     blockchain::{Block, CompactBlock, RawTransaction},
     common::NodeStatus,
-    controller::{BlockNumber, SystemConfig},
-    evm::{Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt},
+    controller::{BlockNumber, CrossChainProof, SystemConfig},
+    evm::{Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt, ReceiptProof, RootsInfo},
     executor::CallResponse,
 };
 use mockall::mock;
@@ -63,6 +63,8 @@ mock! {
 
         async fn add_node(&self, multiaddr: String) -> Result<u32>;
         async fn parse_overlord_proof(&self, proof_bytes: Vec<u8>) -> Result<ProofWithValidators>;
+
+        async fn get_cross_chain_proof(&self, hash: Hash) -> Result<CrossChainProof>;
     }
 
     impl Clone for ControllerClient {
@@ -117,6 +119,8 @@ mock! {
             to: Vec<u8>,
             method: Vec<u8>,
         ) -> Result<ByteQuota>;
+        async fn get_receipt_proof(&self, hash: Hash) -> Result<ReceiptProof>;
+        async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo>;
     }
 
     impl Clone for EvmClient {

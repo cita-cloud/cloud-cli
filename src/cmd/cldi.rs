@@ -45,6 +45,11 @@ where
             rpc::get_block_hash().name("block-hash").alias("bh"),
             rpc::get_block_number().name("block-number").alias("bn"),
             rpc::get_node_status().name("node-status").alias("ns"),
+            rpc::get_cross_chain_proof()
+                .name("cross-chain-proof")
+                .alias("ccp"),
+            evm::get_receipt_proof().name("receipt-proof").alias("rp"),
+            evm::get_roots_info().name("roots-info").alias("ri"),
         ])
 }
 
@@ -179,7 +184,7 @@ where
             ret
         })
         .subcommands([
-            self::get_cmd().aliases(["ge", "g"]),
+            get_cmd().aliases(["ge", "g"]),
             rpc::send_tx().name("send"),
             rpc::call_executor().name("call"),
             rpc::create_contract().name("create"),
@@ -190,6 +195,7 @@ where
             ethabi::ethabi_cmd(),
             bench::bench_cmd().alias("b"),
             watch::watch_cmd().alias("w"),
+            rpc::verify_cmd().alias("v"),
         ])
         .with_completions_subcmd()
 }

@@ -16,6 +16,7 @@ pub mod admin;
 pub mod client;
 pub mod context;
 pub mod controller;
+pub mod cross_chain;
 pub mod evm;
 pub mod executor;
 #[cfg(test)]

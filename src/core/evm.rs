@@ -14,7 +14,7 @@
 
 use anyhow::Context as _;
 use anyhow::Result;
-use cita_cloud_proto::evm::ByteQuota;
+use cita_cloud_proto::evm::{BlockNumber, ByteQuota, ReceiptProof, RootsInfo};
 use cita_cloud_proto::executor::CallRequest;
 use tonic::transport::Channel;
 
@@ -66,6 +66,8 @@ pub trait EvmBehaviour {
         to: Vec<u8>,
         method: Vec<u8>,
     ) -> Result<ByteQuota>;
+    async fn get_receipt_proof(&self, hash: Hash) -> Result<ReceiptProof>;
+    async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo>;
 }
 
 #[tonic::async_trait]
@@ -139,6 +141,24 @@ impl EvmBehaviour for EvmClient {
             .await
             .map(|resp| resp.into_inner())
             .context("failed to estimate quota")
+    }
+
+    async fn get_receipt_proof(&self, hash: Hash) -> Result<ReceiptProof> {
+        let hash = CloudHash {
+            hash: hash.to_vec(),
+        };
+        EvmClient::get_receipt_proof(&mut self.clone(), hash)
+            .await
+            .map(|resp| resp.into_inner())
+            .context("failed to get receipt proof")
+    }
+
+    async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo> {
+        let block_number = BlockNumber { block_number };
+        EvmClient::get_roots_info(&mut self.clone(), block_number)
+            .await
+            .map(|resp| resp.into_inner())
+            .context("failed to get receipt proof")
     }
 }
 
