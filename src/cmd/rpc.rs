@@ -607,7 +607,6 @@ where
                 let proof_data = m.get_one::<String>("proof-data").unwrap();
                 hex::decode(clean_0x(proof_data)).unwrap()
             };
-            println!("{}", hex::encode(&ccp_bytes));
             let cc_proof = CrossChainProof::decode(ccp_bytes.as_slice()).unwrap();
 
             let mut online = false;
