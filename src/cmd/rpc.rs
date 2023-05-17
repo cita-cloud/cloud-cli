@@ -346,11 +346,7 @@ where
             let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
             let c = &ctx.controller;
 
-            let tx = ctx
-                .rt
-                .block_on(c.get_tx(tx_hash))?
-                .map_err(|e| println!("{e}"))
-                .unwrap();
+            let tx = ctx.rt.block_on(c.get_tx(tx_hash))??;
             let tx_with_index = match ctx.rt.block_on(async move {
                 try_join!(c.get_tx_block_number(tx_hash), c.get_tx_index(tx_hash),)
             })? {
@@ -400,11 +396,7 @@ where
             let tx_hash = *m.get_one::<Hash>("tx_hash").unwrap();
             let c = &ctx.controller;
 
-            let cc_proof = ctx
-                .rt
-                .block_on(c.get_cross_chain_proof(tx_hash))?
-                .map_err(|e| println!("{e}"))
-                .unwrap();
+            let cc_proof = ctx.rt.block_on(c.get_cross_chain_proof(tx_hash))??;
 
             println!("{}", cc_proof.display());
             if m.contains_id("output") {
