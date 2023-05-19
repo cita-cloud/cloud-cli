@@ -32,6 +32,8 @@ pub enum CrossChainResultCode {
     SuccessWithOutChainInfo,
     SuccessWithOutVotes,
     SuccessWithOutChainInfoAndVotes,
+    SuccessNoneVotes,
+    SuccessWithOutChainInfoNoneVotes,
     NoneProposal,
     NoneReceiptProof,
     NoneRootsInfo,
@@ -57,6 +59,8 @@ impl CrossChainResultCode {
             CrossChainResultCode::SuccessWithOutChainInfo => 1,
             CrossChainResultCode::SuccessWithOutVotes => 2,
             CrossChainResultCode::SuccessWithOutChainInfoAndVotes => 3,
+            CrossChainResultCode::SuccessNoneVotes => 4,
+            CrossChainResultCode::SuccessWithOutChainInfoNoneVotes => 5,
             CrossChainResultCode::NoneProposal => 100,
             CrossChainResultCode::NoneReceiptProof => 101,
             CrossChainResultCode::NoneRootsInfo => 102,
@@ -115,6 +119,10 @@ impl fmt::Display for CrossChainResultCode {
             CrossChainResultCode::SuccessWithOutVotes => write!(f, "Success with out votes"),
             CrossChainResultCode::SuccessWithOutChainInfoAndVotes => {
                 write!(f, "Success with out chain info and votes")
+            }
+            CrossChainResultCode::SuccessNoneVotes => write!(f, "Success none votes"),
+            CrossChainResultCode::SuccessWithOutChainInfoNoneVotes => {
+                write!(f, "Success with out chain info none votes")
             }
         }
     }
@@ -200,6 +208,14 @@ pub fn verify_cross_chain_proof(
             return Err(CrossChainResultCode::ChainIdVersionCheckError);
         } else {
             check_chain_info = true;
+        }
+    }
+
+    if ccp.proof.is_empty() {
+        if check_chain_info {
+            return Err(CrossChainResultCode::SuccessNoneVotes);
+        } else {
+            return Err(CrossChainResultCode::SuccessWithOutChainInfoNoneVotes);
         }
     }
 
