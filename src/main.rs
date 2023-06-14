@@ -54,6 +54,7 @@ fn main() -> Result<()> {
         );
 
         // Displace legacy file
+        #[allow(clippy::redundant_clone)]
         let legacy_file = data_dir.clone();
         let tmp_legacy_file_backup = {
             let mut p = legacy_file.clone();
