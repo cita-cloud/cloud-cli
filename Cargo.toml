@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.5.4"
+version = "0.5.5"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
@@ -51,8 +51,8 @@ ophelia = "0.3"
 overlord = "0.4"
 ophelia-blst = "0.3"
 
-cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
-executor = { git = "https://github.com/cita-cloud/executor_evm" }
+cita_cloud_proto = "=6.7.0"
+executor = { git = "https://github.com/cita-cloud/executor_evm" , branch = "v6.7.0"}
 
 [dev-dependencies]
 mockall = "0.11"
