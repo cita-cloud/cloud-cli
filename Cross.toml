@@ -1,0 +1,5 @@
+[target.x86_64-unknown-linux-gnu]
+dockerfile = "./dockerfiles/linux-x86/Dockerfile"
+
+[target.aarch64-unknown-linux-gnu]
+dockerfile = "./dockerfiles/linux-arm/Dockerfile"
