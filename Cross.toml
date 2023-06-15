@@ -1,5 +1,7 @@
 [target.x86_64-unknown-linux-gnu]
-dockerfile = "./dockerfiles/linux-x86/Dockerfile"
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:edge"
+pre-build = ["apt-get update && apt-get install -y libssl-dev libclang-dev protobuf-compiler"]
 
 [target.aarch64-unknown-linux-gnu]
-dockerfile = "./dockerfiles/linux-arm/Dockerfile"
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
+pre-build = ["dpkg --add-architecture arm64 && apt-get update && apt-get install -y libssl-dev:arm64 libclang-dev protobuf-compiler"]
