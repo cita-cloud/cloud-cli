@@ -18,6 +18,7 @@ mod core;
 mod crypto;
 mod display;
 mod legacy;
+mod types;
 mod utils;
 
 use anyhow::Result;
@@ -33,6 +34,9 @@ use crate::{
     crypto::SmCrypto,
     utils::init_local_utc_offset,
 };
+
+#[macro_use]
+extern crate serde_derive;
 
 fn main() -> Result<()> {
     // This should be called without any other concurrent running threads.

@@ -14,10 +14,10 @@
 
 use crate::crypto::sm::sm3_hash;
 use crate::crypto::ArrayLike;
+use crate::types::clean_0x;
 use bytes::Bytes;
 use cita_cloud_proto::controller::{CrossChainProof, SystemConfig};
 use ethabi::ethereum_types::H256;
-use executor::types::clean_0x;
 use ophelia::{BlsSignatureVerify, HashValue};
 use ophelia_blst::{BlsPublicKey, BlsSignature};
 use overlord::extract_voters;
@@ -170,7 +170,7 @@ pub fn verify_cross_chain_proof(
         return Err(CrossChainResultCode::ReceiptProofCheckError);
     }
 
-    let receipt: executor::types::receipt::Receipt = rlp::decode(&receipt).map_err(|_| {
+    let receipt: crate::types::receipt::Receipt = rlp::decode(&receipt).map_err(|_| {
         CrossChainResultCode::DecodeError("proposal in cross chain proof".to_string())
     })?;
     let compact_block = proposal

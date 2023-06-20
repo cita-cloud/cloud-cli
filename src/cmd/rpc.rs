@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::types::clean_0x;
 use crate::{
     cmd::{evm::store_abi, Command},
     config::ConsensusType,
@@ -33,7 +34,6 @@ use anyhow::{anyhow, Context as _};
 use cita_cloud_proto::controller::{CrossChainProof, SystemConfig};
 use clap::builder::ArgPredicate;
 use clap::{Arg, ArgAction};
-use executor::types::clean_0x;
 use prost::Message;
 use std::fs::File;
 use std::io::{Read, Write};

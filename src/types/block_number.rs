@@ -12,13 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod cmd;
-pub mod config;
-pub mod core;
-pub mod crypto;
-pub mod display;
-pub mod types;
-pub mod utils;
-
-#[macro_use]
-extern crate serde_derive;
+pub type BlockNumber = u64;

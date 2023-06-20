@@ -14,6 +14,7 @@ tonic = "0.9"
 prost = "0.11"
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 serde = "1.0"
+serde_derive = "1.0"
 serde_json = "1.0"
 lazy_static = "1.4"
 thiserror = "1.0"
@@ -34,28 +35,38 @@ efficient-sm2 = "0.2"
 # crypto ETH
 aes = "0.8"
 ctr = "0.9"
-tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.27", features = ["rand-std", "recovery"] }
 # ethabi cli
 ethabi = "18.0"
-sha3 = "0.10"
 itertools = "0.10"
-# legacy
-rustbreak = { version = "2.0", features = ["ron_enc"] }
 rlp = "0.5"
-cita-merklehash = { version = "0.1", features = ["sm3hash"] }
 static_merkle_tree = "1.1"
-bytes = { version = "1.4", features = ["serde"] }
-
+ethereum-types = "0.14"
 ophelia = "0.3"
 overlord = "0.4"
 ophelia-blst = "0.3"
+cita-crypto = "0.1"
+sha3 = "0.10"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+secp256k1 = { version = "0.27", features = ["rand-std", "recovery"] }
+hashable = { package = "cita-hashable", version = "0.1" }
+# legacy
+rustbreak = { version = "2.0", features = ["ron_enc"] }
+cita-merklehash = { version = "0.1", features = ["sm3hash"] }
+bytes = { version = "1.4", features = ["serde"] }
+bloomchain = "0.2"
 
 cita_cloud_proto = "=6.7.0"
-executor = { git = "https://github.com/cita-cloud/executor_evm" , branch = "v6.7.0"}
+libproto = { git = "https://github.com/cita-cloud/libproto" }
 
 [dev-dependencies]
 mockall = "0.11"
 
 [profile.release]
 lto = true
+
+[features]
+default = ["sm2", "sm3hash"]
+secp256k1 = ["cita-crypto/secp256k1", "libproto/secp256k1"]
+sm2 = ["cita-crypto/sm2", "libproto/sm2"]
+sha3hash = ["hashable/sha3hash", "libproto/sha3hash"]
+sm3hash = ["hashable/sm3hash", "libproto/sm3hash"]
