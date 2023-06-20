@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, alibaba-cloud]
     steps:
     - uses: actions/checkout@v2
     - name: Install Rust
