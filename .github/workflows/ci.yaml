@@ -22,7 +22,7 @@ env:
 jobs:
   rustfmt:
     name: rustfmt
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, alibaba-cloud]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -45,7 +45,7 @@ jobs:
 
   clippy:
     name: clippy
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, alibaba-cloud]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -70,7 +70,7 @@ jobs:
   
   test:
     name: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, alibaba-cloud]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -94,7 +94,7 @@ jobs:
   
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, alibaba-cloud]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2

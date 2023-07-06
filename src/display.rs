@@ -506,7 +506,7 @@ impl Display for RootsInfo {
 
 impl Display for ReceiptProof {
     fn to_json(&self) -> Json {
-        let receipt: executor::types::receipt::Receipt = rlp::decode(&self.receipt).unwrap();
+        let receipt: crate::types::receipt::Receipt = rlp::decode(&self.receipt).unwrap();
         json!({
             "receipt": receipt.to_json(),
             "receipt_proof": hex(&self.receipt_proof),
@@ -537,7 +537,7 @@ impl Display for CrossChainProof {
     }
 }
 
-impl Display for executor::types::log::Log {
+impl Display for crate::types::log::Log {
     fn to_json(&self) -> Json {
         json!({
             "address": hex(self.address.as_bytes()),
@@ -547,13 +547,13 @@ impl Display for executor::types::log::Log {
     }
 }
 
-impl Display for executor::types::receipt::Receipt {
+impl Display for crate::types::receipt::Receipt {
     fn to_json(&self) -> Json {
         let err_msg = self.error.map_or("".to_string(), |e| e.description());
         let logs = self
             .logs
             .iter()
-            .map(executor::types::log::Log::to_json)
+            .map(crate::types::log::Log::to_json)
             .collect::<Vec<_>>();
         json!({
             "quota_used": self.quota_used.as_u64(),
