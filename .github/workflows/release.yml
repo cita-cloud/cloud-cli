@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.target }}" == "x86_64-pc-windows-gnu" ]; then
-            7z a ${{ env.BINARY_NAME }}-${{ matrix.target }}.zip $PWD/target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe
+            tar czf ${{ env.BINARY_NAME }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release ${{ env.BINARY_NAME }}.exe
           else
             tar czf ${{ env.BINARY_NAME }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release ${{ env.BINARY_NAME }}
           fi
