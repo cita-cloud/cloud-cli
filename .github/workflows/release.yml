@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [linux, linux-arm, linux-musl, linux-musl-arm, win-msvc, macos-arm, macos]
+        build: [linux, linux-arm, linux-musl, linux-musl-arm, win-gnu, macos-arm, macos]
         include:
           - build: linux
             target: x86_64-unknown-linux-gnu
@@ -57,7 +57,7 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          if [ "${{ matrix.target }}" == "x86_64-pc-windows-gnu" ]; then
             7z a ${{ env.BINARY_NAME }}-${{ matrix.target }}.zip $PWD/target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe
           else
             tar czf ${{ env.BINARY_NAME }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release ${{ env.BINARY_NAME }}

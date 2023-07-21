@@ -3,7 +3,7 @@ WORKDIR /build
 ENV PROTOC_NO_VENDOR 1
 RUN rustup component add rustfmt && \
     apt-get update && \
-    apt-get install -y --no-install-recommends make wget librocksdb-dev libsnappy-dev liblz4-dev libzstd-dev libssl-dev \
+    apt-get install -y --no-install-recommends cmake make wget librocksdb-dev libsnappy-dev liblz4-dev libzstd-dev libssl-dev \
     libsnappy-dev pkg-config clang protobuf-compiler && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
