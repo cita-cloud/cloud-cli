@@ -5,13 +5,13 @@ authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.3", features = ["cargo"] }
-clap_complete = "4.3"
+clap = { version = "4.4", features = ["cargo"] }
+clap_complete = "4.4"
 hex = "0.4"
-tokio = { version = "1.29", features = ["full"] }
+tokio = { version = "1.32", features = ["full"] }
 rand = "0.8"
-tonic = "0.9"
-prost = "0.11"
+tonic = "0.10"
+prost = "0.12"
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 serde = "1.0"
 serde_derive = "1.0"
@@ -21,14 +21,14 @@ thiserror = "1.0"
 anyhow = "1.0"
 home = "0.5"
 indicatif = "0.17"
-rayon = "1.7"
+rayon = "1.8"
 tentacle-multiaddr = "0.3"
-toml = "0.7"
+toml = "0.8"
 rustyline = "12.0"
 shell-words = "1.1"
 parking_lot = "0.12"
 crossbeam = "0.8"
-tempfile = "3.6"
+tempfile = "3.8"
 # crypto SM
 libsm = "0.5"
 efficient-sm2 = "0.2"
@@ -52,10 +52,10 @@ hashable = { package = "cita-hashable", version = "0.1" }
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 cita-merklehash = { version = "0.1", features = ["sm3hash"] }
-bytes = { version = "1.4", features = ["serde"] }
+bytes = { version = "1.5", features = ["serde"] }
 bloomchain = "0.2"
 
-cita_cloud_proto = "=6.7.0"
+cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
 libproto = { git = "https://github.com/cita-cloud/libproto" }
 
 [dev-dependencies]
