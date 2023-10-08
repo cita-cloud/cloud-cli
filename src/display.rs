@@ -395,8 +395,7 @@ impl Display for ProofWithValidators {
                     .signature
                     .address_bitmap
                     .iter()
-                    .map(|u| format!("{u:b}"))
-                    .collect::<String>();
+                    .fold(String::new(), |r, &u| format!("{r}{u:b}"));
                 if !validators.is_empty() {
                     address_bitmap = address_bitmap.split_at(validators.len()).0.to_string();
                     address_bitmap.chars().enumerate().for_each(|(i, c)| {
