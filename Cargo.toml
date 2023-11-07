@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.5.6"
+version = "0.6.0"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
@@ -47,15 +47,16 @@ ophelia-blst = "0.3"
 cita-crypto = "0.1"
 sha3 = "0.10"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.27", features = ["rand-std", "recovery"] }
+secp256k1 = { version = "0.28", features = ["rand-std", "recovery"] }
 hashable = { package = "cita-hashable", version = "0.1" }
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 cita-merklehash = { version = "0.1", features = ["sm3hash"] }
 bytes = { version = "1.5", features = ["serde"] }
 bloomchain = "0.2"
+eth-jsonrpc-lib = "0.3.0"
 
-cita_cloud_proto = { package = "cita_cloud_proto", git = "https://github.com/cita-cloud/cloud-common-rs" }
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs" }
 libproto = { git = "https://github.com/cita-cloud/libproto" }
 
 [dev-dependencies]

@@ -38,6 +38,7 @@ where
             evm::get_balance().name("balance").alias("ba"),
             rpc::get_block().name("block").alias("b"),
             evm::get_code().name("code"),
+            evm::get_storage_at().name("storage-at"),
             rpc::get_tx().name("tx"),
             evm::get_account_nonce().name("nonce"),
             evm::get_receipt().name("receipt").alias("r"),

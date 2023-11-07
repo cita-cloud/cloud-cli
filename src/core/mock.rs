@@ -29,7 +29,7 @@ use cita_cloud_proto::{
     blockchain::{Block, CompactBlock, RawTransaction},
     common::NodeStatus,
     controller::{BlockNumber, CrossChainProof, SystemConfig},
-    evm::{Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt, ReceiptProof, RootsInfo},
+    evm::{self, Balance, ByteAbi, ByteCode, ByteQuota, Nonce, Receipt, ReceiptProof, RootsInfo},
     executor::CallResponse,
 };
 use mockall::mock;
@@ -109,10 +109,10 @@ mock! {
     #[tonic::async_trait]
     impl EvmBehaviour for EvmClient {
         async fn get_receipt(&self, hash: Hash) -> Result<Receipt>;
-        async fn get_code(&self, addr: Address) -> Result<ByteCode>;
-        async fn get_balance(&self, addr: Address) -> Result<Balance>;
-        async fn get_tx_count(&self, addr: Address) -> Result<Nonce>;
-        async fn get_abi(&self, addr: Address) -> Result<ByteAbi>;
+        async fn get_code(&self, addr: Address, block_number: evm::BlockNumber) -> Result<ByteCode>;
+        async fn get_balance(&self, addr: Address, block_number: evm::BlockNumber) -> Result<Balance>;
+        async fn get_tx_count(&self, addr: Address, block_number: evm::BlockNumber) -> Result<Nonce>;
+        async fn get_abi(&self, addr: Address, block_number: evm::BlockNumber) -> Result<ByteAbi>;
         async fn estimate_quota(
             &self,
             from: Vec<u8>,
@@ -120,7 +120,13 @@ mock! {
             method: Vec<u8>,
         ) -> Result<ByteQuota>;
         async fn get_receipt_proof(&self, hash: Hash) -> Result<ReceiptProof>;
-        async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo>;
+        async fn get_roots_info(&self, block_number: evm::BlockNumber) -> Result<RootsInfo>;
+        async fn get_storage_at(
+            &self,
+            addr: Address,
+            position: Hash,
+            block_number: evm::BlockNumber,
+        ) -> Result<Hash>;
     }
 
     impl Clone for EvmClient {

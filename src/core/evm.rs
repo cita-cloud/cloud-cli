@@ -14,19 +14,25 @@
 
 use anyhow::Context as _;
 use anyhow::Result;
-use cita_cloud_proto::evm::{BlockNumber, ByteQuota, ReceiptProof, RootsInfo};
+use cita_cloud_proto::evm::{
+    BlockNumber, ByteQuota, GetAbiRequest, GetBalanceRequest, GetCodeRequest, GetStorageAtRequest,
+    GetTransactionCountRequest, ReceiptProof, RootsInfo,
+};
 use cita_cloud_proto::executor::CallRequest;
 use tonic::transport::Channel;
 
 use super::controller::{SignerBehaviour, TransactionSenderBehaviour};
+use crate::types::H256;
 use crate::{
     crypto::{Address, ArrayLike, Hash},
     utils::parse_addr,
 };
+use cita_cloud_proto::evm::block_number::Lable;
 use cita_cloud_proto::{
     common::{Address as CloudAddress, Hash as CloudHash},
     evm::{Balance, ByteAbi, ByteCode, Nonce, Receipt},
 };
+use eth_jsonrpc_lib::rpc_types;
 
 // TODO: use constant array for these constant to avoid runtime parsing.
 
@@ -56,10 +62,10 @@ pub trait EvmBehaviour {
     // TODO: better address name
 
     async fn get_receipt(&self, hash: Hash) -> Result<Receipt>;
-    async fn get_code(&self, addr: Address) -> Result<ByteCode>;
-    async fn get_balance(&self, addr: Address) -> Result<Balance>;
-    async fn get_tx_count(&self, addr: Address) -> Result<Nonce>;
-    async fn get_abi(&self, addr: Address) -> Result<ByteAbi>;
+    async fn get_code(&self, addr: Address, block_number: BlockNumber) -> Result<ByteCode>;
+    async fn get_balance(&self, addr: Address, block_number: BlockNumber) -> Result<Balance>;
+    async fn get_tx_count(&self, addr: Address, block_number: BlockNumber) -> Result<Nonce>;
+    async fn get_abi(&self, addr: Address, block_number: BlockNumber) -> Result<ByteAbi>;
     async fn estimate_quota(
         &self,
         from: Vec<u8>,
@@ -67,7 +73,13 @@ pub trait EvmBehaviour {
         method: Vec<u8>,
     ) -> Result<ByteQuota>;
     async fn get_receipt_proof(&self, hash: Hash) -> Result<ReceiptProof>;
-    async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo>;
+    async fn get_roots_info(&self, block_number: BlockNumber) -> Result<RootsInfo>;
+    async fn get_storage_at(
+        &self,
+        addr: Address,
+        position: Hash,
+        block_number: BlockNumber,
+    ) -> Result<Hash>;
 }
 
 #[tonic::async_trait]
@@ -83,42 +95,54 @@ impl EvmBehaviour for EvmClient {
             .context("failed to get receipt")
     }
 
-    async fn get_code(&self, addr: Address) -> Result<ByteCode> {
-        let addr = CloudAddress {
-            address: addr.to_vec(),
+    async fn get_code(&self, addr: Address, block_number: BlockNumber) -> Result<ByteCode> {
+        let request = GetCodeRequest {
+            address: Some(CloudAddress {
+                address: addr.to_vec(),
+            }),
+            block_number: Some(block_number),
         };
-        EvmClient::get_code(&mut self.clone(), addr)
+        EvmClient::get_code(&mut self.clone(), request)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get code")
     }
 
-    async fn get_balance(&self, addr: Address) -> Result<Balance> {
-        let addr = CloudAddress {
-            address: addr.to_vec(),
+    async fn get_balance(&self, addr: Address, block_number: BlockNumber) -> Result<Balance> {
+        let request = GetBalanceRequest {
+            address: Some(CloudAddress {
+                address: addr.to_vec(),
+            }),
+            block_number: Some(block_number),
         };
-        EvmClient::get_balance(&mut self.clone(), addr)
+        EvmClient::get_balance(&mut self.clone(), request)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get balance")
     }
 
-    async fn get_tx_count(&self, addr: Address) -> Result<Nonce> {
-        let addr = CloudAddress {
-            address: addr.to_vec(),
+    async fn get_tx_count(&self, addr: Address, block_number: BlockNumber) -> Result<Nonce> {
+        let request = GetTransactionCountRequest {
+            address: Some(CloudAddress {
+                address: addr.to_vec(),
+            }),
+            block_number: Some(block_number),
         };
         self.clone()
-            .get_transaction_count(addr)
+            .get_transaction_count(request)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get tx count")
     }
 
-    async fn get_abi(&self, addr: Address) -> Result<ByteAbi> {
-        let addr = CloudAddress {
-            address: addr.to_vec(),
+    async fn get_abi(&self, addr: Address, block_number: BlockNumber) -> Result<ByteAbi> {
+        let request = GetAbiRequest {
+            address: Some(CloudAddress {
+                address: addr.to_vec(),
+            }),
+            block_number: Some(block_number),
         };
-        EvmClient::get_abi(&mut self.clone(), addr)
+        EvmClient::get_abi(&mut self.clone(), request)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get abi")
@@ -153,12 +177,34 @@ impl EvmBehaviour for EvmClient {
             .context("failed to get receipt proof")
     }
 
-    async fn get_roots_info(&self, block_number: u64) -> Result<RootsInfo> {
-        let block_number = BlockNumber { block_number };
+    async fn get_roots_info(&self, block_number: BlockNumber) -> Result<RootsInfo> {
         EvmClient::get_roots_info(&mut self.clone(), block_number)
             .await
             .map(|resp| resp.into_inner())
             .context("failed to get receipt proof")
+    }
+
+    async fn get_storage_at(
+        &self,
+        addr: Address,
+        position: Hash,
+        block_number: BlockNumber,
+    ) -> Result<Hash> {
+        let request = GetStorageAtRequest {
+            address: Some(CloudAddress {
+                address: addr.to_vec(),
+            }),
+            position: Some(CloudHash {
+                hash: position.to_vec(),
+            }),
+            block_number: Some(block_number),
+        };
+        EvmClient::get_storage_at(&mut self.clone(), request)
+            .await
+            .map(|resp| {
+                Hash::try_from_slice(&resp.into_inner().hash).expect("failed to parse hash")
+            })
+            .context("failed to get storage at")
     }
 }
 
@@ -207,6 +253,33 @@ where
             .await?;
 
         Ok(tx_hash)
+    }
+}
+
+pub fn convert_block_number(block_number: rpc_types::BlockNumber) -> BlockNumber {
+    match block_number {
+        rpc_types::BlockNumber::Tag(tag) => match tag {
+            rpc_types::BlockTag::Latest
+            | rpc_types::BlockTag::Safe
+            | rpc_types::BlockTag::Finalized => BlockNumber {
+                lable: Some(Lable::Tag("latest".to_string())),
+            },
+            rpc_types::BlockTag::Earliest => BlockNumber {
+                lable: Some(Lable::Tag("earliest".to_string())),
+            },
+            rpc_types::BlockTag::Pending => BlockNumber {
+                lable: Some(Lable::Tag("pending".to_string())),
+            },
+        },
+        rpc_types::BlockNumber::Hash(hash) => {
+            let hash: H256 = hash.into();
+            BlockNumber {
+                lable: Some(Lable::Hash(hash.0.to_vec())),
+            }
+        }
+        rpc_types::BlockNumber::Height(height) => BlockNumber {
+            lable: Some(Lable::Height(height.0.low_u64())),
+        },
     }
 }
 
