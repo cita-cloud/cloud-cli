@@ -429,7 +429,7 @@ mod tests {
 
         ctx.evm
             .expect_get_code()
-            .returning(|_utxo| Ok(ByteCode::default()));
+            .returning(|_utxo, _bn| Ok(ByteCode::default()));
 
         cldi_cmd
             .exec_from(
@@ -445,7 +445,7 @@ mod tests {
 
         ctx.evm
             .expect_get_balance()
-            .returning(|_utxo| Ok(Balance::default()));
+            .returning(|_utxo, _bn| Ok(Balance::default()));
 
         cldi_cmd
             .exec_from(
@@ -461,7 +461,7 @@ mod tests {
 
         ctx.evm
             .expect_get_tx_count()
-            .returning(|_utxo| Ok(Nonce::default()));
+            .returning(|_utxo, _bn| Ok(Nonce::default()));
 
         cldi_cmd
             .exec_from(
@@ -477,7 +477,7 @@ mod tests {
 
         ctx.evm
             .expect_get_abi()
-            .returning(|_utxo| Ok(ByteAbi::default()));
+            .returning(|_utxo, _bn| Ok(ByteAbi::default()));
 
         cldi_cmd
             .exec_from(
@@ -515,6 +515,23 @@ mod tests {
                     "+80",
                     "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
                     "fake abi",
+                ],
+                &mut ctx,
+            )
+            .unwrap();
+
+        ctx.evm
+            .expect_get_storage_at()
+            .returning(|_addr, _position, _bn| Ok(Hash::default()));
+
+        cldi_cmd
+            .exec_from(
+                [
+                    "cldi",
+                    "get",
+                    "storage-at",
+                    "0xf587c2fa24d23175e09d36625cfc447a4b4d679b",
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
                 ],
                 &mut ctx,
             )
