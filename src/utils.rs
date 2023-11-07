@@ -13,13 +13,16 @@
 // limitations under the License.
 
 use anyhow::{anyhow, bail, Context, Result};
+use cita_cloud_proto::evm::BlockNumber;
 use crossbeam::atomic::AtomicCell;
+use serde_json::{from_str, to_string};
 use std::io::Write;
 use std::num::ParseIntError;
 use std::path::Path;
 use tempfile::NamedTempFile;
 use time::UtcOffset;
 
+use crate::core::evm::convert_block_number;
 use crate::{
     core::controller::ControllerBehaviour,
     crypto::{Address, ArrayLike, Crypto, Hash, ADDR_BYTES_LEN, BLS_ADDR_BYTES_LEN},
@@ -36,6 +39,10 @@ pub fn parse_u64(s: &str) -> Result<u64, ParseIntError> {
 pub fn parse_addr(s: &str) -> Result<Address> {
     let input = parse_data(s)?;
     Address::try_from_slice(&input)
+}
+
+pub fn parse_block_number(s: &str) -> serde_json::Result<BlockNumber> {
+    Ok(convert_block_number(from_str(&to_string(s)?)?))
 }
 
 pub fn parse_validator_addr(s: &str) -> Result<Vec<u8>> {

@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use cita_cloud_proto::evm::block_number::Lable;
+use cita_cloud_proto::evm::BlockNumber;
 use clap::Arg;
 
+use crate::crypto::ArrayLike;
+use crate::utils::parse_block_number;
 use crate::{
     cmd::Command,
     core::{
@@ -48,6 +52,7 @@ where
 pub fn get_code<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-code")
         .about("Get code by contract address")
@@ -57,10 +62,32 @@ where
                 .required(true)
                 .value_parser(parse_addr),
         )
+        .arg(
+            Arg::new("height")
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
+        )
         .handler(|_cmd, m, ctx| {
             let addr = *m.get_one::<Address>("addr").unwrap();
-
-            let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr))??;
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
+            let byte_code = ctx.rt.block_on(ctx.evm.get_code(addr, block_number))??;
             println!("{}", byte_code.display());
             Ok(())
         })
@@ -69,6 +96,7 @@ where
 pub fn get_balance<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-balance")
         .about("Get balance by account address")
@@ -77,13 +105,36 @@ where
                 .help("Account address, default to current account")
                 .value_parser(parse_addr),
         )
+        .arg(
+            Arg::new("height")
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
+        )
         .handler(|_cmd, m, ctx| {
             let addr = match m.get_one::<Address>("addr") {
                 Some(s) => s.to_owned(),
                 None => *ctx.current_account()?.address(),
             };
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
 
-            let balance = ctx.rt.block_on(ctx.evm.get_balance(addr))??;
+            let balance = ctx.rt.block_on(ctx.evm.get_balance(addr, block_number))??;
             println!("{}", balance.display());
             Ok(())
         })
@@ -92,6 +143,7 @@ where
 pub fn get_account_nonce<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-account-nonce")
         .about("Get the nonce of this account")
@@ -100,13 +152,37 @@ where
                 .help("Account address, default to current account")
                 .value_parser(parse_addr),
         )
+        .arg(
+            Arg::new("height")
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
+        )
         .handler(|_cmd, m, ctx| {
             let addr = match m.get_one::<Address>("addr") {
                 Some(s) => s.to_owned(),
                 None => *ctx.current_account()?.address(),
             };
-
-            let nonce = ctx.rt.block_on(ctx.evm.get_tx_count(addr))??;
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
+            let nonce = ctx
+                .rt
+                .block_on(ctx.evm.get_tx_count(addr, block_number))??;
             println!("{}", nonce.display());
             Ok(())
         })
@@ -115,6 +191,7 @@ where
 pub fn get_contract_abi<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-contract-abi")
         .about("Get the specific contract ABI")
@@ -124,10 +201,32 @@ where
                 .required(true)
                 .value_parser(parse_addr),
         )
+        .arg(
+            Arg::new("height")
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
+        )
         .handler(|_cmd, m, ctx| {
             let addr = *m.get_one::<Address>("addr").unwrap();
-
-            let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr))??;
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
+            let byte_abi = ctx.rt.block_on(ctx.evm.get_abi(addr, block_number))??;
             println!("{}", byte_abi.display());
             Ok(())
         })
@@ -210,19 +309,88 @@ where
 pub fn get_roots_info<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
     Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
 {
     Command::<Context<Co, Ex, Ev>>::new("get-roots-info")
         .about("Get the specific block's roots info")
         .arg(
             Arg::new("height")
-                .help("the block height")
-                .required(true)
-                .value_parser(str::parse::<u64>),
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
         )
         .handler(|_cmd, m, ctx| {
-            let block_number = *m.get_one::<u64>("height").unwrap();
-
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
             let receipt_info = ctx.rt.block_on(ctx.evm.get_roots_info(block_number))??;
+            println!("{}", receipt_info.display());
+            Ok(())
+        })
+}
+
+pub fn get_storage_at<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Ev: EvmBehaviour,
+    Co: ControllerBehaviour,
+{
+    Command::<Context<Co, Ex, Ev>>::new("get-roots-info")
+        .about("Get the specific block's roots info")
+        .arg(
+            Arg::new("addr")
+                .help("Contract address")
+                .required(true)
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("position")
+                .help("Input query storage slot position hash")
+                .required(true)
+                .value_parser(parse_hash),
+        )
+        .arg(
+            Arg::new("height")
+                .help("Block number, tag or block hash")
+                .value_parser(parse_block_number),
+        )
+        .handler(|_cmd, m, ctx| {
+            let addr = *m.get_one::<Address>("addr").unwrap();
+            let position = *m.get_one::<Hash>("position").unwrap();
+            let mut block_number = m
+                .get_one::<BlockNumber>("height")
+                .unwrap_or(&BlockNumber {
+                    lable: Some(Lable::Tag("pending".to_string())),
+                })
+                .clone();
+            if let Lable::Hash(hash) = block_number.lable.clone().unwrap() {
+                let height = ctx
+                    .rt
+                    .block_on(
+                        ctx.controller
+                            .get_height_by_hash(Hash::try_from_slice(&hash).unwrap()),
+                    )??
+                    .block_number;
+                block_number = BlockNumber {
+                    lable: Some(Lable::Height(height)),
+                };
+            };
+            let receipt_info =
+                ctx.rt
+                    .block_on(ctx.evm.get_storage_at(addr, position, block_number))??;
             println!("{}", receipt_info.display());
             Ok(())
         })

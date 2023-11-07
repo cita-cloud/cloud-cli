@@ -81,8 +81,8 @@ pub fn secp256k1_pk2addr(pk: &PublicKey) -> Address {
 fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
     let hashed_msg = keccak_hash(msg);
     let raw_sk = RawSecretKey::from_slice(sk).unwrap();
-    let raw_sig =
-        SECP256K1.sign_ecdsa_recoverable(&Message::from_slice(&hashed_msg).unwrap(), &raw_sk);
+    let raw_sig = SECP256K1
+        .sign_ecdsa_recoverable(&Message::from_digest_slice(&hashed_msg).unwrap(), &raw_sk);
     let (recovery_id, sig) = raw_sig.serialize_compact();
 
     // [<sig><recovery_id>]
@@ -103,7 +103,7 @@ pub fn secp256k1_recover(message: &[u8], signature: &Signature) -> Option<Public
         rid,
     )
     .ok()?;
-    let msg = secp256k1::Message::from_slice(message).ok()?;
+    let msg = secp256k1::Message::from_digest_slice(message).ok()?;
     let pubkey = context.recover_ecdsa(&msg, &rsig).ok()?;
     let serialized = pubkey.serialize_uncompressed();
     Some((&serialized[1..65]).try_into().unwrap())
