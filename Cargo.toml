@@ -41,6 +41,7 @@ itertools = "0.11"
 rlp = "0.5"
 static_merkle_tree = "1.1"
 ethereum-types = "0.14"
+openssl = { version = "0.10", features = ["vendored"] }
 ophelia = "0.3"
 overlord = "0.4"
 ophelia-blst = "0.3"
