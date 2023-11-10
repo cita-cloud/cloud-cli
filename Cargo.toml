@@ -41,7 +41,6 @@ itertools = "0.11"
 rlp = "0.5"
 static_merkle_tree = "1.1"
 ethereum-types = "0.14"
-openssl = { version = "0.10", features = ["vendored"] }
 ophelia = "0.3"
 overlord = "0.4"
 ophelia-blst = "0.3"
@@ -59,6 +58,9 @@ eth-jsonrpc-lib = "0.3.0"
 
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs" }
 libproto = { git = "https://github.com/cita-cloud/libproto" }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 
 [dev-dependencies]
 mockall = "0.11"
