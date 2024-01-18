@@ -489,6 +489,7 @@ impl Display for NodeStatus {
             "peers_status": self.peers_status.iter().map(PeerStatus::to_json).collect::<Vec<_>>(),
             "is_danger": self.is_danger,
             "init_block_number": self.init_block_number,
+            "waiting_block": self.waiting_block,
         })
     }
 }

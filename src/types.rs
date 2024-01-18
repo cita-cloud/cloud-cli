@@ -29,7 +29,7 @@
 use std::str::FromStr;
 
 pub use ethereum_types::{Address, H128, H160, H256, H264, H32, H512, H520, H64};
-pub use ethereum_types::{Bloom, BloomInput, BloomRef};
+pub use ethereum_types::{Bloom, BloomInput};
 pub use ethereum_types::{U128, U256, U512, U64};
 
 #[inline]
