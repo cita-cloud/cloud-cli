@@ -45,7 +45,7 @@ pub fn sm4_encrypt(plaintext: &[u8], password: &[u8]) -> Vec<u8> {
     let (key, iv) = pw_hash.split_at(16);
     let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb).unwrap();
 
-    cipher.encrypt(plaintext, iv).unwrap()
+    cipher.encrypt(&[], plaintext, iv).unwrap()
 }
 
 pub fn sm4_decrypt(ciphertext: &[u8], password: &[u8]) -> Option<Vec<u8>> {
@@ -53,7 +53,7 @@ pub fn sm4_decrypt(ciphertext: &[u8], password: &[u8]) -> Option<Vec<u8>> {
     let (key, iv) = pw_hash.split_at(16);
     let cipher = libsm::sm4::Cipher::new(key, libsm::sm4::Mode::Cfb).unwrap();
 
-    cipher.decrypt(ciphertext, iv).ok()
+    cipher.decrypt(&[], ciphertext, iv).ok()
 }
 
 pub fn sm2_generate_secret_key() -> SecretKey {

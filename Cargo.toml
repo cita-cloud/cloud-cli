@@ -1,16 +1,16 @@
 [package]
 name = "cldi"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.4", features = ["cargo"] }
-clap_complete = "4.4"
+clap = { version = "4.5", features = ["cargo"] }
+clap_complete = "4.5"
 hex = "0.4"
-tokio = { version = "1.32", features = ["full"] }
+tokio = { version = "1.36", features = ["full"] }
 rand = "0.8"
-tonic = "0.10"
+tonic = "0.11"
 prost = "0.12"
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 serde = "1.0"
@@ -24,20 +24,20 @@ indicatif = "0.17"
 rayon = "1.8"
 tentacle-multiaddr = "0.3"
 toml = "0.8"
-rustyline = "12.0"
+rustyline = "13.0"
 shell-words = "1.1"
 parking_lot = "0.12"
 crossbeam = "0.8"
-tempfile = "3.8"
+tempfile = "3.10"
 # crypto SM
-libsm = "0.5"
+libsm = "0.6"
 efficient-sm2 = "0.2"
 # crypto ETH
 aes = "0.8"
 ctr = "0.9"
 # ethabi cli
 ethabi = "18.0"
-itertools = "0.11"
+itertools = "0.12"
 rlp = "0.5"
 static_merkle_tree = "1.1"
 ethereum-types = "0.14"
@@ -54,7 +54,7 @@ rustbreak = { version = "2.0", features = ["ron_enc"] }
 cita-merklehash = { version = "0.1", features = ["sm3hash"] }
 bytes = { version = "1.5", features = ["serde"] }
 bloomchain = "0.2"
-eth-jsonrpc-lib = "0.3.0"
+eth-jsonrpc-lib = "0.4"
 
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs" }
 libproto = { git = "https://github.com/cita-cloud/libproto" }
@@ -63,7 +63,7 @@ libproto = { git = "https://github.com/cita-cloud/libproto" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 [dev-dependencies]
-mockall = "0.11"
+mockall = "0.12"
 
 [profile.release]
 lto = true
