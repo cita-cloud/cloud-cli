@@ -188,7 +188,8 @@ where
                 .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
-            let mut data = m.get_one::<Vec<u8>>("address").unwrap().to_owned();
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
             let content = m.get_one::<Vec<u8>>("content").unwrap().to_owned();
             data.extend_from_slice(&content);
             let quota = *m.get_one::<u64>("quota").unwrap();
@@ -243,7 +244,8 @@ where
                 .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
-            let mut data = m.get_one::<Vec<u8>>("address").unwrap().to_owned();
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
             let content = m.get_one::<Vec<u8>>("content").unwrap().to_owned();
             data.extend_from_slice(&content);
             let quota = *m.get_one::<u64>("quota").unwrap();
@@ -304,10 +306,11 @@ where
                 .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
-            let mut data = m.get_one::<Vec<u8>>("address").unwrap().to_owned();
-            let key = m.get_one::<Vec<u8>>("key").unwrap().to_owned();
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let key = m.get_one::<[u8; 32]>("key").unwrap().to_owned();
             data.extend_from_slice(&key);
-            let value = m.get_one::<Vec<u8>>("value").unwrap().to_owned();
+            let value = m.get_one::<[u8; 32]>("value").unwrap().to_owned();
             data.extend_from_slice(&value);
             let quota = *m.get_one::<u64>("quota").unwrap();
             let admin_signer = ctx.current_account()?;
@@ -343,7 +346,7 @@ where
             Arg::new("balance")
                 .help("the balance be set")
                 .required(true)
-                .value_parser(parse_data),
+                .value_parser(parse_value),
         )
         .arg(
             Arg::new("quota")
@@ -361,8 +364,9 @@ where
                 .value_parser(parse_position),
         )
         .handler(|_cmd, m, ctx| {
-            let mut data = m.get_one::<Vec<u8>>("address").unwrap().to_owned();
-            let balance = m.get_one::<Vec<u8>>("balance").unwrap().to_owned();
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let balance = m.get_one::<[u8; 32]>("balance").unwrap().to_owned();
             data.extend_from_slice(&balance);
             let quota = *m.get_one::<u64>("quota").unwrap();
             let admin_signer = ctx.current_account()?;
