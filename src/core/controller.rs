@@ -103,7 +103,9 @@ pub trait ControllerBehaviour {
 #[tonic::async_trait]
 impl ControllerBehaviour for ControllerClient {
     async fn send_raw(&self, raw: RawTransaction) -> Result<Hash> {
-        let resp = self.clone().send_raw_transaction(raw).await?.into_inner();
+        let resp = ControllerClient::send_raw_transaction(&mut self.clone(), raw)
+            .await?
+            .into_inner();
 
         Hash::try_from_slice(&resp.hash)
             .context("controller returns an invalid transaction hash, maybe we are using a wrong signing algorithm?")
