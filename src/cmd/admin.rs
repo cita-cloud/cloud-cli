@@ -14,6 +14,11 @@
 
 use clap::Arg;
 
+use crate::core::controller::{ControllerBehaviour, TransactionSenderBehaviour};
+use crate::core::evm::constant;
+use crate::core::evm::constant::{AMEND_ABI, AMEND_BALANCE, AMEND_CODE, AMEND_KV_H256};
+use crate::crypto::ArrayLike;
+use crate::utils::{get_block_height_at, parse_data, parse_position, parse_value, Position};
 use crate::{
     cmd::Command,
     core::{admin::AdminBehaviour, context::Context},
@@ -148,9 +153,251 @@ where
             Ok(())
         })
 }
+
+pub fn amend_abi<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("abi")
+        .about("The amend abi commands for contract abi")
+        .arg(
+            Arg::new("address")
+                .help("contract address")
+                .required(true)
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("content")
+                .help("the new abi content")
+                .required(true),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .default_value("200000")
+                .value_parser(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
+                .long("until")
+                .default_value("+95")
+                .value_parser(parse_position),
+        )
+        .handler(|_cmd, m, ctx| {
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let content = m.get_one::<String>("content").unwrap();
+            data.extend_from_slice(content.as_bytes());
+            let quota = *m.get_one::<u64>("quota").unwrap();
+            let admin_signer = ctx.current_account()?;
+            ctx.rt.block_on(async {
+                let valid_until_block = {
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
+                    get_block_height_at(&ctx.controller, pos).await?
+                };
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(admin_signer, parse_addr(constant::AMEND_ADDRESS).unwrap().to_vec(), data, parse_value(AMEND_ABI).unwrap().to_vec(), quota, valid_until_block)
+                    .await?;
+                println!("{}", tx_hash.display());
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
+
+pub fn amend_code<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("code")
+        .about("The amend code commands for contract bytecode")
+        .arg(
+            Arg::new("address")
+                .help("contract address")
+                .required(true)
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("content")
+                .help("the new bytecode content")
+                .required(true)
+                .value_parser(parse_data),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .default_value("200000")
+                .value_parser(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
+                .long("until")
+                .default_value("+95")
+                .value_parser(parse_position),
+        )
+        .handler(|_cmd, m, ctx| {
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let content = m.get_one::<Vec<u8>>("content").unwrap().to_owned();
+            data.extend_from_slice(&content);
+            let quota = *m.get_one::<u64>("quota").unwrap();
+            let admin_signer = ctx.current_account()?;
+            ctx.rt.block_on(async {
+                let valid_until_block = {
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
+                    get_block_height_at(&ctx.controller, pos).await?
+                };
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(admin_signer, parse_addr(constant::AMEND_ADDRESS).unwrap().to_vec(), data, parse_value(AMEND_CODE).unwrap().to_vec(), quota, valid_until_block)
+                    .await?;
+                println!("{}", tx_hash.display());
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
+
+pub fn amend_kv_h256<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("set-h256")
+        .about("The amend kv h256 commands for contract data")
+        .arg(
+            Arg::new("address")
+                .help("contract address")
+                .required(true)
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("key")
+                .help("the mpt key")
+                .required(true)
+                .value_parser(parse_value),
+        )
+        .arg(
+            Arg::new("value")
+                .help("the mpt value")
+                .required(true)
+                .value_parser(parse_value),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .default_value("200000")
+                .value_parser(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
+                .long("until")
+                .default_value("+95")
+                .value_parser(parse_position),
+        )
+        .handler(|_cmd, m, ctx| {
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let key = m.get_one::<[u8; 32]>("key").unwrap().to_owned();
+            data.extend_from_slice(&key);
+            let value = m.get_one::<[u8; 32]>("value").unwrap().to_owned();
+            data.extend_from_slice(&value);
+            let quota = *m.get_one::<u64>("quota").unwrap();
+            let admin_signer = ctx.current_account()?;
+            ctx.rt.block_on(async {
+                let valid_until_block = {
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
+                    get_block_height_at(&ctx.controller, pos).await?
+                };
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(admin_signer, parse_addr(constant::AMEND_ADDRESS).unwrap().to_vec(), data, parse_value(AMEND_KV_H256).unwrap().to_vec(), quota, valid_until_block)
+                    .await?;
+                println!("{}", tx_hash.display());
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
+
+pub fn amend_balance<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("balance")
+        .about("The amend balance commands for account")
+        .arg(
+            Arg::new("address")
+                .help("contract address")
+                .required(true)
+                .value_parser(parse_addr),
+        )
+        .arg(
+            Arg::new("balance")
+                .help("the balance be set")
+                .required(true)
+                .value_parser(parse_value),
+        )
+        .arg(
+            Arg::new("quota")
+                .help("the quota of this tx")
+                .short('q')
+                .long("quota")
+                .default_value("200000")
+                .value_parser(str::parse::<u64>),
+        )
+        .arg(
+            Arg::new("valid-until-block")
+                .help("this tx is valid until the given block height. `+h` means `<current-height> + h`")
+                .long("until")
+                .default_value("+95")
+                .value_parser(parse_position),
+        )
+        .handler(|_cmd, m, ctx| {
+            let addr = *m.get_one::<Address>("address").unwrap();
+            let mut data = addr.to_vec();
+            let balance = m.get_one::<[u8; 32]>("balance").unwrap().to_owned();
+            data.extend_from_slice(&balance);
+            let quota = *m.get_one::<u64>("quota").unwrap();
+            let admin_signer = ctx.current_account()?;
+            ctx.rt.block_on(async {
+                let valid_until_block = {
+                    let pos = *m.get_one::<Position>("valid-until-block").unwrap();
+                    get_block_height_at(&ctx.controller, pos).await?
+                };
+                let tx_hash = ctx
+                    .controller
+                    .send_tx(admin_signer, parse_addr(constant::AMEND_ADDRESS).unwrap().to_vec(), data, parse_value(AMEND_BALANCE).unwrap().to_vec(), quota, valid_until_block)
+                    .await?;
+                println!("{}", tx_hash.display());
+                anyhow::Ok(())
+            })??;
+            Ok(())
+        })
+}
+
+pub fn amend<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
+where
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
+{
+    Command::<Context<Co, Ex, Ev>>::new("amend")
+        .about("The amend commands for amend key data")
+        .subcommand_required_else_help(true)
+        .subcommands([amend_abi(), amend_code(), amend_kv_h256(), amend_balance()])
+}
+
 pub fn admin_cmd<'help, Co, Ex, Ev>() -> Command<'help, Context<Co, Ex, Ev>>
 where
-    Co: AdminBehaviour,
+    Co: AdminBehaviour + ControllerBehaviour + Send + Sync,
 {
     Command::new("admin")
         .about("The admin commands for managing chain")
@@ -161,6 +408,7 @@ where
             set_block_interval(),
             emergency_brake(),
             set_quota_limit(),
+            amend(),
         ])
 }
 

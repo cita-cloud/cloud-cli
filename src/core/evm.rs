@@ -37,7 +37,7 @@ use eth_jsonrpc_lib::rpc_types;
 // TODO: use constant array for these constant to avoid runtime parsing.
 
 #[allow(unused)]
-mod constant {
+pub mod constant {
     /// Store action target address
     pub const STORE_ADDRESS: &str = "0xffffffffffffffffffffffffffffffffff010000";
     /// StoreAbi action target address
