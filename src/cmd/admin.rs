@@ -169,8 +169,7 @@ where
         .arg(
             Arg::new("content")
                 .help("the new abi content")
-                .required(true)
-                .value_parser(parse_data),
+                .required(true),
         )
         .arg(
             Arg::new("quota")
@@ -190,8 +189,8 @@ where
         .handler(|_cmd, m, ctx| {
             let addr = *m.get_one::<Address>("address").unwrap();
             let mut data = addr.to_vec();
-            let content = m.get_one::<Vec<u8>>("content").unwrap().to_owned();
-            data.extend_from_slice(&content);
+            let content = m.get_one::<String>("content").unwrap();
+            data.extend_from_slice(content.as_bytes());
             let quota = *m.get_one::<u64>("quota").unwrap();
             let admin_signer = ctx.current_account()?;
             ctx.rt.block_on(async {
