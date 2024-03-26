@@ -14,8 +14,6 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -62,9 +60,11 @@ impl Config {
     }
 
     fn use_default_config(config_file: PathBuf) -> Result<Self> {
-        let mut f = File::options().write(true).create(true).open(config_file)?;
         let default_config = Self::default();
-        f.write_all(toml::to_string_pretty(&default_config).unwrap().as_bytes())?;
+        fs::write(
+            config_file,
+            toml::to_string_pretty(&default_config).unwrap().as_bytes(),
+        )?;
         Ok(default_config)
     }
 
