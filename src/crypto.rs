@@ -90,9 +90,9 @@ pub trait Crypto: Send + Sync + 'static {
     }
 
     fn sign(msg: &[u8], sk: &Self::SecretKey) -> Self::Signature;
-
     fn sk2pk(sk: &Self::SecretKey) -> Self::PublicKey;
     fn pk2addr(pk: &Self::PublicKey) -> Address;
+    #[allow(dead_code)]
     fn sk2addr(sk: &Self::SecretKey) -> Address {
         Self::pk2addr(&Self::sk2pk(sk))
     }

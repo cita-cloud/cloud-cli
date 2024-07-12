@@ -1,6 +1,6 @@
 [package]
 name = "cldi"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 
@@ -8,23 +8,23 @@ edition = "2021"
 clap = { version = "4.5", features = ["cargo"] }
 clap_complete = "4.5"
 hex = "0.4"
-tokio = { version = "1.36", features = ["full"] }
+tokio = { version = "1.38", features = ["full"] }
 rand = "0.8"
-tonic = "0.11"
-prost = "0.12"
+tonic = "0.12"
+prost = "0.13"
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-lazy_static = "1.4"
+lazy_static = "1.5"
 thiserror = "1.0"
 anyhow = "1.0"
 home = "0.5"
 indicatif = "0.17"
-rayon = "1.8"
+rayon = "1.10"
 tentacle-multiaddr = "0.3"
 toml = "0.8"
-rustyline = "13.0"
+rustyline = "14.0"
 shell-words = "1.1"
 parking_lot = "0.12"
 crossbeam = "0.8"
@@ -47,16 +47,16 @@ ophelia-blst = "0.3"
 cita-crypto = "0.1"
 sha3 = "0.10"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1 = { version = "0.28", features = ["rand-std", "recovery"] }
+secp256k1 = { version = "0.29", features = ["rand-std", "recovery"] }
 hashable = { package = "cita-hashable", version = "0.1" }
 # legacy
 rustbreak = { version = "2.0", features = ["ron_enc"] }
 cita-merklehash = { version = "0.1", features = ["sm3hash"] }
-bytes = { version = "1.5", features = ["serde"] }
+bytes = { version = "1.6", features = ["serde"] }
 bloomchain = "0.2"
 eth-jsonrpc-lib = "0.4"
 
-cita_cloud_proto = "=6.7.3"
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs" }
 libproto = { git = "https://github.com/cita-cloud/libproto", rev = "9388049a964bc81a8989f7db9cf6f1620dc4a5bc" }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]

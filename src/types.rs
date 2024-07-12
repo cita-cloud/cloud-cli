@@ -68,6 +68,7 @@ pub trait ConvertType
 where
     Self: ::std::marker::Sized,
 {
+    #[allow(dead_code)]
     fn from_unaligned(_: &str) -> Option<Self>;
 }
 
@@ -165,6 +166,7 @@ add_cita_funcs!([
 
 pub trait BloomTools {
     fn from_raw(_: &[u8]) -> Self;
+    #[allow(dead_code)]
     fn contains_raw(&self, _: &[u8]) -> bool;
     fn accrue_raw(&mut self, _: &[u8]);
 }

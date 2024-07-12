@@ -437,7 +437,7 @@ where
         .handler(|_cmd, m, ctx| {
             let port = *m.get_one::<u16>("port").unwrap();
             let domain = m.get_one::<String>("domain").unwrap();
-            let multiaddr = format!("/dns4/127.0.0.1/tcp/{port}/tls/{domain}");
+            let multiaddr = format!("/dns4/localhost/tcp/{port}/tls/{domain}");
 
             let status = ctx.rt.block_on(ctx.controller.add_node(multiaddr))??;
             // https://github.com/cita-cloud/status_code
