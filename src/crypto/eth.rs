@@ -88,7 +88,7 @@ fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
     // [<sig><recovery_id>]
     let mut output = [0u8; SIGNATURE_BYTES_LEN];
     output[..SIGNATURE_BYTES_LEN - 1].copy_from_slice(&sig);
-    output[SIGNATURE_BYTES_LEN - 1] = recovery_id.to_i32() as u8;
+    output[SIGNATURE_BYTES_LEN - 1] = recovery_id as u8;
 
     output
 }
@@ -96,8 +96,8 @@ fn secp256k1_sign(msg: &[u8], sk: &SecretKey) -> Signature {
 #[allow(unused)]
 pub fn secp256k1_recover(message: &[u8], signature: &Signature) -> Option<PublicKey> {
     let context = &SECP256K1;
-    let rid = secp256k1::ecdsa::RecoveryId::from_i32(i32::from(signature[SIGNATURE_BYTES_LEN - 1]))
-        .ok()?;
+    let rid =
+        secp256k1::ecdsa::RecoveryId::try_from(signature[SIGNATURE_BYTES_LEN - 1] as i32).ok()?;
     let rsig = secp256k1::ecdsa::RecoverableSignature::from_compact(
         &signature[0..SIGNATURE_BYTES_LEN - 1],
         rid,
