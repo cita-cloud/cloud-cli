@@ -105,11 +105,10 @@ fn main() -> Result<()> {
     let cldi = cmd::cldi_cmd();
     let m = cldi.get_matches();
 
-    cldi.exec_with(&m, &mut ctx).map_err(|e| {
+    cldi.exec_with(&m, &mut ctx).inspect_err(|e| {
         if let Some(e) = e.downcast_ref::<clap::Error>() {
             e.exit();
         }
-        e
     })?;
 
     // Enter interactive mode if no subcommand provided
