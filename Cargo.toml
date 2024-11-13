@@ -56,7 +56,7 @@ bytes = { version = "1.8", features = ["serde"] }
 bloomchain = "0.2"
 eth-jsonrpc-lib = "0.4"
 
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cloud-common-rs" }
+cita_cloud_proto = "=6.7.4"
 libproto = { git = "https://github.com/cita-cloud/libproto", rev = "9388049a964bc81a8989f7db9cf6f1620dc4a5bc" }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
